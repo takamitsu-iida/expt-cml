@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 本スクリプトはgithubにおいてあるので、このコマンドで実行する
-# curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/main/bin/copy_node_definition.sh | bash -s
+# 本スクリプトはgithubにおいてあるので、このコマンドをコックピットのターミナルで実行する
+# curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_node_definition.sh | bash -s
 
 # 特権ユーザのシェルを取る
 # パスワードを聞かれる

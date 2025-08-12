@@ -247,7 +247,7 @@ cat ${COPY_DST}.yaml
 コックピットのターミナルで以下をコピペするだけです。
 
 ```bash
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/main/bin/copy_node_definition.sh | bash -s
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_node_definition.sh | bash -s
 ```
 
 <br><br>
@@ -261,6 +261,12 @@ curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamits
 UbuntuのSETTINGSタブの `Image Definition` のドロップダウンから、上記で作成したラベルのものを選んでから起動します。
 
 起動したらアップデート、FRRのインストール、などなどを実行して好みのUbuntuに仕上げます。
+
+最後に `/var/lib/cloud` ディレクトリを丸ごと消去して、次に起動したときにcloud-initが走るようにします。
+
+```bash
+sudo rm -rf /var/lib/cloud
+```
 
 <br><br>
 
@@ -313,8 +319,34 @@ qemu-img commit node0.img
 
 ラボを作って、外部接続を作って、Ubuntuを作って、起動イメージを変更して、外部接続と結線して・・・といった作業を手作業でやるのは面倒なので、Pythonで自動化します。
 
-`bin/cml_create_lab1.py` を実行すると "cml_create_lab1" という名前のラボができます。
+`bin/cml_create_custom_ubuntu.py` を実行すると "custom_ubuntu" という名前のラボができます。
 
 このラボを開始すると最新化された状態（apt update; apt dist-upgradeされた状態）でubuntuが起動します。
+
+実行例
+
+```bash
+(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_custom_ubuntu.py
+SSL Verification disabled
+2025-08-12 20:48:06,763 - INFO - To commit changes, execute following commands in cml cockpit terminal.
+
+cd /var/local/virl2/images/0a17e568-c034-4f16-bb1b-9b463b8c25d4/d0396938-e30b-4d73-a859-7ffc296e3f78
+sudo qemu-img commit node0.img
+```
+
+Ubuntuを好きなだけイジったら `/var/lib/cloud` ディレクトリを丸ごと消去して、次に起動したときにcloud-initが走るようにします（忘れがち）。
+
+```bash
+sudo rm -rf /var/lib/cloud
+```
+
+Ubuntuを停止して、コックピットのターミナルでラボ実行時に表示されたとおりに実行します。
+
+```bash
+cd /var/local/virl2/images/0a17e568-c034-4f16-bb1b-9b463b8c25d4/d0396938-e30b-4d73-a859-7ffc296e3f78
+sudo qemu-img commit node0.img
+```
+
+これで変更が確定しますので、次回以降このイメージ定義を使えば、カスタマイズされた状態のUbuntuが起動します。
 
 <br>

@@ -272,6 +272,7 @@ ping 192.168.0.198
 
 ## 参考文献
 
+<br>
 
 [備忘録: Cisco CMLをHyper-Vで動かす](https://qiita.com/recuraki/items/3f5d792f2fc704052fd8)
 
@@ -294,4 +295,4 @@ PATtyの使い方はこのページが参考になります。firewalldの停止
 [The Cisco Learning Network](https://learningnetwork.cisco.com/s/)
 
 CMLってどこからダウンロードするんだっけ？　ライセンスはなんだっけ？　となりがち。
-まずはここにアクセスして　`Store`　に飛んでからログインする。
+まずはここにアクセスして　`Store`　に飛んでからログインすればよい。

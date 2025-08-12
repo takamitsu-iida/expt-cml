@@ -1,0 +1,62 @@
+---
+
+- hosts: 127.0.0.1
+  connection: local
+  become: true
+  vars:
+    packages:
+
+      # needed to compile frr
+      - autoconf
+      - automake
+      - libtool
+      - make
+      - libreadline-dev
+      - texinfo
+      - pkg-config
+      - libpam0g-dev
+      - libjson-c-dev
+      - bison
+      - flex
+      - libc-ares-dev
+      - python3-dev
+      - python3-sphinx
+      - install-info
+      - build-essential
+      - libsnmp-dev
+      - perl
+      - libcap-dev
+      - libelf-dev
+      - libunwind-dev
+      - protobuf-c-compiler
+      - libprotobuf-c-dev
+
+      # frr need the newest libyang
+      # needed to compile libyang
+      - cmake
+      - libpcre2-dev
+
+      # needed to compile grpc
+      - libgrpc++-dev
+      - protobuf-compiler-grpc
+
+      # needed to use rollback
+      - libsqlite3-dev
+
+      # optional
+      - libzmq5
+      - libzmq3-dev
+
+      # utitilies
+      - traceroute
+      - net-tools
+
+
+    # variables for frr role
+    libyang_repo_url: https://github.com/CESNET/libyang.git
+    libyang_version: v2.1.128
+    frr_repo_url: https://github.com/frrouting/frr.git
+
+  roles:
+    - apt
+    - frr

@@ -1,0 +1,14 @@
+---
+
+- name: "install packages"
+  apt:
+    name: "*"
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: "install packages"
+  apt:
+    name:
+      - "{{ item }}"
+    state: latest
+  loop: "{{ packages }}"

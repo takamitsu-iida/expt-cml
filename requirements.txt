@@ -1,0 +1,4 @@
+jinja2
+
+# バージョンはCMLにあわせること！
+virl2-client==2.9

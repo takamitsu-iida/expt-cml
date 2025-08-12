@@ -1,0 +1,105 @@
+# virl2-clientを使ってラボを作成する
+
+ノード数が多いラボを作るときには、手作業で作成するよりもPythonで作成した方が圧倒的に簡単です。
+
+<br><br>
+
+## 環境構築
+
+Pythonを使いますので環境を整えます。
+
+```bash
+python3 -m venv .venv
+direnv allow
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+<br>
+
+> [!NOTE]
+>
+> Pythonのモジュール virl2_client はCMLのバージョンと一致させる必要があります。requirements.txtに記載のバージョンを確認してください。
+
+<br>
+
+`bin/cml_config.py` にCMLの環境情報を設定します。
+
+```python
+# CMLのIPアドレス
+CML_ADDRESS = "192.168.122.212"
+
+# CMLのユーザ名
+CML_USERNAME = "admin"
+
+# CMLのパスワード
+CML_PASSWORD = "Cisco123"
+```
+
+これら情報は `.env` に書いた方が安全ですが、ここでは簡単のため、このようにしています。
+
+<br>
+
+## 事前準備
+
+Pythonスクリプトで作成するにあたって、手作業で簡単なラボを作って、必要な情報を確認します。
+
+必要になるノードを適当に散りばめてラボを作成します。どうせすぐに消すのでラボの名前は何でも構いません。
+
+ノードの設定で `Image Definition` は `Automatic` ではなく、手作業で選択します。
+
+![適当に作成したラボ](./assets/create_lab_1.png)
+
+上部のメニューから　`LAB`　→　`Download Lab`　を辿ってラボの情報をYAMLでダウンロードします。
+
+抜粋すると、こんな感じです。
+
+`node_definition`　および　`image_definition`　が重要なパラメータで、これらでノードの種類と起動するイメージを識別しています。
+
+```YAML
+nodes:
+  -
+    label: frr-0
+    image_definition: frr-10-2-1-r1
+    node_definition: frr
+    x: -224
+    y: -147
+
+  -
+    label: ubuntu-0
+    image_definition: ubuntu-24-04-20250503
+    node_definition: ubuntu
+    tags: []
+    x: -71
+    y: -86
+
+  -
+    label: csr1000v-0
+    image_definition: csr1000v-17-03-08a
+    node_definition: csr1000v
+    tags: []
+    x: 114
+    y: -93
+
+  -
+    label: unmanaged-switch-0
+    node_definition: unmanaged_switch
+    x: -19
+    y: -250
+
+  -
+    label: ext-conn-0
+    node_definition: external_connector
+    x: -17
+    y: -418
+```
+
+Ubuntuを作りたければ、node_definitionは `ubuntu` を、image_definition `ubuntu-24-04-20250503` を指定すればよいことになります。
+
+それさえ分かれば、このラボおよびダウンロードしたYAMLは破棄して構いません。
+
+<br>
+
+## ubuntuを含むラボを作ってみる
+
+`bin/cml_create_lab1.py` を使います。

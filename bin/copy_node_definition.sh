@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # 本スクリプトはgithubにおいてあるので、このコマンドで実行する
-# curl -Ls https://raw.githubusercontent.com/takamitsu-iida/frr-on-cml/refs/heads/main/bin/copy_node_definition.sh | bash -s
+# curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/main/bin/copy_node_definition.sh | bash -s
 
 # 特権ユーザのシェルを取る
 # パスワードを聞かれる
 sudo -s -E
 
-COPY_SRC="ubuntu-24-04-20241004"
-COPY_DST="ubuntu-24-04-20241004-frr"
+COPY_SRC="ubuntu-24-04-20250503"
+COPY_DST="ubuntu-24-04-20250503-iida"
 
 NODE_DEF_ID=${COPY_DST}
-NODE_DEF_LABEL="Ubuntu 24.04 - 04 Oct 2024 FRR installed"
+NODE_DEF_LABEL="Ubuntu 24.04 - 3 May 2025 customized by iida"
 
 # ubuntuイメージのある場所に移動する
 cd /var/lib/libvirt/images/virl-base-images

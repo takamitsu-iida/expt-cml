@@ -145,9 +145,10 @@ if __name__ == '__main__':
 
         # 同タイトルのラボを消す
         for lab in client.find_labs_by_title(LAB_NAME):
-            lab.stop()
+            lab.stop(wait=True)
             lab.wipe()
-            lab.remove()
+            logger.info(f"Deleting existing lab: {lab.title}")
+            client.remove_lab(lab)
 
         # -d で起動していたらここで処理終了
         if args.delete:
@@ -192,6 +193,7 @@ if __name__ == '__main__':
         # FRRに設定するprotocolsのテキストを作る
         protocols_text = protocols_template.render(protocols_context)
 
+        # FRRに設定するファイル一式
         frr_configurations = [
             {
                 'name': 'node.cfg',
@@ -203,6 +205,7 @@ if __name__ == '__main__':
             }
         ]
 
+        # FRRノードに設定を適用する
         frr_node.configuration = frr_configurations
 
         # タグを設定する
@@ -210,7 +213,7 @@ if __name__ == '__main__':
         frr_node.add_tag(tag=NODE_TAG)
 
         # start the lab
-        lab.start()
+        # lab.start(wait=True)
 
         return 0
 

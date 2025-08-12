@@ -46,9 +46,13 @@ Pythonスクリプトで作成するにあたって、手作業で簡単なラ�
 
 必要になるノードを適当に散りばめてラボを作成します。どうせすぐに消すのでラボの名前は何でも構いません。
 
-ノードの設定で `Image Definition` は `Automatic` ではなく、手作業で選択します。
+このときノードの設定で `Image Definition` は `Automatic` ではなく手作業で選択します。
+
+<br>
 
 ![適当に作成したラボ](./assets/create_lab_1.png)
+
+<br>
 
 上部のメニューから　`LAB`　→　`Download Lab`　を辿ってラボの情報をYAMLでダウンロードします。
 
@@ -94,7 +98,7 @@ nodes:
     y: -418
 ```
 
-Ubuntuを作りたければ、node_definitionは `ubuntu` を、image_definition `ubuntu-24-04-20250503` を指定すればよいことになります。
+Ubuntuを作りたければ、node_definitionは `ubuntu` を、image_definitionは `ubuntu-24-04-20250503` を指定すればよいことになります。
 
 それさえ分かれば、このラボおよびダウンロードしたYAMLは破棄して構いません。
 
@@ -103,3 +107,15 @@ Ubuntuを作りたければ、node_definitionは `ubuntu` を、image_definition
 ## ubuntuを含むラボを作ってみる
 
 `bin/cml_create_lab1.py` を使います。
+
+削除するには `-d` を引数に与えます。
+
+<br>
+
+## frr(Docker)を含むラボを作ってみる
+
+`bin/cml_create_lab2.py`
+
+CML2.9からサポートされたDockerのイメージも同じように作れます。
+
+DockerイメージでFRRを動かす場合、設定が複数ありますので、設定ファイルの名前とその中身を辞書型にして渡してあげる必要があります。

@@ -55,7 +55,7 @@ lo              up      default         192.168.255.1/32
                                         2001:db8::1/128
 ```
 
-<br><br>
+<br><br><br>
 
 # FRRのDockerイメージを作る
 
@@ -63,12 +63,23 @@ FRRの公式マニュアルにDockerイメージの作り方が書かれてい�
 
 https://docs.frrouting.org/projects/dev-guide/en/latest/building-docker.html
 
+<br>
 
-CMLに適当なUbuntuを作ります。
+## （事前準備）FRRをコンパイルする
 
-Dockerをインストールします。
+そもそもコンパイルが通らなければDockerのイメージを作りようがありません。
 
-必要なツールをインストールします。
+環境を整える意味でも、一度コンパイルします。
+
+FRRのコンパイル方法は　[こちら](/README.create_frr_image.md)　にあります。
+
+<br>
+
+## Dockerをインストールする
+
+FRRを問題なくコンパイルできることを確認したら、Dockerイメージにします。
+
+Dockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
 
 ```bash
 sudo apt update
@@ -90,7 +101,7 @@ echo \
 sudo apt update
 ```
 
-dockerグループを作成してciscoアカウントをグループに所属させます。
+dockerグループを作成してciscoアカウントをグループに所属させます（デフォルトのアカウントがciscoの場合）。
 
 ```bash
 sudo groupadd docker
@@ -103,28 +114,112 @@ docker-engineをインストールします。
 sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-FRRのソースコードを取ってきます。
+再起動します。
 
 ```bash
-git clone https://github.com/FRRouting/frr.git
+sudo reboot
 ```
 
-移動します。
+<br>
+
+> [!NOTE]
+>
+> `docker ps -a`　止まっているものを含めてプロセスを確認
+> `docker stop`　停止
+> `docker rm`　削除
+> `docker image ls`　存在するイメージの確認
+> `docker rmi`　イメージを削除
+> `docker system prune --all`　キャッシュの削除、再ビルドする前に実行
+
+<br>
+
+## Dockerイメージをビルドします
+
+<br>
+
+> [!NOTE]
+>
+> FRRのDockerイメージは Alpine か Centos でビルドできます。UbuntuはTravis CI用です。
+
+<br>
+
+FRRのソースコードの場所に移動します。
 
 ```bash
 cd frr
 ```
 
-ビルドします。長い時間かかります。
+Alpineイメージを作ります。
 
 ```bash
-sudo docker build -t frr-ubuntu22:latest -f docker/ubuntu-ci/Dockerfile .
+docker build -f docker/alpine/Dockerfile -t frr-alpine:latest .
+```
+
+<br>
+
+> [!NOTE]
+>
+> 再ビルドの場合、古いキャッシュが悪さをするかもしれないので、念の為削除してから実行します。
+>
+> `docker system prune --all`
+
+<br>
+
+イメージを確認します。
+
+```bash
+docker image ls
+```
+
+実行例。
+
+```bash
+cisco@inserthostname-here:~/frr$ docker image ls
+REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
+frr-alpine   latest    a284f9e91053   2 minutes ago   194MB
+```
+
+動かしてみます。
+
+```bash
+docker run -d --init --privileged --name frr frr-alpine:latest
+docker run -d --privileged --name frr frr-alpine:latest
+```
+
+接続します。
+
+```bash
+docker exec -it frr bash
+```
+
+vtyshに入ります。
+
+```bash
+sudo -s -E
+vtysh
+```
+
+なんかおかしい・・・
+
+設定が保存されない。
+
+
+停止します。
+
+```bash
+docker stop frr
+```
+
+コンテナを削除します。
+
+```bash
+docker rm frr
 ```
 
 イメージをtar形式でセーブします。
 
 ```bash
-docker save frr-ubuntu22:latest > frr.tar
+docker save frr-alpine:latest > frr.tar
 ```
 
 圧縮します。
@@ -162,15 +257,4 @@ sha256sum frr.tar.gz
 ```bash
 root@cml-controller:~# sha256sum frr.tar.gz
 71e2b8fcbf3e2570b2bec387b5b31456aff901cfcc997f1ce2b1dbbef2313afd  frr.tar.gz
-```
-
-
-
-
-
-
-削除します。
-
-```bash
-docker rmi frr-ubuntu22:latest
 ```

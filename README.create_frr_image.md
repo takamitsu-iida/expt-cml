@@ -99,11 +99,15 @@ sudo qemu-img commit node0.img
 
 FRRのマニュアルに記載されている通りに実行します。
 
+https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2204.html
+
 <br>
 
 > [!NOTE]
 >
-> https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2204.html
+> CML2.9からUbuntuのバージョンが24になっています。正しい参照先はこちら
+>
+> https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
 <br>
 
@@ -168,8 +172,8 @@ sudo usermod -a -G frrvty frr
 FRRをコンパイルします。
 
 ```bash
-mkdir ~/src/frr
-cd ~/src/frr
+mkdir ~/src
+cd ~/src
 
 git clone https://github.com/frrouting/frr.git frr
 cd frr

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 本スクリプトはgithubにおいてあるので、このコマンドをコックピットのターミナルで実行する
-# curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_node_definition.sh | bash -s
+# curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
 
 # 特権ユーザのシェルを取る
 # パスワードを聞かれる
@@ -10,8 +10,8 @@ sudo -s -E
 COPY_SRC="ubuntu-24-04-20250503"
 COPY_DST="ubuntu-24-04-20250503-iida"
 
-NODE_DEF_ID=${COPY_DST}
-NODE_DEF_LABEL="Ubuntu 24.04 - 3 May 2025 customized by iida"
+IMAGE_DEF_ID=${COPY_DST}
+IMAGE_DEF_LABEL="Ubuntu 24.04 - 3 May 2025 customized by iida"
 
 # ubuntuイメージのある場所に移動する
 cd /var/lib/libvirt/images/virl-base-images
@@ -32,10 +32,11 @@ cd ${COPY_DST}
 mv ${COPY_SRC}.yaml ${COPY_DST}.yaml
 
 # ノード定義ファイルを編集する
-sed -i -e "s/^id:.*\$/id: ${NODE_DEF_ID}/" ${COPY_DST}.yaml
-sed -i -e "s/^label:.*\$/label: ${NODE_DEF_LABEL}/" ${COPY_DST}.yaml
-sed -i -e "s/^description:.*\$/description: ${NODE_DEF_LABEL}/" ${COPY_DST}.yaml
+sed -i -e "s/^id:.*\$/id: ${IMAGE_DEF_ID}/" ${COPY_DST}.yaml
+sed -i -e "s/^label:.*\$/label: ${IMAGE_DEF_LABEL}/" ${COPY_DST}.yaml
+sed -i -e "s/^description:.*\$/description: ${IMAGE_DEF_LABEL}/" ${COPY_DST}.yaml
 
+# virl2を再起動する
 systemctl restart virl2.target
 
 cat ${COPY_DST}.yaml

@@ -9,3 +9,7 @@
 <br>
 
 [カスタムイメージの作り方はこちら](/README.create_custom_image.md)
+
+<br>
+
+[FRRをインストールしたUbuntuの作り方はこちら](/README.create_frr_image.md)

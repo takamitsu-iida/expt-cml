@@ -13,3 +13,7 @@
 <br>
 
 [FRRをインストールしたUbuntuの作り方はこちら](/README.create_frr_image.md)
+
+<br>
+
+[FRRをインストールしたUbuntuでOpenFabricの検証はこちら](/README.openfabric.md)

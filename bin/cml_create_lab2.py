@@ -19,9 +19,9 @@ IMAGE_DEFINITION = "frr-10-2-1-r1"
 # ノードにつけるタグ
 NODE_TAG = "serial:6000"
 
-# FRRノードに与える初期設定のテンプレート
-FRR_NODE_CFG_FILENAME = "frr_node_cfg.j2"
-FRR_PROTOCOLS_FILENAME = "frr_protocols.j2"
+# dataフォルダにある、FRRノードに与える初期設定のテンプレート
+FRR_NODE_CFG_FILENAME = "lab2_frr_node_cfg.j2"
+FRR_PROTOCOLS_FILENAME = "lab2_frr_protocols.j2"
 
 ###########################################################
 

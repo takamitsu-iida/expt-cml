@@ -17,3 +17,7 @@
 <br>
 
 [FRRをインストールしたUbuntuでOpenFabricの検証はこちら](/README.openfabric.md)
+
+<br>
+
+[Docker版FRRでOpenFabricの検証はこちら](/README.openfabric.md) ★2025年8月時点ではうまく動きませんでした

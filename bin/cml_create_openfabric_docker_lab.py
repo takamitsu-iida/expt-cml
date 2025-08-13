@@ -236,8 +236,8 @@ if __name__ == '__main__':
             # その名前でFRRをインスタンス化する
             node = lab.create_node(node_name, NODE_DEFINITION, x, y)
 
-            # 初期状態はインタフェースが4個しか存在しないので4個追加する
-            for _ in range(4):
+            # インタフェースを作成する
+            for _ in range(8):
                 node.create_interface(_, wait=True)
 
             # 起動イメージを指定する
@@ -282,7 +282,7 @@ if __name__ == '__main__':
             # ルータを作ったので一つ数字を増やす
             router_number += 1
 
-        # 続いてクラスタを2個作る
+        # 続いてT1クラスタを2個作る
         x += grid_width
         y = 0
         num_clusters = 2
@@ -297,9 +297,9 @@ if __name__ == '__main__':
                 node = lab.create_node(node_name, NODE_DEFINITION, x, y)
                 y += grid_width
 
-                # NICを8個追加
-                # for _ in range(8):
-                #     node.create_interface(_, wait=True)
+                # インタフェースを作成する
+                for _ in range(8):
+                    node.create_interface(_, wait=True)
 
                 # 起動イメージを指定
                 node.image_definition = IMAGE_DEFINITION
@@ -313,6 +313,7 @@ if __name__ == '__main__':
                 node.add_tag(tag=node_tag)
 
                 # FRRの設定を作る
+                node_cfg_context["HOSTNAME"] = node_name
                 node_cfg_context["IPv4_ROUTER_ID"] = str(router_number)
                 node_cfg_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
                 node_cfg_context["TIER"] = "1"
@@ -352,9 +353,9 @@ if __name__ == '__main__':
                 node = lab.create_node(node_name, NODE_DEFINITION, t0_x, t0_y)
                 t0_x += grid_width
 
-                # NICを8個追加
-                # for _ in range(8):
-                #     node.create_interface(_, wait=True)
+                # インタフェースを作成する
+                for _ in range(8):
+                    node.create_interface(_, wait=True)
 
                 # 起動イメージを指定
                 node.image_definition = IMAGE_DEFINITION
@@ -368,6 +369,7 @@ if __name__ == '__main__':
                 node.add_tag(tag=node_tag)
 
                 # FRRの設定を作る
+                node_cfg_context["HOSTNAME"] = node_name
                 node_cfg_context["IPv4_ROUTER_ID"] = str(router_number)
                 node_cfg_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
                 node_cfg_context["TIER"] = "0"

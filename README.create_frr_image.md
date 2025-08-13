@@ -68,7 +68,6 @@ curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamits
 
 コックピットのターミナルに貼り付けて実行するのであれば、`sudo -s -E`で特権ユーザのシェルを手動で取ってから上記をコピペすればよいでしょう。
 
-
 <br><br>
 
 ## 手順２．適当なラボでUbuntuを立ち上げる
@@ -305,6 +304,8 @@ ansible-playbook playbook.yaml
 
 何らかの理由でこの仮想マシンを再起動してしまうと再びcloud-initが走ってしまうので、再起動したときには `rm -rf /var/lib/cloud` を忘れずに実行します。
 
+その他、気が済むまでいじったらUbuntuを停止します。
+
 <br>
 
 > [!NOTE]
@@ -321,10 +322,9 @@ ansible-playbook playbook.yaml
 
 > [!NOTE]
 >
-> ansible-pullは `/root/.ansible/pull` に展開されます。
+> cloud-initでansible-pullを設定すると `/root/.ansible/pull` に展開されます。
 > 期待通りにansible-pullが走っていないときは、そこにちゃんとリポジトリのプレイブック一式が展開されているか確認します。
 > 再度プレイブックを走らせたいときも `/root/.ansible/pull` にあるプレイブックを実行します。
-
 
 <br>
 

@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # 本スクリプトはgithubにおいてあるので、このコマンドをコックピットのターミナルで実行する
-# curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
+# curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh | bash -s
 
 # 特権ユーザのシェルを取る
 # パスワードを聞かれる
 sudo -s -E
 
 COPY_SRC="ubuntu-24-04-20250503"
-COPY_DST="ubuntu-24-04-20250503-iida"
+COPY_DST="ubuntu-24-04-20250503-frr"
 
 IMAGE_DEF_ID=${COPY_DST}
-IMAGE_DEF_LABEL="Ubuntu 24.04 - 3 May 2025 customized by iida"
+IMAGE_DEF_LABEL="Ubuntu 24.04 - 3 May 2025 with frr installed"
 
 # ubuntuイメージのある場所に移動する
 cd /var/lib/libvirt/images/virl-base-images

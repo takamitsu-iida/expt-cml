@@ -243,6 +243,7 @@ mv ${COPY_SRC}.yaml ${COPY_DST}.yaml
 sed -i -e "s/^id:.*\$/id: ${IMAGE_DEF_ID}/" ${COPY_DST}.yaml
 sed -i -e "s/^label:.*\$/label: ${IMAGE_DEF_LABEL}/" ${COPY_DST}.yaml
 sed -i -e "s/^description:.*\$/description: ${IMAGE_DEF_LABEL}/" ${COPY_DST}.yaml
+sed -i -e "s/^read_only:.*\$/read_only: false/" ${COPY_DST}.yaml
 
 # virl2を再起動する
 systemctl restart virl2.target
@@ -250,13 +251,13 @@ systemctl restart virl2.target
 cat ${COPY_DST}.yaml
 ```
 
-コックピットのターミナルで上記をコピペして流し込みます。
-
 自分の場合はgithub上のシェルスクリプトを（改版せずにそのまま）実行するだけなので、コックピットのターミナルで以下をコピペするだけです。
 
 ```bash
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
 ```
+
+コックピットのターミナルに貼り付けて実行するのであれば、`sudo -s -E`で特権ユーザのシェルを手動で取ってから上記をコピペすればよいでしょう。
 
 <br><br>
 
@@ -348,7 +349,17 @@ Ubuntuを好きなだけイジったら `/var/lib/cloud` ディレクトリを�
 sudo rm -rf /var/lib/cloud
 ```
 
-Ubuntuを停止して、コックピットのターミナルでラボ実行時に表示されたとおりに実行します。
+Ubuntuを停止します。
+
+ラボ作成時に表示されたメッセージをコックピットのターミナルで実行します。
+
+このメッセージは `log/cml_create_frr_ubuntu.log` に残っていますので、確認します。
+
+```bash
+cat log/cml_create_frr_ubuntu.log
+```
+
+例。
 
 ```bash
 cd /var/local/virl2/images/0a17e568-c034-4f16-bb1b-9b463b8c25d4/d0396938-e30b-4d73-a859-7ffc296e3f78
@@ -356,5 +367,3 @@ sudo qemu-img commit node0.img
 ```
 
 これで変更が確定しますので、次回以降このイメージ定義を使えば、カスタマイズされた状態のUbuntuが起動します。
-
-<br>

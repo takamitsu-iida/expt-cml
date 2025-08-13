@@ -12,34 +12,19 @@ LAB_NAME = "Docker FRR OpenFabric"
 # このラボで使うシリアルポートの開始番号
 SERIAL_PORT = 7000
 
-# ノード定義
-NODE_DEFINITION = "ubuntu"
+# ノード定義（Docker FRR）
+NODE_DEFINITION = "frr"
 
 # イメージ定義
-IMAGE_DEFINITION = "ubuntu-24-04-20250503-frr"
+IMAGE_DEFINITION = "frr-10-2-1-r1"
 
-# ノードにつけるタグ
-NODE_TAG = "serial:6000"
+# node_cfgのテンプレート
+NODE_CFG_FILENAME = "openfabric_docker_lab_node_cfg.j2"
 
-# Ubuntuノードに与える初期設定のテンプレート
-UBUNTU_CONFIG_FILENAME = "openfabric_lab_ubuntu_config.yaml.j2"
-
-# Ubuntu上のFRRの設定テンプレート
-FRR_CONFIG_FILENAME = "openfabric_lab_frr_config.j2"
-
-# Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うホスト名
-UBUNTU_HOSTNAME = "ubuntu-0"
-
-# Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うユーザ名
-UBUNTU_USERNAME = "cisco"
-
-# Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うパスワード
-UBUNTU_PASSWORD = "cisco"
+# protocolsのテンプレート
+PROTOCOLS_FILENAME = "openfabric_docker_lab_protocols.j2"
 
 ###########################################################
-
-
-
 
 #
 # 標準ライブラリのインポート
@@ -148,13 +133,6 @@ if __name__ == '__main__':
             sys.exit(1)
 
 
-    def indent_string(text):
-        """文字列の行頭にスペースを挿入する"""
-        lines = text.splitlines()  # 文字列を改行で分割
-        indented_lines = ["      " + line for line in lines]  # 各行の先頭にスペース4個を追加
-        return "\n".join(indented_lines)  # 改行で連結して返す
-
-
     def main():
 
         # 引数処理
@@ -202,30 +180,31 @@ if __name__ == '__main__':
         # bridge1とスイッチを接続する
         lab.connect_two_nodes(ext_conn_node, ext_switch_node)
 
-        # ubuntuに設定するcloud-init.yamlのJinja2テンプレートを取り出す
-        template_config_text = read_template_config(filename=UBUNTU_CONFIG_FILENAME)
+        # FRRに設定するnode.cfgのJinja2テンプレートを取り出す
+        node_cfg_j2 = read_template_config(filename=NODE_CFG_FILENAME)
 
         # Jinja2のTemplateをインスタンス化する
-        template = Template(template_config_text)
+        node_cfg_template = Template(node_cfg_j2)
 
-        # templateに渡すコンテキストオブジェクトを作成する
-        lab_context = {
-            "HOSTNAME": "",
-            "USERNAME": UBUNTU_USERNAME,
-            "PASSWORD": UBUNTU_PASSWORD,
-            "ROUTER_ID": "",
-            "FRR_CONF": ""
-        }
-
-        # Ubuntu上のFRRの設定テンプレート
-        frr_template_config_text = read_template_config(filename=FRR_CONFIG_FILENAME)
-        frr_template = Template(frr_template_config_text)
-        frr_context = {
+        # node_cfg_templateに渡すコンテキストオブジェクトの初期値
+        node_cfg_context = {
             "HOSTNAME": "R",
             "IPv4_ROUTER_ID": "",
             "IPv6_ROUTER_ID": "",
             "TIER": "0",
         }
+
+        # FRRに設定するprotocolsのJinja2テンプレートを取り出す
+        protocols_j2 = read_template_config(filename=PROTOCOLS_FILENAME)
+
+        # Jinja2のTemplateをインスタンス化する
+        protocols_template = Template(protocols_j2)
+
+        # templateに渡すコンテキストオブジェクト
+        protocols_context = {}
+
+        # FRRに設定するprotocolsのテキストを作る
+        protocols_text = protocols_template.render(protocols_context)
 
         # ルータを区別するための番号
         router_number = 1
@@ -236,7 +215,7 @@ if __name__ == '__main__':
         # 作成するt2ノードを格納しておくリスト
         t2_nodes = []
 
-        # T2のUbuntuを3個作る
+        # T2のFRRを3個作る
         x += grid_width
         for i in range(3):
             # Y座標
@@ -254,14 +233,11 @@ if __name__ == '__main__':
             # ルータの名前
             node_name = f"R{router_number}"
 
-            # その名前でUbuntuをインスタンス化する
-            node = lab.create_node(node_name, 'ubuntu', x, y)
+            # その名前でFRRをインスタンス化する
+            node = lab.create_node(node_name, NODE_DEFINITION, x, y)
 
-            # 初期状態はインタフェースが存在しないので追加する
-            # Ubuntuのslot番号範囲は0-7なので、最大8個のNICを作れる
-            # slot番号はインタフェース名ではない
-            # OSから見えるインタフェース目はens2, ens3, ...ens9となる
-            for _ in range(8):
+            # 初期状態はインタフェースが4個しか存在しないので4個追加する
+            for _ in range(4):
                 node.create_interface(_, wait=True)
 
             # 起動イメージを指定する
@@ -279,20 +255,26 @@ if __name__ == '__main__':
             # lab.connect_two_nodes(ext_switch_node, node)
 
             # FRRの設定を作る
-            frr_context["HOSTNAME"] = node_name
-            frr_context["IPv4_ROUTER_ID"] = str(router_number)
-            frr_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
-            frr_context["TIER"] = "2"
-            frr_config = frr_template.render(frr_context)
-            frr_config = indent_string(frr_config)
+            node_cfg_context["HOSTNAME"] = node_name
+            node_cfg_context["IPv4_ROUTER_ID"] = str(router_number)
+            node_cfg_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
+            node_cfg_context["TIER"] = "2"
+            node_cfg_text = node_cfg_template.render(node_cfg_context)
 
-            # nodeに適用するcloud-init設定を作る
-            lab_context["HOSTNAME"] = node_name
-            lab_context["ROUTER_ID"] = router_number
-            lab_context["FRR_CONF"] = frr_config
+            # FRRに設定するファイル一式
+            frr_configurations = [
+                {
+                    'name': 'node.cfg',
+                    'content': node_cfg_text
+                },
+                {
+                    'name': 'protocols',
+                    'content': protocols_text
+                }
+            ]
 
-            # ノードに設定する
-            node.configuration = template.render(lab_context)
+            # FRRノードに設定を適用する
+            node.configuration = frr_configurations
 
             # リストに追加する
             t2_nodes.append(node)
@@ -312,12 +294,12 @@ if __name__ == '__main__':
             # クラスタ内にT1ルータを2個作る
             for j in range(2):
                 node_name = f"R{router_number}"
-                node = lab.create_node(node_name, 'ubuntu', x, y)
+                node = lab.create_node(node_name, NODE_DEFINITION, x, y)
                 y += grid_width
 
                 # NICを8個追加
-                for _ in range(8):
-                    node.create_interface(_, wait=True)
+                # for _ in range(8):
+                #     node.create_interface(_, wait=True)
 
                 # 起動イメージを指定
                 node.image_definition = IMAGE_DEFINITION
@@ -331,17 +313,25 @@ if __name__ == '__main__':
                 node.add_tag(tag=node_tag)
 
                 # FRRの設定を作る
-                frr_context["IPv4_ROUTER_ID"] = str(router_number)
-                frr_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
-                frr_context["TIER"] = "1"
-                frr_config = frr_template.render(frr_context)
-                frr_config = indent_string(frr_config)
+                node_cfg_context["IPv4_ROUTER_ID"] = str(router_number)
+                node_cfg_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
+                node_cfg_context["TIER"] = "1"
+                node_cfg_text = node_cfg_template.render(node_cfg_context)
 
-                # cloud-init設定
-                lab_context["HOSTNAME"] = node_name
-                lab_context["ROUTER_ID"] = router_number
-                lab_context["FRR_CONF"] = frr_config
-                node.configuration = template.render(lab_context)
+                # FRRに設定するファイル一式
+                frr_configurations = [
+                    {
+                        'name': 'node.cfg',
+                        'content': node_cfg_text
+                    },
+                    {
+                        'name': 'protocols',
+                        'content': protocols_text
+                    }
+                ]
+
+                # FRRノードに設定を適用する
+                node.configuration = frr_configurations
 
                 # tier1ルータと接続する
                 for n in t2_nodes:
@@ -359,12 +349,12 @@ if __name__ == '__main__':
             for k in range(3):
 
                 node_name = f"R{router_number}"
-                node = lab.create_node(node_name, 'ubuntu', t0_x, t0_y)
+                node = lab.create_node(node_name, NODE_DEFINITION, t0_x, t0_y)
                 t0_x += grid_width
 
                 # NICを8個追加
-                for _ in range(8):
-                    node.create_interface(_, wait=True)
+                # for _ in range(8):
+                #     node.create_interface(_, wait=True)
 
                 # 起動イメージを指定
                 node.image_definition = IMAGE_DEFINITION
@@ -378,17 +368,25 @@ if __name__ == '__main__':
                 node.add_tag(tag=node_tag)
 
                 # FRRの設定を作る
-                frr_context["IPv4_ROUTER_ID"] = str(router_number)
-                frr_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
-                frr_context["TIER"] = "0"
-                frr_config = frr_template.render(frr_context)
-                frr_config = indent_string(frr_config)
+                node_cfg_context["IPv4_ROUTER_ID"] = str(router_number)
+                node_cfg_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
+                node_cfg_context["TIER"] = "0"
+                node_cfg_text = node_cfg_template.render(node_cfg_context)
 
-                # 設定
-                lab_context["HOSTNAME"] = node_name
-                lab_context["ROUTER_ID"] = router_number
-                lab_context["FRR_CONF"] = frr_config
-                node.configuration = template.render(lab_context)
+                # FRRに設定するファイル一式
+                frr_configurations = [
+                    {
+                        'name': 'node.cfg',
+                        'content': node_cfg_text
+                    },
+                    {
+                        'name': 'protocols',
+                        'content': protocols_text
+                    }
+                ]
+
+                # FRRノードに設定を適用する
+                node.configuration = frr_configurations
 
                 # Tier2と接続
                 for n in t1_nodes:

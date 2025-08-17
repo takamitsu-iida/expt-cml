@@ -85,7 +85,7 @@ RUN apt update \
             --enable-protobuf \
             --enable-scripting \
             --with-pkg-git-version \
-            --with-pkg-extra-version=-MyOwnFRRVersion
+            --with-pkg-extra-version=-MyOwnFRRVersion \
     && make \
     && make install
 

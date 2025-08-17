@@ -35,7 +35,7 @@ RUN apt update \
     # Install Config Rollbacks
     && apt install -y libsqlite3-dev \
     # ZeroMQ
-    && apt install -y libzmq5 libzmq3-dev
+    && apt install -y libzmq5 libzmq3-dev \
     #
     # Utilities
     #

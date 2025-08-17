@@ -77,20 +77,21 @@ RUN groupadd -r -g 92 frr \
             --enable-user=frr \
             --enable-group=frr \
             --enable-vty-group=frrvty \
-            --enable-gcov \
-            --enable-rpki \
-            --enable-sharpd \
-            --enable-multipath=256 \
-            --enable-config-rollbacks \
-            --enable-grpc \
-            --enable-protobuf \
-            --enable-scripting \
             --with-pkg-git-version \
             --with-pkg-extra-version=-MyOwnFRRVersion \
     && make \
     && make install \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
+
+
+RUN install -m 775 -o frr -g frr -d /var/log/frr \
+    && install -m 775 -o frr -g frrvty -d /etc/frr \
+    && install -m 640 -o frr -g frrvty tools/etc/frr/vtysh.conf /etc/frr/vtysh.conf \
+    && install -m 640 -o frr -g frr tools/etc/frr/frr.conf /etc/frr/frr.conf \
+    && install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf \
+    && install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons \
+    && install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf
 
 COPY --chmod=0755 start.sh /
 

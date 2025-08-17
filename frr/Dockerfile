@@ -44,7 +44,7 @@ RUN apt update \
     # ZeroMQ
     && apt install -y libzmq5 libzmq3-dev
 
-RUN apt install -y vim \
+RUN apt install -y vim
 
     ###########################
     # Building & Installing FRR

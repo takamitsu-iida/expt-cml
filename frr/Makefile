@@ -31,5 +31,4 @@ stop: ## Dockerコンテナを停止する
 
 
 clean: ## Dockerイメージを削除する
-	@docker rm -f $(docker ps -aq)
 	@docker rmi $(docker images -q)

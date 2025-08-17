@@ -6,10 +6,12 @@ FROM ubuntu:$UBUNTU_VERSION
 # Based on the official FRR documentation for building on Ubuntu 24.04
 # https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
-USER root
-WORKDIR /root
+ENV TZ Asia/Tokyo
+ENV LANG ja_JP.UTF-8
+ENV LANGUAGE ja_JP:ja
+ENV LC_ALL ja_JP.UTF-8
 
-COPY start.sh /start.sh
+USER root
 
 RUN apt update \
     && apt upgrade -y \
@@ -39,14 +41,7 @@ RUN apt update \
     #
     # Utilities
     #
-    && apt install -y \
-            vim \
-            iputils-ping \
-            tcpdump \
-    && rm -rf /var/lib/apt/lists/* \
-    && mv /bin/ping /sbin/ping \
-    && mv /bin/ping6 /sbin/ping6 \
-    && mv /usr/sbin/tcpdump /usr/bin/tcpdump \
+    && apt install -y vim \
     ###########################
     # Building & Installing FRR
     ###########################
@@ -87,7 +82,9 @@ RUN apt update \
             --with-pkg-git-version \
             --with-pkg-extra-version=-MyOwnFRRVersion \
     && make \
-    && make install
+    && make install \
+    && apt clean && \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 start.sh /
 

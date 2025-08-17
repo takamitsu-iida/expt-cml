@@ -7,8 +7,9 @@ FROM ubuntu:$UBUNTU_VERSION
 # https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
 ENV TZ="Asia/Tokyo"
-ENV LANG="ja_JP.UTF-8"
-ENV LANGUAGE="ja_JP:ja"
+
+# ENV LANG="ja_JP.UTF-8"
+ENV LANG ja_JP.UTF-8
 
 ENV WORKING_DIRECTORY=/root
 
@@ -80,6 +81,7 @@ RUN export GIT_SSL_NO_VERIFY=true \
             --enable-vty-group=frrvty \
             --with-pkg-git-version \
             --with-pkg-extra-version=-MyOwnFRRVersion \
+            --disable-doc \
     && make \
     && make install \
     && apt clean \

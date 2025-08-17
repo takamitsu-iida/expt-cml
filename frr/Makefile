@@ -5,7 +5,7 @@ help:
 
 
 build: ## Dockerイメージを作成する
-	docker build \
+	@docker build \
 		--build-arg=UBUNTU_VERSION=24.04 \
 		-t ubuntu24:frr10.5 \
 		-f Dockerfile .

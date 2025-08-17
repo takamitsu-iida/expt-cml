@@ -11,6 +11,10 @@ ENV LANG ja_JP.UTF-8
 ENV LANGUAGE ja_JP:ja
 ENV LC_ALL ja_JP.UTF-8
 
+ENV WORKING_DIRECTORY /root
+
+WORKDIR $WORKING_DIRECTORY
+
 USER root
 
 RUN apt update \
@@ -32,15 +36,14 @@ RUN apt update \
     && cmake --install-prefix /usr -D CMAKE_BUILD_TYPE:String="Release" .. \
     && make \
     && make install \
+    && cd ${WORKING_DIRECTORY} \
     # Install GRPC
     && apt install -y libgrpc++-dev protobuf-compiler-grpc \
     # Install Config Rollbacks
     && apt install -y libsqlite3-dev \
     # ZeroMQ
     && apt install -y libzmq5 libzmq3-dev \
-    #
     # Utilities
-    #
     && apt install -y vim \
     ###########################
     # Building & Installing FRR
@@ -52,6 +55,7 @@ RUN apt update \
     && usermod -a -G frrvty frr \
     # Compile
     && export GIT_SSL_NO_VERIFY=true \
+    && cd ${WORKING_DIRECTORY} \
     && git clone https://github.com/frrouting/frr.git frr \
     && cd frr \
     && ./bootstrap.sh \

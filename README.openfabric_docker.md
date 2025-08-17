@@ -151,37 +151,94 @@ make save
 gzip frr.tar
 ```
 
-アップロードします。
-
-```bash
-scp frr.tar.gz admin@192.168.122.212:
-```
-
-コックピットのターミナルに移ります。
-
-コックピット側のdropfolderから移動します。
-
-```bash
-mv /var/local/virl2/dropfolder/frr.tar.gz /home/admin/
-```
-
-イメージ定義ファイルをコピーします。
-
-```bash
-cp /var/lib/libvirt/images/virl-base-images/frr-10-2-1-r1/frr-10-2-1-r1.yaml frr-10-5-iida.yaml
-```
-
 SHA256を計算します。
 
 ```bash
 sha256sum frr.tar.gz
 ```
 
-実行例
+実行例。
 
 ```bash
-root@cml-controller:~# sha256sum frr.tar.gz
-71e2b8fcbf3e2570b2bec387b5b31456aff901cfcc997f1ce2b1dbbef2313afd  frr.tar.gz
+cisco@inserthostname-here:~/expt-cml/frr$ sha256sum frr.tar.gz
+2dc26714f6e818547729beb64b0dcee724097e546bc1daa7c27e5b8803d7d65e  frr.tar.gz
+```
+
+ファイルをCMLにアップロードします。アップロード先のディレクトリは指定できず、dropfolderという特別な場所に保存されます。
+
+```bash
+scp frr.tar.gz admin@192.168.122.212:
+```
+
+ここからはコックピットのターミナルに移ります。
+
+ルート特権を取ります。
+
+```bash
+sudo -s -E
+```
+
+ノード定義ファイルの格納場所に移動します。
+
+```bash
+cd /var/lib/libvirt/images/node-definitions
+```
+
+ノード定義ファイルを作ります。
+
+```bash
+vi frr-10-5-iida.yaml
+```
+
+`frr/cml_node_definition.yaml` の内容をコピペして保存します。
+
+ファイルのオーナーを変更します。
+
+```bash
+chown libvirt-qemu:virl2 frr-10-5-iida.yaml
+```
+
+次にイメージ定義を作ります。
+
+イメージ定義が置かれている場所に移動します。
+
+```bash
+cd /var/lib/libvirt/images/virl-base-images
+```
+
+ディレクトリを作ります。
+
+```bash
+mkdir frr-10-5-iida
+chown libvirt-qemu:virl2 frr-10-5-iida
+```
+
+移動します。
+
+```bash
+cd frr-10-5-iida
+```
+
+コックピット側のdropfolderからファイルを移動します。
+
+```bash
+mv /var/local/virl2/dropfolder/frr.tar.gz .
+```
+
+イメージ定義ファイルを作成します。
+
+```bash
+vi frr-10-5-iida.yaml
+```
+
+`bin/cml_image_definition.txt` の内容をコピペします。
+
+sha256の部分を置き換えます。
+
+virl2を再起動します。
+
+```
+systemctl restart virl2.target
 ```
 
 

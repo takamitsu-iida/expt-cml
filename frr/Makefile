@@ -3,7 +3,7 @@
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-TAG ?= ubuntu24:frr10.5
+TAG ?= frr:10.5-iida
 
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
@@ -14,15 +14,15 @@ save: ## Dockerイメージを保存する
 
 
 run: ## Dockerコンテナを起動する
-	@docker run -d --rm --init --privileged --name frr ${TAG}
+	@docker run -d --rm --init --privileged --name frr-iida ${TAG}
 
 
 shell: ## Dockerコンテナにシェルで入る
-	@docker exec -it frr bash
+	@docker exec -it frr-iida bash
 
 
 stop: ## Dockerコンテナを停止する
-	@docker stop frr
+	@docker stop frr-iida
 
 
 clean: ## Dockerイメージを削除する

@@ -1,19 +1,3 @@
-#!/bin/bash
-
-cd /var/lib/libvirt/images/virl-base-images
-
-mkdir frr-10-5-iida
-
-cd frr-10-5-iida
-
-if [ /var/local/virl2/dropfolder/frr.tar.gz ]; then
-    mv /var/local/virl2/dropfolder/frr.tar.gz .
-else
-    echo "frr.tar.gz not exists, skipping."
-fi
-
-
-cat << 'EOF' > frr-10-5-iida.yaml
 #
 # Free Range Routing node definition
 # generated 2025-08-15
@@ -33,7 +17,7 @@ configuration:
         content: |
           {
             "docker": {
-              "image": "ubuntu24:frr10.5",
+              "image": "frr:10.5-iida",
               "mounts": [
                 "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
                 "type=bind,source=cfg/node.cfg,target=/config/node.cfg",
@@ -197,8 +181,6 @@ ui:
     Free Range Routing (frr) 10.5
   group: Others
   icon: router
-  label: FRR
+  label: FRR-10-5-iida
   label_prefix: frr-
   visible: true
-
-EOF

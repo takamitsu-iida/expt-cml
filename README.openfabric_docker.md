@@ -59,21 +59,21 @@ lo              up      default         192.168.255.1/32
 
 # FRRのDockerイメージを作る
 
-FRRの公式マニュアルにDockerイメージの作り方が書かれていますので、それに従います。
-
-https://docs.frrouting.org/projects/dev-guide/en/latest/building-docker.html
-
 <br>
 
 ## Dockerをインストールする
 
 CML上にUbuntu24のインスタンスと、外部接続を用意します。
 
+```bash
+bin/cml_create_lab1.py
+```
+
 Dockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
 
 ```bash
 sudo apt update
-sudo apt install ca-certificates curl gnupg
+sudo apt install -y ca-certificates curl gnupg
 ```
 
 aptリポジトリを追加します。
@@ -101,7 +101,7 @@ sudo usermod -aG docker cisco
 docker-engineをインストールします。
 
 ```bash
-sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
 再起動します。
@@ -131,13 +131,61 @@ sudo reboot
 
 <br>
 
-このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成しました。
+このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したのでそれを利用します。
 
-Dockerfileの内容に従ってビルドします。
+クローンします。
+
+```bash
+git clone https://github.com/takamitsu-iida/expt-cml.git
+```
+
+移動します。
+
+```bash
+cd expt-cml
+cd frr
+```
+
+ラクをするためにmakeを使いたいのでインストールします。
+
+```bash
+sudo apt install -y make
+```
+
+Dockerfileの内容に従ってビルドします。長い時間かかります。10分以上かかります。
 
 ```bash
 make build
 ```
+
+作成したdockerイメージをインスペクトしてIdの値を調べます。
+
+実行例。
+
+```bash
+make inspect
+```
+
+実行例。
+
+```bash
+# docker inspect frr:10.5-iida
+[
+    {
+        "Id": "sha256:dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71",
+        "RepoTags": [
+            "frr:10.5-iida"
+        ],
+```
+
+
+
+```bash
+make inspect
+```
+
+
+Idに続くsha256はこのあと使いますのでどこかにメモしておきます。
 
 イメージをtar形式で保存します。
 
@@ -145,26 +193,16 @@ make build
 make save
 ```
 
-圧縮します。
+frr.tarというファイルができますので、これをgzipで圧縮します。
 
 ```bash
 gzip frr.tar
 ```
 
-SHA256を計算します。
+frr.tar.gzをCMLにアップロードします。
+アップロード先のディレクトリは指定できず、dropfolderという特別な場所に保存されます。
 
-```bash
-sha256sum frr.tar.gz
-```
-
-実行例。
-
-```bash
-cisco@inserthostname-here:~/expt-cml/frr$ sha256sum frr.tar.gz
-2dc26714f6e818547729beb64b0dcee724097e546bc1daa7c27e5b8803d7d65e  frr.tar.gz
-```
-
-ファイルをCMLにアップロードします。アップロード先のディレクトリは指定できず、dropfolderという特別な場所に保存されます。
+この転送はびっくりするくらい高速です。
 
 ```bash
 scp frr.tar.gz admin@192.168.122.212:
@@ -233,7 +271,7 @@ vi frr-10-5-iida.yaml
 
 `bin/cml_image_definition.txt` の内容をコピペします。
 
-sha256の部分を置き換えます。
+sha256の部分をイメージをインスペクトしたときにメモしたものに置き換えます。
 
 virl2を再起動します。
 
@@ -241,6 +279,32 @@ virl2を再起動します。
 systemctl restart virl2.target
 ```
 
+dockerのイメージを確認します。
+
+```bash
+root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-5-iida# docker images
+REPOSITORY   TAG         IMAGE ID       CREATED        SIZE
+frr          10.2.1-r1   1bd2e82159f1   4 months ago   39.8MB
+```
+
+この時点では登録されていません。
+
+CMLのダッシュボードに移ります。
+
+FRR-10-5-iidaをドラッグイメージを一つ作ってみます。
+
+STARTで起動します。
+
+コックピットでdockerのイメージを確認します。
+
+```bash
+root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-5-iida# docker images
+REPOSITORY   TAG         IMAGE ID       CREATED         SIZE
+frr          10.5-iida   dcb26c9c1ba6   8 minutes ago   1.06GB
+frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
+```
+
+イメージが一つ、増えました。
 
 
 <br>

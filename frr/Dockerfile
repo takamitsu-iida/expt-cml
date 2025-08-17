@@ -87,7 +87,7 @@ RUN apt update \
             --with-pkg-extra-version=-MyOwnFRRVersion \
     && make \
     && make install \
-    && apt clean && \
+    && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 start.sh /

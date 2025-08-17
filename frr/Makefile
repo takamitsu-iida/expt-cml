@@ -15,6 +15,7 @@ inspect: ## DockerイメージのIDをインスペクトする
 
 save: ## Dockerイメージを保存する
 	@docker save -o frr.tar ${TAG}
+	@gzip frr.tar
 
 
 run: ## Dockerコンテナを起動する

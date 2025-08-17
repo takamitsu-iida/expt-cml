@@ -169,23 +169,11 @@ make inspect
 実行例。
 
 ```bash
-# docker inspect frr:10.5-iida
-[
-    {
-        "Id": "sha256:dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71",
-        "RepoTags": [
-            "frr:10.5-iida"
-        ],
+root@ubuntu-0:~/expt-cml/frr# make inspect
+"sha256:dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71",
 ```
 
-
-
-```bash
-make inspect
-```
-
-
-Idに続くsha256はこのあと使いますのでどこかにメモしておきます。
+sha256に続く値はこのあと使いますのでどこかにメモしておきます。
 
 イメージをtar形式で保存します。
 
@@ -193,13 +181,9 @@ Idに続くsha256はこのあと使いますのでどこかにメモしておき
 make save
 ```
 
-frr.tarというファイルができますので、これをgzipで圧縮します。
+ファイルfrr.tar.gzが生成されます。
 
-```bash
-gzip frr.tar
-```
-
-frr.tar.gzをCMLにアップロードします。
+このfrr.tar.gzをCMLにアップロードします。
 アップロード先のディレクトリは指定できず、dropfolderという特別な場所に保存されます。
 
 この転送はびっくりするくらい高速です。

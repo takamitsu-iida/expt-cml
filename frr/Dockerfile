@@ -89,7 +89,12 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /var/lib/cache/* \
     && rm -rf ${WORKING_DIRECTORY}/frr \
-    && rm -rf ${WORKING_DIRECTORY}/libyang
+    && rm -rf ${WORKING_DIRECTORY}/libyang \
+    # Enable IPv4 and IPv6 forwarding
+    && sed -i '/^net.ipv6.conf.all.forwarding/s/^.*$/net.ipv6.conf.all.forwarding=1/' /etc/sysctl.conf \
+    && grep -q '^net.ipv6.conf.all.forwarding=1' /etc/sysctl.conf || echo 'net.ipv6.conf.all.forwarding=1' >> /etc/sysctl.conf \
+    && sed -i '/^net.ipv4.ip_forward/s/^.*$/net.ipv4.ip_forward=1/' /etc/sysctl.conf \
+    && grep -q '^net.ipv4.ip_forward=1' /etc/sysctl.conf || echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
 
 COPY --chmod=0755 start.sh /
 

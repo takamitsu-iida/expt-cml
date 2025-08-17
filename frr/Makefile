@@ -6,6 +6,6 @@ help:
 
 build: ## Dockerイメージを作成する
 	docker build \
-		-t frr-ubuntu24:frr \
 		--build-arg=UBUNTU_VERSION=24.04 \
+		-t ubuntu24:frr10.5 \
 		-f Dockerfile .

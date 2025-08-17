@@ -6,12 +6,12 @@ FROM ubuntu:$UBUNTU_VERSION
 # Based on the official FRR documentation for building on Ubuntu 24.04
 # https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
-ENV TZ Asia/Tokyo
-ENV LANG ja_JP.UTF-8
-ENV LANGUAGE ja_JP:ja
-ENV LC_ALL ja_JP.UTF-8
+ENV TZ=Asia/Tokyo
+ENV LANG=ja_JP.UTF-8
+ENV LANGUAGE=ja_JP:ja
+ENV LC_ALL=ja_JP.UTF-8
 
-ENV WORKING_DIRECTORY /root
+ENV WORKING_DIRECTORY=/root
 
 WORKDIR $WORKING_DIRECTORY
 
@@ -42,14 +42,16 @@ RUN apt update \
     # Install Config Rollbacks
     && apt install -y libsqlite3-dev \
     # ZeroMQ
-    && apt install -y libzmq5 libzmq3-dev \
-    # Utilities
-    && apt install -y vim \
+    && apt install -y libzmq5 libzmq3-dev
+
+RUN apt install -y vim \
+
     ###########################
     # Building & Installing FRR
     ###########################
+
     # Add FRR user and groups
-    && groupadd -r -g 92 frr \
+RUN groupadd -r -g 92 frr \
     && groupadd -r -g 85 frrvty \
     && adduser --system --ingroup frr --home /var/run/frr/ --gecos "FRR suite" --shell /sbin/nologin frr \
     && usermod -a -G frrvty frr \

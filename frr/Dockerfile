@@ -10,6 +10,8 @@ ENV TZ Asia/Tokyo
 ENV LANG ja_JP.UTF-8
 ENV WORKING_DIRECTORY /root
 
+ENV DATE 20250817
+
 WORKDIR $WORKING_DIRECTORY
 
 USER root
@@ -70,7 +72,7 @@ RUN apt update \
             --enable-group=frr \
             --enable-vty-group=frrvty \
             --with-pkg-git-version \
-            --with-pkg-extra-version=-MyOwnFRRVersion \
+            --with-pkg-extra-version=-${DATE} \
             --disable-doc \
     && make \
     && make install \

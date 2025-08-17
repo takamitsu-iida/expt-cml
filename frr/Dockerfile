@@ -74,8 +74,6 @@ RUN apt update \
             --disable-doc \
     && make \
     && make install \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/* \
     && install -m 775 -o frr -g frr -d /var/log/frr \
     && install -m 775 -o frr -g frrvty -d /etc/frr \
     && install -m 640 -o frr -g frrvty tools/etc/frr/vtysh.conf /etc/frr/vtysh.conf \
@@ -83,6 +81,13 @@ RUN apt update \
     && install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf \
     && install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons \
     && install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf
+    # Clean up
+    && apt remove -y \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/cache/* \
+    && rm -rf ${WORKING_DIRECTORY}/frr \
+    && rm -rf ${WORKING_DIRECTORY}/libyang \
 
 COPY --chmod=0755 start.sh /
 

@@ -1,3 +1,19 @@
+#!/bin/bash
+
+cd /var/lib/libvirt/images/virl-base-images
+
+mkdir frr-10-5-iida
+
+cd frr-10-5-iida
+
+if [ /var/local/virl2/dropfolder/frr.tar.gz ]; then
+    mv /var/local/virl2/dropfolder/frr.tar.gz .
+else
+    echo "frr.tar.gz not exists, skipping."
+fi
+
+
+cat << 'EOF' > frr-10-5-iida.yaml
 #
 # Free Range Routing node definition
 # generated 2025-08-15
@@ -184,3 +200,5 @@ ui:
   label: FRR
   label_prefix: frr-
   visible: true
+
+EOF

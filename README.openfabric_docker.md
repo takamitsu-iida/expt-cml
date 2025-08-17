@@ -4,7 +4,7 @@ CML2.9以降でDockerイメージが動作するようになっています。
 
 2025年8月時点、FRRのDocker版のバージョンは `FRRouting 10.2.1` です。
 
-このバージョンではOpenFabricはうまく動かないようです。
+このバージョンのDockerイメージではOpenFabricはうまく動かないようです。
 
 <br>
 
@@ -65,19 +65,9 @@ https://docs.frrouting.org/projects/dev-guide/en/latest/building-docker.html
 
 <br>
 
-## （事前準備）FRRをコンパイルする
-
-そもそもコンパイルが通らなければDockerのイメージを作りようがありません。
-
-環境を整える意味でも、一度コンパイルします。
-
-FRRのコンパイル方法は　[こちら](/README.create_frr_image.md)　にあります。
-
-<br>
-
 ## Dockerをインストールする
 
-FRRを問題なくコンパイルできることを確認したら、Dockerイメージにします。
+CML上にUbuntu24のインスタンスと、外部接続を用意します。
 
 Dockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
 
@@ -141,105 +131,18 @@ sudo reboot
 
 <br>
 
-> [!NOTE]
->
-> FRRのDockerイメージは Alpine か Centos でビルドできます。UbuntuはTravis CI用です。
+このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成しました。
 
-<br>
-
-FRRのソースコードの場所に移動します。
+Dockerfileの内容に従ってビルドします。
 
 ```bash
-cd frr
+make build
 ```
 
-Alpineイメージを作ります。
+イメージをtar形式で保存します。
 
 ```bash
-docker build -f docker/alpine/Dockerfile -t frr-alpine:latest .
-```
-
-<br>
-
-> [!NOTE]
->
-> 再ビルドの場合、古いキャッシュが悪さをするかもしれないので、念の為削除してから実行します。
->
-> `docker system prune --all`
-
-<br>
-
-イメージを確認します。
-
-```bash
-docker image ls
-```
-
-実行例。
-
-```bash
-cisco@inserthostname-here:~/frr$ docker image ls
-REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
-frr-alpine   latest    a284f9e91053   2 minutes ago   194MB
-```
-
-```bash
-cisco@inserthostname-here:~/frr$ docker image ls
-REPOSITORY   TAG                 IMAGE ID       CREATED             SIZE
-frr          alpine-3f0815f4e0   69791b5d3028   About an hour ago   194MB
-```
-
-タグが気に入らないので直します。
-
-```bash
-docker tag 69791b5d3028 frr:latest
-```
-
-
-
-動かしてみます。
-
-```bash
-docker run -d --init --privileged --name frr frr:latest
-```
-
-接続します。
-
-```bash
-docker exec -it frr bash
-```
-
-/usr/lib/frr/frrinit.sh start
-
-
-vtyshに入ります。
-
-```bash
-sudo -s -E
-vtysh
-```
-
-なんかおかしい・・・
-
-設定が保存されない。
-
-
-停止します。
-
-```bash
-docker stop frr
-```
-
-コンテナを削除します。
-
-```bash
-docker rm frr
-```
-
-イメージをtar形式でセーブします。
-
-```bash
-docker save frr-alpine:latest > frr.tar
+make save
 ```
 
 圧縮します。
@@ -254,6 +157,8 @@ gzip frr.tar
 scp frr.tar.gz admin@192.168.122.212:
 ```
 
+コックピットのターミナルに移ります。
+
 コックピット側のdropfolderから移動します。
 
 ```bash
@@ -263,7 +168,7 @@ mv /var/local/virl2/dropfolder/frr.tar.gz /home/admin/
 イメージ定義ファイルをコピーします。
 
 ```bash
-cp /var/lib/libvirt/images/virl-base-images/frr-10-2-1-r1/frr-10-2-1-r1.yaml .
+cp /var/lib/libvirt/images/virl-base-images/frr-10-2-1-r1/frr-10-2-1-r1.yaml frr-10-5-iida.yaml
 ```
 
 SHA256を計算します。

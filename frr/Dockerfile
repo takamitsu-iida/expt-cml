@@ -77,8 +77,8 @@ RUN apt update \
     && make \
     && make install \
     && install -m 775 -o frr -g frr -d /var/log/frr \
-    && install -m 775 -o frr -g frrvty -d /etc/frr \
-    && install -m 640 -o frr -g frrvty tools/etc/frr/vtysh.conf /etc/frr/vtysh.conf \
+    && install -m 775 -o frr -g frr -d /etc/frr \
+    && install -m 640 -o frr -g frr tools/etc/frr/vtysh.conf /etc/frr/vtysh.conf \
     && install -m 640 -o frr -g frr tools/etc/frr/frr.conf /etc/frr/frr.conf \
     && install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf \
     && install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons \

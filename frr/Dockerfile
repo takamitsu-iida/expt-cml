@@ -6,10 +6,9 @@ FROM ubuntu:$UBUNTU_VERSION
 # Based on the official FRR documentation for building on Ubuntu 24.04
 # https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
-ENV TZ=Asia/Tokyo
-ENV LANG=ja_JP.UTF-8
-ENV LANGUAGE=ja_JP:ja
-ENV LC_ALL=ja_JP.UTF-8
+ENV TZ="Asia/Tokyo"
+ENV LANG="ja_JP.UTF-8"
+ENV LANGUAGE="ja_JP:ja"
 
 ENV WORKING_DIRECTORY=/root
 
@@ -54,9 +53,11 @@ RUN apt install -y vim
 RUN groupadd -r -g 92 frr \
     && groupadd -r -g 85 frrvty \
     && adduser --system --ingroup frr --home /var/run/frr/ --gecos "FRR suite" --shell /sbin/nologin frr \
-    && usermod -a -G frrvty frr \
+    && usermod -a -G frrvty frr
+
+
     # Compile
-    && export GIT_SSL_NO_VERIFY=true \
+RUN export GIT_SSL_NO_VERIFY=true \
     && cd ${WORKING_DIRECTORY} \
     && git clone https://github.com/frrouting/frr.git frr \
     && cd frr \

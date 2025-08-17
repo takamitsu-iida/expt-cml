@@ -6,12 +6,9 @@ FROM ubuntu:$UBUNTU_VERSION
 # Based on the official FRR documentation for building on Ubuntu 24.04
 # https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
-ENV TZ="Asia/Tokyo"
-
-# ENV LANG="ja_JP.UTF-8"
+ENV TZ Asia/Tokyo
 ENV LANG ja_JP.UTF-8
-
-ENV WORKING_DIRECTORY=/root
+ENV WORKING_DIRECTORY /root
 
 WORKDIR $WORKING_DIRECTORY
 

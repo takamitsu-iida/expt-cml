@@ -87,9 +87,7 @@ RUN apt update \
             --with-pkg-git-version \
             --with-pkg-extra-version=-MyOwnFRRVersion
     && make \
-    && make install \
-
-
+    && make install
 
 COPY --chmod=0755 start.sh /
 

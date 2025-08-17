@@ -39,23 +39,16 @@ RUN apt update \
     # Install Config Rollbacks
     && apt install -y libsqlite3-dev \
     # ZeroMQ
-    && apt install -y libzmq5 libzmq3-dev
-
-RUN apt install -y vim
-
-    ###########################
-    # Building & Installing FRR
-    ###########################
-
+    && apt install -y libzmq5 libzmq3-dev \
+    # utilities
+    && apt install -y vim \
     # Add FRR user and groups
-RUN groupadd -r -g 92 frr \
+    && groupadd -r -g 92 frr \
     && groupadd -r -g 85 frrvty \
     && adduser --system --ingroup frr --home /var/run/frr/ --gecos "FRR suite" --shell /sbin/nologin frr \
-    && usermod -a -G frrvty frr
-
-
+    && usermod -a -G frrvty frr \
     # Compile
-RUN export GIT_SSL_NO_VERIFY=true \
+    && export GIT_SSL_NO_VERIFY=true \
     && cd ${WORKING_DIRECTORY} \
     && git clone https://github.com/frrouting/frr.git frr \
     && cd frr \
@@ -82,10 +75,8 @@ RUN export GIT_SSL_NO_VERIFY=true \
     && make \
     && make install \
     && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
-
-RUN install -m 775 -o frr -g frr -d /var/log/frr \
+    && rm -rf /var/lib/apt/lists/* \
+    && install -m 775 -o frr -g frr -d /var/log/frr \
     && install -m 775 -o frr -g frrvty -d /etc/frr \
     && install -m 640 -o frr -g frrvty tools/etc/frr/vtysh.conf /etc/frr/vtysh.conf \
     && install -m 640 -o frr -g frr tools/etc/frr/frr.conf /etc/frr/frr.conf \

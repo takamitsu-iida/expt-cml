@@ -20,4 +20,8 @@ FRRをインストールしたUbuntuでOpenFabricの検証は　[こちら](/REA
 
 <br>
 
-CMLで動作するFRRのdockerイメージの作り方は　[こちら](/README.openfabric_docker.md) ★2025年8月時点 IPv6の中継機能がうまく動きませんでした
+CMLで動作するFRRのdockerイメージの作り方は　[こちら](/README.openfabric_docker.md)
+
+> [!NOTE]
+>
+> 2025年8月時点　CML2.9上のdockerイメージはIPv6の中継機能を有効にできませんでした

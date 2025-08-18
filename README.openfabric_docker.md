@@ -489,15 +489,13 @@ frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
 イメージが一つ、増えました。
 
 
-<br><br><br>
+<br><br><br><br><br><br>
 
 # CML2.9のDockerの挙動を調査してみる
 
-CMLで適当なラボを作って、FRRイメージをインスタンス化して起動してみる。
+CMLで適当なラボを作って、FRRイメージをインスタンス化して起動してみます。
 
-コックピットのターミナルで確認すると、イメージの置かれているディレクトリにいくつかファイルがある。
-
-`boot.sh`　と　`node.cfg`　と　`protocols`　はCMLのウェブ画面で指定する設定ファイル。
+コックピットのターミナルでイメージの置かれているディレクトリを確認すると、いくつかファイルが作られています。
 
 ```bash
 root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11/894b8a48-3a9f-46d9-bf9f-c3d649dac49c/cfg# ls -l
@@ -508,9 +506,11 @@ total 16
 -rw-r--r-- 1 virl2 virl2 249 Aug 15 06:44 protocols
 ```
 
-`config.json`　はdockerの設定ファイル。
+`boot.sh`　と　`node.cfg`　と　`protocols`　はCMLのウェブ画面で指定する設定ファイルです。
 
-中身はこんな感じ。
+`config.json`　はdockerの設定ファイルのようです。
+
+中身はこんな感じです。
 
 ```bash
 root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11/894b8a48-3a9f-46d9-bf9f-c3d649dac49c/cfg# cat config.json
@@ -550,9 +550,9 @@ root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11
 ```
 
 インスタンス化するたびにこれらファイルが作られるということは、
-どこかでこれらファイルを作成するように指示してはずなんだけど、どこだろう？
+どこかでこれらファイルを作成するように指示してはずなんだけど、それはどこだろう？
 
-ノード定義ファイルを覗いてみる。
+ノード定義ファイルを覗いてみます。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/node-definitions# cat frr.yaml
@@ -757,11 +757,11 @@ ui:
   visible: true
 ```
 
-なるほど、疑問解消。
+なるほど、疑問解消です。
 
-ノード定義ファイルにしたがってイメージをインスタンス化するときに `files:` で指定したファイルが生成されるわけだ。
+ノード定義ファイルにしたがってイメージをインスタンス化するときに `files:` で指定したファイルが生成されます。
 
-そのうちの一つが `config.json` で、Dockerに対する指示はここに書かれている。
+そのうちの一つが `config.json` で、Dockerに対する指示はここに書かれています。
 
 ```YAML
     files:
@@ -779,14 +779,15 @@ ui:
 
 ```
 
-上記のように config.json では起動するイメージを指定しているので、
-同じノード定義ファイルでイメージ定義だけ差し替える、ということはできないことになる。
+上記のように config.json では起動するイメージ名を指定していますので、
+同じノード定義ファイルでイメージ定義だけ差し替える、ということはできないことになります
+（実際にやってみたら、できませんでした）。
 
-結論としては、ノード定義とイメージ定義の両方を作らないといけないってことかな。
+結論としては、独自にビルドしたdockerイメージを走らせるときには、ノード定義とイメージ定義の両方を作らないといけません。
 
-<br>
+<br><br>
 
-今度は起動しているFRRイメージにシェルで接続してみる。
+今度は起動しているFRRイメージにシェルで接続してみます。
 
 ```bash
 root@cml-controller:~# docker ps
@@ -804,14 +805,17 @@ HOME_URL="https://alpinelinux.org/"
 BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
 ```
 
-このイメージはAlpineをベースにして動作していることがわかる。だからIPv6あたりの挙動がおかしいのかも。
+このイメージはAlpineをベースにして動作していることがわかります。
 
-/start.shが実行されているので、その中身を確認してみる。
+`/start.sh` が実行されているので、その中身を確認してみます。
 
-このファイルはコンテナの中に焼かれているので、ビルド時にコピーして渡しているはず。
+このファイルはコンテナの中に焼かれていますので、ビルド時にコピーして渡しているはずです。
+
+このファイルを流用したいので、取り出して保存しておきます。
+
+[frr/start.sh](/frr/start.sh) の中身はこの通りです。
 
 ```bash
-frr-0:/# cat start.sh
 #!/bin/bash
 
 CONFIG=/config/node.cfg
@@ -856,7 +860,7 @@ while true; do
 done
 ```
 
-/configには確かにファイルが３個ある。
+コンテナの中の /config には確かにファイルが３個あります。
 
 ```bash
 frr-0:/# ls /config
@@ -866,148 +870,112 @@ frr-0:/#
 
 これらファイルはdocker起動時にマウントされて渡されたもので、
 イメージをインスタンス化したときに作られるディレクトリ、
-すなわちCML本体の `/var/local/virl2/images/ラボのUUID/イメージのUUID/cfg` に実物が置かれている。
+すなわちCML本体の `/var/local/virl2/images/ラボのUUID/イメージのUUID/cfg` に実物が置かれています。
 
+<br><br>
 
-以上のことから、UbuntuベースでコンテナをビルドするDockerfileを作ればよさそう。
+以上のことから、Ubuntu24ベースでコンテナをビルドするには、以下のようなDockerfileを作ればよさそうです。
 
-FRRに同梱のDockerファイルはこんなかんじ。
+```dockerfile
+# Dockerfile for building FRRouting (FRR) on Ubuntu 24.04
 
+ARG UBUNTU_VERSION=24.04
+FROM ubuntu:$UBUNTU_VERSION
 
-```text
-# Update and install build requirements.
-RUN apt update && apt upgrade -y && \
-    # Basic build requirements from documentation
-    apt-get install -y \
-            autoconf \
-            automake \
-            bison \
-            build-essential \
-            flex \
-            git \
-            install-info \
-            libc-ares-dev \
-            libcap-dev \
-            libelf-dev \
-            libjson-c-dev \
-            libpam0g-dev \
-            libreadline-dev \
-            libsnmp-dev \
-            libsqlite3-dev \
-            lsb-release \
-            libtool \
-            lcov \
-            make \
-            perl \
-            pkg-config \
-            python3-dev \
-            python3-sphinx \
-            screen \
-            texinfo \
-            tmux \
-            iptables \
-    && \
-    # Protobuf build requirements
-    apt-get install -y \
-        libprotobuf-c-dev \
-        protobuf-c-compiler \
-    && \
-    # Libyang2 extra build requirements
-    apt-get install -y \
-        cmake \
-        libpcre2-dev \
-    && \
-    # GRPC extra build requirements
-    apt-get install -y \
-        libgrpc-dev \
-        libgrpc++-dev \
-        protobuf-compiler-grpc \
-    && \
-    # Runtime/triage/testing requirements
-    apt-get install -y \
-        curl \
-        gdb \
-        kmod \
-        iproute2 \
-        iputils-ping \
-        liblua5.3-dev \
-        libssl-dev \
-        lua5.3 \
-        net-tools \
-        python3 \
-        python3-pip \
-        snmp \
-        snmp-mibs-downloader \
-        snmpd \
-        ssmping \
-        sudo \
-        time \
-        tshark \
-        valgrind \
-        yodl \
-      && \
-    download-mibs && \
-    wget --tries=5 --waitretry=10 --retry-connrefused https://raw.githubusercontent.com/FRRouting/frr-mibs/main/iana/IANA-IPPM-METRICS-REGISTRY-MIB -O /usr/share/snmp/mibs/iana/IANA-IPPM-METRICS-REGISTRY-MIB && \
-    wget --tries=5 --waitretry=10 --retry-connrefused https://raw.githubusercontent.com/FRRouting/frr-mibs/main/ietf/SNMPv2-PDU -O /usr/share/snmp/mibs/ietf/SNMPv2-PDU && \
-    wget --tries=5 --waitretry=10 --retry-connrefused https://raw.githubusercontent.com/FRRouting/frr-mibs/main/ietf/IPATM-IPMC-MIB -O /usr/share/snmp/mibs/ietf/IPATM-IPMC-MIB && \
-    rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
-    python3 -m pip install wheel && \
-    bash -c "PV=($(pkg-config --modversion protobuf | tr '.' ' ')); if (( PV[0] == 3 && PV[1] < 19 )); then python3 -m pip install 'protobuf<4' grpcio grpcio-tools; else python3 -m pip install 'protobuf>=4' grpcio grpcio-tools; fi" && \
-    python3 -m pip install 'pytest>=6.2.4' 'pytest-xdist>=3.6.1' 'pytest-asyncio>=0.25.3' && \
-    python3 -m pip install 'scapy>=2.4.5' && \
-    python3 -m pip install pyyaml && \
-    python3 -m pip install xmltodict && \
-    python3 -m pip install git+https://github.com/Exa-Networks/exabgp@0659057837cd6c6351579e9f0fa47e9fb7de7311
+# Based on the official FRR documentation for building on Ubuntu 24.04
+# https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
-ARG UID=1010
-RUN groupadd -r -g 92 frr && \
-      groupadd -r -g 85 frrvty && \
-      adduser --system --ingroup frr --home /home/frr \
-              --gecos "FRR suite" -u $UID --shell /bin/bash frr && \
-      usermod -a -G frrvty frr && \
-      useradd -d /var/run/exabgp/ -s /bin/false exabgp && \
-      echo 'frr ALL = NOPASSWD: ALL' | tee /etc/sudoers.d/frr && \
-      mkdir -p /home/frr && chown frr.frr /home/frr
+ENV TZ Asia/Tokyo
+ENV LANG ja_JP.UTF-8
+ENV WORKING_DIRECTORY /root
 
-# Install FRR built packages
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -s -o /etc/apt/keyrings/frrouting.gpg https://deb.frrouting.org/frr/keys.gpg && \
-    echo deb '[signed-by=/etc/apt/keyrings/frrouting.gpg]' https://deb.frrouting.org/frr \
-        $(lsb_release -s -c) "frr-stable" > /etc/apt/sources.list.d/frr.list && \
-    apt-get update && apt-get install -y librtr-dev libyang2-dev libyang2-tools
+ENV DATE 20250817
 
-USER frr:frr
+WORKDIR $WORKING_DIRECTORY
 
-COPY --chown=frr:frr . /home/frr/frr/
+USER root
 
-RUN cd ~/frr && \
-    ./bootstrap.sh && \
-    ./configure \
-       --prefix=/usr \
-       --sysconfdir=/etc \
-       --localstatedir=/var \
-       --sbindir=/usr/lib/frr \
-       --enable-gcov \
-       --enable-dev-build \
-       --enable-mgmtd-test-be-client \
-       --enable-rpki \
-       --enable-sharpd \
-       --enable-multipath=256 \
-       --enable-user=frr \
-       --enable-group=frr \
-       --enable-config-rollbacks \
-       --enable-grpc \
-       --enable-protobuf \
-       --enable-vty-group=frrvty \
-       --enable-snmp \
-       --enable-scripting \
-       --with-pkg-extra-version=-my-manual-build && \
-    make -j $(nproc) && \
-    sudo make install
+RUN apt update \
+    && apt upgrade -y \
+    && apt install -y \
+            git autoconf automake libtool make libreadline-dev texinfo \
+            pkg-config libpam0g-dev libjson-c-dev bison flex \
+            libc-ares-dev python3-dev python3-sphinx \
+            install-info build-essential libsnmp-dev perl \
+            libcap-dev libelf-dev libunwind-dev \
+            protobuf-c-compiler libprotobuf-c-dev \
+    # Install libyang build requirements
+    && apt install -y cmake libpcre2-dev \
+    # Install libyang
+    && git clone https://github.com/CESNET/libyang.git \
+    && cd libyang \
+    && git checkout v2.1.128 \
+    && mkdir build; cd build \
+    && cmake --install-prefix /usr -D CMAKE_BUILD_TYPE:String="Release" .. \
+    && make \
+    && make install \
+    && cd ${WORKING_DIRECTORY} \
+    # Install GRPC
+    && apt install -y libgrpc++-dev protobuf-compiler-grpc \
+    # Install Config Rollbacks
+    && apt install -y libsqlite3-dev \
+    # ZeroMQ
+    && apt install -y libzmq5 libzmq3-dev \
+    # utilities
+    && apt install -y vim \
+    # Add FRR user and groups
+    && groupadd -r -g 92 frr \
+    && groupadd -r -g 85 frrvty \
+    && adduser --system --ingroup frr --home /var/run/frr/ --gecos "FRR suite" --shell /sbin/nologin frr \
+    && usermod -a -G frrvty frr \
+    # Compile
+    && export GIT_SSL_NO_VERIFY=true \
+    && cd ${WORKING_DIRECTORY} \
+    && git clone https://github.com/frrouting/frr.git frr \
+    && cd frr \
+    && ./bootstrap.sh \
+    && ./configure \
+            --includedir=/usr/include \
+            --bindir=/usr/bin \
+            --sbindir=/usr/lib/frr \
+            --libdir=/usr/lib/frr \
+            --libexecdir=/usr/lib/frr \
+            --sysconfdir=/etc \
+            --localstatedir=/var \
+            --with-moduledir=/usr/lib/frr/modules \
+            --enable-configfile-mask=0640 \
+            --enable-logfile-mask=0640 \
+            --enable-snmp \
+            --enable-multipath=64 \
+            --enable-user=frr \
+            --enable-group=frr \
+            --enable-vty-group=frrvty \
+            --with-pkg-git-version \
+            --with-pkg-extra-version=-${DATE} \
+            --disable-doc \
+    && make \
+    && make install \
+    && install -m 775 -o frr -g frr -d /var/log/frr \
+    && install -m 775 -o frr -g frr -d /etc/frr \
+    && install -m 640 -o frr -g frr tools/etc/frr/vtysh.conf /etc/frr/vtysh.conf \
+    && install -m 640 -o frr -g frr tools/etc/frr/frr.conf /etc/frr/frr.conf \
+    && install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf \
+    && install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons \
+    && install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf \
+    # Clean up
+    && apt remove -y \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/cache/* \
+    && rm -rf ${WORKING_DIRECTORY}/frr \
+    && rm -rf ${WORKING_DIRECTORY}/libyang \
+    # Enable IPv4 and IPv6 forwarding
+    && sed -i '/^net.ipv6.conf.all.forwarding/s/^.*$/net.ipv6.conf.all.forwarding=1/' /etc/sysctl.conf \
+    && grep -q '^net.ipv6.conf.all.forwarding=1' /etc/sysctl.conf || echo 'net.ipv6.conf.all.forwarding=1' >> /etc/sysctl.conf \
+    && sed -i '/^net.ipv4.ip_forward/s/^.*$/net.ipv4.ip_forward=1/' /etc/sysctl.conf \
+    && grep -q '^net.ipv4.ip_forward=1' /etc/sysctl.conf || echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
 
-RUN cd ~/frr && make check || true
+COPY --chmod=0755 start.sh /
 
-COPY docker/ubuntu-ci/docker-start /usr/sbin/docker-start
-CMD ["/usr/sbin/docker-start"]
-
+CMD ["/start.sh"]
 ```

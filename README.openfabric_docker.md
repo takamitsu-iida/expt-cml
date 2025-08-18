@@ -20,16 +20,116 @@ CML2.9以降でDockerイメージが動作するようになっています。
 
 <br>
 
+## R1のルーティングテーブル
 
+IPv4のルーティングテーブル。期待通りです。
+
+```bash
+R1# show ip route
+Codes: K - kernel route, C - connected, L - local, S - static,
+       R - RIP, O - OSPF, I - IS-IS, B - BGP, E - EIGRP, N - NHRP,
+       T - Table, v - VNC, V - VNC-Direct, A - Babel, F - PBR,
+       f - OpenFabric, t - Table-Direct,
+       > - selected route, * - FIB route, q - queued, r - rejected, b - backup
+       t - trapped, o - offload failure
+
+IPv4 unicast VRF default:
+L * 192.168.255.1/32 is directly connected, lo, weight 1, 00:03:54
+C>* 192.168.255.1/32 is directly connected, lo, weight 1, 00:03:54
+f>* 192.168.255.2/32 [115/30] via 192.168.255.4, eth0 onlink, weight 1, 00:03:24
+  *                           via 192.168.255.5, eth1 onlink, weight 1, 00:03:24
+  *                           via 192.168.255.9, eth2 onlink, weight 1, 00:03:24
+  *                           via 192.168.255.10, eth3 onlink, weight 1, 00:03:24
+f>* 192.168.255.3/32 [115/30] via 192.168.255.4, eth0 onlink, weight 1, 00:03:24
+  *                           via 192.168.255.5, eth1 onlink, weight 1, 00:03:24
+  *                           via 192.168.255.9, eth2 onlink, weight 1, 00:03:24
+  *                           via 192.168.255.10, eth3 onlink, weight 1, 00:03:24
+f>* 192.168.255.4/32 [115/20] via 192.168.255.4, eth0 onlink, weight 1, 00:03:24
+f>* 192.168.255.5/32 [115/20] via 192.168.255.5, eth1 onlink, weight 1, 00:03:24
+f>* 192.168.255.6/32 [115/30] via 192.168.255.4, eth0 onlink, weight 1, 00:03:24
+  *                           via 192.168.255.5, eth1 onlink, weight 1, 00:03:24
+f>* 192.168.255.7/32 [115/30] via 192.168.255.4, eth0 onlink, weight 1, 00:03:04
+  *                           via 192.168.255.5, eth1 onlink, weight 1, 00:03:04
+f>* 192.168.255.8/32 [115/30] via 192.168.255.4, eth0 onlink, weight 1, 00:03:04
+  *                           via 192.168.255.5, eth1 onlink, weight 1, 00:03:04
+f>* 192.168.255.9/32 [115/20] via 192.168.255.9, eth2 onlink, weight 1, 00:03:24
+f>* 192.168.255.10/32 [115/20] via 192.168.255.10, eth3 onlink, weight 1, 00:03:24
+f>* 192.168.255.11/32 [115/30] via 192.168.255.9, eth2 onlink, weight 1, 00:02:58
+  *                            via 192.168.255.10, eth3 onlink, weight 1, 00:02:58
+f>* 192.168.255.12/32 [115/30] via 192.168.255.9, eth2 onlink, weight 1, 00:02:57
+  *                            via 192.168.255.10, eth3 onlink, weight 1, 00:02:57
+f>* 192.168.255.13/32 [115/30] via 192.168.255.9, eth2 onlink, weight 1, 00:02:54
+  *                            via 192.168.255.10, eth3 onlink, weight 1, 00:02:54
+```
+
+IPv6のルーティングテーブル。これも期待通りです。
+
+```bash
+R1# show ipv6 route
+Codes: K - kernel route, C - connected, L - local, S - static,
+       R - RIPng, O - OSPFv3, I - IS-IS, B - BGP, N - NHRP,
+       T - Table, v - VNC, V - VNC-Direct, A - Babel, F - PBR,
+       f - OpenFabric, t - Table-Direct,
+       > - selected route, * - FIB route, q - queued, r - rejected, b - backup
+       t - trapped, o - offload failure
+
+IPv6 unicast VRF default:
+L * 2001:db8::1/128 is directly connected, lo, weight 1, 00:04:25
+C>* 2001:db8::1/128 is directly connected, lo, weight 1, 00:04:25
+f>* 2001:db8::2/128 [115/30] via fe80::4, eth0 onlink, weight 1, 00:03:55
+  *                          via fe80::5, eth1 onlink, weight 1, 00:03:55
+  *                          via fe80::9, eth2 onlink, weight 1, 00:03:55
+  *                          via fe80::10, eth3 onlink, weight 1, 00:03:55
+f>* 2001:db8::3/128 [115/30] via fe80::4, eth0 onlink, weight 1, 00:03:55
+  *                          via fe80::5, eth1 onlink, weight 1, 00:03:55
+  *                          via fe80::9, eth2 onlink, weight 1, 00:03:55
+  *                          via fe80::10, eth3 onlink, weight 1, 00:03:55
+f>* 2001:db8::4/128 [115/20] via fe80::4, eth0 onlink, weight 1, 00:03:55
+f>* 2001:db8::5/128 [115/20] via fe80::5, eth1 onlink, weight 1, 00:03:55
+f>* 2001:db8::6/128 [115/30] via fe80::4, eth0 onlink, weight 1, 00:03:55
+  *                          via fe80::5, eth1 onlink, weight 1, 00:03:55
+f>* 2001:db8::7/128 [115/30] via fe80::4, eth0 onlink, weight 1, 00:03:35
+  *                          via fe80::5, eth1 onlink, weight 1, 00:03:35
+f>* 2001:db8::8/128 [115/30] via fe80::4, eth0 onlink, weight 1, 00:03:35
+  *                          via fe80::5, eth1 onlink, weight 1, 00:03:35
+f>* 2001:db8::9/128 [115/20] via fe80::9, eth2 onlink, weight 1, 00:03:55
+f>* 2001:db8::10/128 [115/20] via fe80::10, eth3 onlink, weight 1, 00:03:55
+f>* 2001:db8::11/128 [115/30] via fe80::9, eth2 onlink, weight 1, 00:03:29
+  *                           via fe80::10, eth3 onlink, weight 1, 00:03:29
+f>* 2001:db8::12/128 [115/30] via fe80::9, eth2 onlink, weight 1, 00:03:28
+  *                           via fe80::10, eth3 onlink, weight 1, 00:03:28
+f>* 2001:db8::13/128 [115/30] via fe80::9, eth2 onlink, weight 1, 00:03:25
+  *                           via fe80::10, eth3 onlink, weight 1, 00:03:25
+C>* fe80::/64 is directly connected, eth1, weight 1, 00:04:24
+R1#
+```
+
+<br>
+
+## IPv6はやっぱりおかしい
+
+コントロールプレーンは正常に動くのですが、どうしてもIPv6の中継機能を有効にできません。
+
+```bash
+R1# show ipv6 forwarding
+ipv6 forwarding is off
+```
+
+CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.service`　で起動されていますので、
+直接このファイルを編集してdockerdの起動オプションをあれこれ試してみましたが、どうにもだめです。
 
 
 <br><br><br>
 
 # FRRのDockerイメージを作る
 
-Dockerでは起動するイメージごとにLinuxカーネルの設定を変えることはできず、母艦になっているLinuxと共有しています。
+docker上でルータを動かすときの注意事項はこちらに記載されています。
 
-FRRをルータとして動かしたいので、母艦になっているCMLのコントローラのUbuntuでLinuxカーネルの設定を変更します。
+https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-on-a-router
+
+
+Dockerでは起動するイメージごとにLinuxカーネルの設定を変えることはできず、母艦になっているLinuxと共有していますので、
+母艦になっているCMLのコントローラのUbuntuでLinuxカーネルの設定を変更します。
 
 コックピットにログインしてターミナルを開きます。
 
@@ -57,11 +157,19 @@ net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 ```
 
-反映させます。
+ファイアウォールはコックピットのネットワーク設定で停止します。
+
+
+再起動します。
 
 ```bash
-sysctl -p
+reboot
 ```
+
+> [!NOTE]
+>
+> Dockerは起動時にホストがIPv6中継可能かどうかを見ていますので、`sysctl -p` で反映させただけではだめです。
+> CMLそのものを再起動したほうが早いです。
 
 <br>
 
@@ -133,7 +241,11 @@ sudo reboot
 
 ## FRRのDockerイメージをビルドします
 
-<br>
+以降はroot特権で作業します。
+
+```bash
+sudo -s -E
+```
 
 このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したのでそれを利用します。
 
@@ -153,7 +265,13 @@ cd frr
 ラクをするためにmakeを使いたいのでインストールします。
 
 ```bash
-sudo apt install -y make
+apt install -y make
+```
+
+繰り返しdockerイメージを作るときにはキャッシュが悪さをするかもしれませんので、削除します（dockerインストール直後の場合は省略して構いません）。
+
+```bash
+docker system prune --all
 ```
 
 Dockerfileの内容に従ってビルドします。長い時間かかります。10分以上かかります。

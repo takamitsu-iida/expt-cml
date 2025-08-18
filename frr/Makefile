@@ -31,4 +31,5 @@ stop: ## Dockerコンテナを停止する
 
 
 clean: ## Dockerイメージを削除する
-	@docker rmi $(docker images -q)
+	@docker rmi $$(docker images -q)
+	@rm -f frr.tar.gz

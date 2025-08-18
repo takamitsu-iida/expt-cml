@@ -118,6 +118,21 @@ ipv6 forwarding is off
 CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.service`　で起動されていますので、
 直接このファイルを編集してdockerdの起動オプションをあれこれ試してみましたが、どうにもだめです。
 
+コックピットでプロセスを確認すると　`sysctldisableipv6`　という謎のプロセスが走っているので、
+もしかするとCMLの母艦としてIPv6を停止しているのかもしれません。
+
+```bash
+   1534 ?        S      0:00 sudo -n /usr/local/bin/sysctldisableipv6
+   1540 ?        Sl     0:00 /usr/local/bin/sysctldisableipv6
+```
+
+<br>
+
+> [!NOTE]
+>
+> 2025年8月時点
+>
+> CML2.9においてはdockerのコンテナ内でIPv6を使うのは無理、という個人的結論です。
 
 <br><br><br>
 

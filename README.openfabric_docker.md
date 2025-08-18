@@ -192,11 +192,13 @@ reboot
 
 CML上にUbuntu24のインスタンスと、外部接続を用意します。
 
+このスクリプトを実行すると、ラボを一つ作成できます。
+
 ```bash
 bin/cml_create_lab1.py
 ```
 
-Dockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
+UbuntuにDockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
 
 ```bash
 sudo apt update
@@ -264,7 +266,47 @@ sudo -s -E
 
 このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したのでそれを利用します。
 
-クローンします。
+Makefileはこのようになっています。dockerコマンドを直に叩いても結果は同じです。
+
+```bash
+.DEFAULT_GOAL := help
+.PHONY: help
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+TAG ?= frr:10.5-iida
+
+build: ## Dockerイメージを作成する
+	@docker build -t ${TAG} -f Dockerfile .
+
+
+inspect: ## DockerイメージのIDをインスペクトする
+	@docker inspect ${TAG} | grep -i sha256 | head -n 1 | awk '{print $$2}'
+
+
+save: ## Dockerイメージを保存する
+	@docker save -o frr.tar ${TAG}
+	@gzip frr.tar
+
+
+run: ## Dockerコンテナを起動する
+	@docker run -d --rm --init --privileged --name frr-iida ${TAG}
+
+
+shell: ## Dockerコンテナにシェルで入る
+	@docker exec -it frr-iida bash
+
+
+stop: ## Dockerコンテナを停止する
+	@docker stop frr-iida
+
+
+clean: ## Dockerイメージを削除する
+	@docker rmi $$(docker images -q)
+	@rm -f frr.tar.gz
+```
+
+リポジトリをクローンします。
 
 ```bash
 git clone https://github.com/takamitsu-iida/expt-cml.git
@@ -349,7 +391,7 @@ cd /var/lib/libvirt/images/node-definitions
 vi frr-10-5-iida.yaml
 ```
 
-`frr/cml_node_definition.yaml` の内容をコピペして保存します。
+[frr/cml_node_definition.yaml](/frr/cml_node_definition.yaml) の内容をコピペして保存します。
 
 ファイルのオーナーを変更します。
 
@@ -390,7 +432,26 @@ mv /var/local/virl2/dropfolder/frr.tar.gz .
 vi frr-10-5-iida.yaml
 ```
 
-`bin/cml_image_definition.txt` の内容をコピペします。
+[frr/cml_image_definition.yaml](/frr/cml_image_definition.yaml) の内容をコピペします。
+
+内容はこのようになっています。
+
+```yaml
+#
+# Free Range Routing image definition
+# generated 2025-08-15
+# part of VIRL^2
+#
+
+id: frr-10-5-iida
+label: Free Range Routing (frr) 10.5-iida
+description: Free Range Routing (frr) 10.5-iida (Docker)
+node_definition_id: frr-10-5-iida
+disk_image: frr.tar.gz
+read_only: true
+schema_version: 0.0.1
+sha256:
+```
 
 sha256の部分をイメージをインスペクトしたときにメモしたものに置き換えます。
 

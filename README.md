@@ -20,4 +20,4 @@ FRRをインストールしたUbuntuでOpenFabricの検証は　[こちら](/REA
 
 <br>
 
-Docker版FRRでOpenFabricの検証は　[こちら](/README.openfabric_docker.md) ★2025年8月時点ではうまく動きませんでした
+Dockerで動くFRRイメージの作り方は　[こちら](/README.openfabric_docker.md) ★2025年8月時点 IPv6がうまく動きませんでした

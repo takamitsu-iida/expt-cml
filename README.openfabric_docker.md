@@ -228,14 +228,14 @@ sudo reboot
 >
 > dockerコマンド早見表
 >
-> `docker ps -a`　止まっているものを含めてプロセスを確認
-> `docker stop`　停止
-> `docker rm`　削除
-> `docker image ls`　存在するイメージの確認
-> `docker rmi`　イメージを削除
-> `docker system prune --all`　キャッシュの削除、再ビルドする前に実行
-> `docker tag IMAGE_ID IMAGE_NAME:TAG`　作成済みイメージの名前とタグを変更
-> `docker exec -it ID bash`　シェルを起動
+> - `docker ps -a`　止まっているものを含めてプロセスを確認
+> - `docker stop`　停止
+> - `docker rm`　削除
+> - `docker image ls`　存在するイメージの確認
+> - `docker rmi`　イメージを削除
+> - `docker system prune --all`　キャッシュの削除、再ビルドする前に実行
+> - `docker tag IMAGE_ID IMAGE_NAME:TAG`　作成済みイメージの名前とタグを変更
+> - `docker exec -it ID bash`　シェルを起動
 
 <br>
 

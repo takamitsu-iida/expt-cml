@@ -20,4 +20,4 @@ FRRをインストールしたUbuntuでOpenFabricの検証は　[こちら](/REA
 
 <br>
 
-Dockerで動くFRRイメージの作り方は　[こちら](/README.openfabric_docker.md) ★2025年8月時点 IPv6の中継機能がうまく動きませんでした
+CMLで動作するFRRのdockerイメージの作り方は　[こちら](/README.openfabric_docker.md) ★2025年8月時点 IPv6の中継機能がうまく動きませんでした

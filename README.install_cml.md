@@ -270,6 +270,43 @@ ping 192.168.0.198
 
 <br><br><br>
 
+## CMLコックピットメモ
+
+
+- コックピットのターミナルでroot特権を取る
+
+```bash
+sudo -s -E
+```
+
+- サービスを再起動する
+
+```bash
+systemctl restart virl2.target
+```
+
+- ノード定義ファイルの場所に移動する
+
+```bash
+cd /var/lib/libvirt/images/node-definitions
+```
+
+- イメージ定義が保存されている場所に移動する
+
+```bash
+cd /var/lib/libvirt/images/virl-base-images
+```
+
+- 実体化したイメージのディレクトリに移動する
+
+```bash
+/var/local/virl2/images/
+```
+
+
+
+<br><br><br>
+
 ## 参考文献
 
 <br>

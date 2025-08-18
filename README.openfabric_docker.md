@@ -4,7 +4,9 @@ CML2.9以降でDockerイメージが動作するようになっています。
 
 2025年8月時点、FRRのDocker版のバージョンは `FRRouting 10.2.1` です。
 
-このバージョンのDockerイメージではOpenFabricはうまく動かないようです。
+試したところ、このバージョンのDockerイメージではOpenFabricは期待通りには動かないようです。
+
+新しいバージョンのFRRイメージを作成して試します（Dockerイメージの作り方は後述します）。
 
 <br>
 
@@ -18,50 +20,52 @@ CML2.9以降でDockerイメージが動作するようになっています。
 
 <br>
 
-## なんかおかしい
 
-設定をみたときに　`no ipv6 forwarding`　となっていて、IPv6の中継ができなくなっています。
 
-```text
-R1# show run
-Building configuration...
-
-Current configuration:
-!
-frr version 10.2.1
-frr defaults traditional
-hostname R1
-log syslog informational
-no ipv6 forwarding
-service integrated-vtysh-config
-!
-```
-
-IPv6のリンクローカルアドレスを固定で設定しているのに、自動で割り当ててしまっています。
-
-```text
-R1# show int brief
-Interface       Status  VRF             Addresses
----------       ------  ---             ---------
-eth0            up      default         + fe80::5054:ff:fec9:be76/64
-eth1            up      default         + fe80::1/64
-eth2            up      default         + fe80::1/64
-eth3            up      default         + fe80::5054:ff:fe73:ed68/64
-eth4            up      default         fe80::1/64
-eth5            up      default         fe80::1/64
-eth6            up      default         fe80::1/64
-eth7            up      default         fe80::1/64
-lo              up      default         192.168.255.1/32
-                                        2001:db8::1/128
-```
 
 <br><br><br>
 
 # FRRのDockerイメージを作る
 
+Dockerでは起動するイメージごとにLinuxカーネルの設定を変えることはできず、母艦になっているLinuxと共有しています。
+
+FRRをルータとして動かしたいので、母艦になっているCMLのコントローラのUbuntuでLinuxカーネルの設定を変更します。
+
+コックピットにログインしてターミナルを開きます。
+
+root特権を取ります。
+
+```bash
+sudo -s -E
+```
+
+`/etc/sysctl.conf` を編集します。
+
+```bash
+vi /etc/sysctl.conf
+```
+
+この部分のコメントを外します。
+
+```text
+# Uncomment the next line to enable packet forwarding for IPv4
+net.ipv4.ip_forward=1
+
+# Uncomment the next line to enable packet forwarding for IPv6
+#  Enabling this option disables Stateless Address Autoconfiguration
+#  based on Router Advertisements for this host
+net.ipv6.conf.all.forwarding=1
+```
+
+反映させます。
+
+```bash
+sysctl -p
+```
+
 <br>
 
-## Dockerをインストールする
+## DockerをインストールしたUbuntuを用意する
 
 CML上にUbuntu24のインスタンスと、外部接続を用意します。
 
@@ -127,7 +131,7 @@ sudo reboot
 
 <br>
 
-## Dockerイメージをビルドします
+## FRRのDockerイメージをビルドします
 
 <br>
 
@@ -291,9 +295,9 @@ frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
 イメージが一つ、増えました。
 
 
-<br>
+<br><br><br>
 
-# いろいろ調査してみる
+# CML2.9のDockerの挙動を調査してみる
 
 CMLで適当なラボを作って、FRRイメージをインスタンス化して起動してみる。
 

@@ -270,7 +270,65 @@ ping 192.168.0.198
 
 <br><br><br>
 
-## CMLコックピットメモ
+## CML追加設定（オプション）
+
+個人的な好みで設定を変更します。
+
+<br>
+
+### AppArmorの停止
+
+コックピットのサービスを開いて一番上にあるapparmorを停止します。
+
+<br>
+
+### タイムゾーンを変更する
+
+初期状態ではこのように（↓）UTCになっています。
+
+```bash
+admin@cml-controller:~$ timedatectl
+               Local time: Tue 2025-08-19 03:02:23 UTC
+           Universal time: Tue 2025-08-19 03:02:23 UTC
+                 RTC time: Tue 2025-08-19 03:02:23
+                Time zone: Etc/UTC (UTC, +0000)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+```
+
+タイムゾーンを変更します。
+
+コックピットのターミナルを開いて以下を設定します。
+
+```bash
+sudo timedatectl set-timezone Asia/Tokyo
+```
+
+<br>
+
+### 追加パッケージ
+
+```bash
+sudo apt install -y \
+  binutils \
+  unzip \
+  zip
+```
+
+
+
+
+
+
+
+
+
+
+
+<br><br><br>
+
+## コックピットのターミナル
 
 
 - コックピットのターミナルでroot特権を取る

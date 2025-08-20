@@ -30,6 +30,9 @@ stop: ## Dockerコンテナを停止する
 	@docker stop frr-iida
 
 
+prune: ## Dockerの不要なイメージを削除する
+	@docker system prune -f --all
+
 clean: ## Dockerイメージを削除する
 	@docker rmi $$(docker images -q)
 	@rm -f frr.tar.gz

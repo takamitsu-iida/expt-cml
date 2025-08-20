@@ -316,20 +316,31 @@ sudo apt install -y \
   zip
 ```
 
+<br>
 
+### SSH
 
+/etc/ssh/sshd_config ファイルから以下のコメントを外します。
 
+```text
+PasswordAuthentication yes
+```
 
+編集するか、
 
+```bash
+vi /etc/ssh/sshd_config
+```
 
+sedで書き換えます。
 
-
-
+```bash
+sed -i -e "s/^#PasswordAuthentication yes\$/PasswordAuthentication yes/" /etc/ssh/sshd_config
+```
 
 <br><br><br>
 
 ## コックピットのターミナル
-
 
 - コックピットのターミナルでroot特権を取る
 

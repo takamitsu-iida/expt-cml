@@ -108,22 +108,11 @@ R1#
 
 ## IPv6はやっぱりおかしい
 
-コントロールプレーンは正常に動くのですが、どうしてもIPv6の中継機能を有効にできません。
+コントロールプレーンは正常に動くのですが、どうしても **IPv6の中継機能** を有効にできません。
 
 ```bash
 R1# show ipv6 forwarding
 ipv6 forwarding is off
-```
-
-CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.service`　で起動されていますので、
-直接このファイルを編集してdockerdの起動オプションをあれこれ試してみましたが、どうにもだめです。
-
-コックピットでプロセスを確認すると　`sysctldisableipv6`　という謎のプロセスが走っているので、
-もしかするとCMLの母艦としてIPv6を停止しているのかもしれません。
-
-```bash
-   1534 ?        S      0:00 sudo -n /usr/local/bin/sysctldisableipv6
-   1540 ?        Sl     0:00 /usr/local/bin/sysctldisableipv6
 ```
 
 <br>
@@ -132,7 +121,13 @@ CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.servic
 >
 > 2025年8月時点
 >
-> CML2.9においてはdockerのコンテナ内でIPv6を使うのは無理、という個人的結論です。
+> CML2.9においてはdockerのコンテナ内でIPv6ルーティングを使うのは無理、という個人的結論です。
+
+<br>
+
+> [!NOTE]
+>
+> OpenFabricでは、隣接ノードとのやりとりさえIPv6にできれば、ルータ超えのIPv4通信が可能になります。
 
 <br><br><br>
 
@@ -548,6 +543,16 @@ root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11
   "busybox": true
 }
 ```
+
+<br>
+
+> [!NOTE]
+>
+> "caps" に列挙されているのはコンテナに与えられる権限です。
+>
+> https://linux.die.net/man/7/capabilities
+
+<br>
 
 インスタンス化するたびにこれらファイルが作られるということは、
 どこかでこれらファイルを作成するように指示してはずなんだけど、それはどこだろう？
@@ -969,13 +974,87 @@ RUN apt update \
     && rm -rf /var/lib/cache/* \
     && rm -rf ${WORKING_DIRECTORY}/frr \
     && rm -rf ${WORKING_DIRECTORY}/libyang \
-    # Enable IPv4 and IPv6 forwarding
+    # Enable IPv6 forwarding
     && sed -i '/^net.ipv6.conf.all.forwarding/s/^.*$/net.ipv6.conf.all.forwarding=1/' /etc/sysctl.conf \
-    && grep -q '^net.ipv6.conf.all.forwarding=1' /etc/sysctl.conf || echo 'net.ipv6.conf.all.forwarding=1' >> /etc/sysctl.conf \
-    && sed -i '/^net.ipv4.ip_forward/s/^.*$/net.ipv4.ip_forward=1/' /etc/sysctl.conf \
-    && grep -q '^net.ipv4.ip_forward=1' /etc/sysctl.conf || echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
+    && grep -q '^net.ipv6.conf.all.forwarding=1' /etc/sysctl.conf || echo 'net.ipv6.conf.all.forwarding=1' >> /etc/sysctl.conf
 
 COPY --chmod=0755 start.sh /
 
 CMD ["/start.sh"]
 ```
+
+
+
+<br><br><br>
+
+<br>
+
+## IPv6を有効にする試み
+
+
+CMLにおけるdockerイメージの起動は、dockerコマンドを直接叩いているわけではなく、CML用にラッパーに包まれています。
+
+それが `/usr/lib/systemd/system/virl2-docker-shim.service` というサービスです。
+
+このファイルを見てみると、どうやら `/etc/default/docker-shim.env` に設定があるようです。
+
+そのファイルを見てみると、実行するコンテナに割り当てる権限を設定できるようです。
+
+```text
+# The way this works can be configured using the -day0privs flag with the
+# following options:
+#
+# 1) keep: If this is specified, then no additional privileges are granted when
+#    running the day0 script.  Whatever is specified in the Docker specific
+#    caps section of the node definition is kept.  Network configuration might
+#    not be possible
+# 2) netadmin: This is the default and specifically adds the CAP_NET_ADMIN
+#    capabilities to the CML node container configuration unless it hasn't been
+#    provided to the container already in the "caps" list of the Docker
+#    specific properties of the node definition
+# 3) privileged: in this case, the day0 script will run with privileges inside
+#    the container.  Note that this might be considered a security problem
+#    especially for multi-user CML installations. RUNNING CONTAINERS PRIVILEGED
+#    IS CONSIDERED INSECURE. ONLY DO THIS IF YOU TRUST EVERY USER ON YOUR CML
+#    SYSTEM!
+```
+
+初期値（省略した場合）はnetadminになります。
+
+コンテナ内でIPv6の中継を有効にするにはkeepのままでは権限が足りないと思われますので、`-day0privs privileged` をOPTSに加えてみます。
+
+```bash
+vi /etc/default/docker-shim.env
+```
+
+最終行の
+
+```text
+OPTS="-base /var/local/virl2/images -images /var/lib/libvirt/images/virl-base-images -socket /var/local/virl2/socks/docker-shim-event.sock"
+```
+
+の部分を
+
+```text
+OPTS="-day0privs privileged -base /var/local/virl2/images -images /var/lib/libvirt/images/virl-base-images -socket /var/local/virl2/socks/docker-shim-event.sock"
+```
+
+のように書き換えます。
+
+これでコンテナにprivilege権限が付与され、boot.shは特権で実行されます。
+
+再起動します。
+
+```bash
+reboot
+```
+
+ノード定義ファイルでboot.shに `sysctl -w net.ipv6.conf.all.forwarding=1` を加えます。
+
+CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.service`　で起動されていますので、
+ファイルを直接書き換えて `--ipv6 --fixed-cidr-v6 fd00::/80` を加えてデーモンを起動してみたり。
+
+コックピットでプロセスを確認すると　`sysctldisableipv6`　という謎のプロセスが走っているので、
+このサービスをkillしてみたり。
+
+いろいろ試してみましたが、結果的にIPv6ルータとして動かすことはできませんでした。

@@ -102,9 +102,7 @@ Hyper-Vの仮想スイッチマネージャで仮想スイッチを２個作成�
 
 <br><br>
 
-以下の条件でHyper-V上に仮想マシンを作成、設定を行います。
-
-起動する前にやるべきことがあるので、まだ起動はしません。
+以下の条件でHyper-V上に仮想マシンを作成して、設定を加えます。
 
 - 名前 CML2.9 を指定（なんでもよい）
 - メモリ 98304MB に変更
@@ -116,8 +114,11 @@ Hyper-Vの仮想スイッチマネージャで仮想スイッチを２個作成�
 - ネットワークアダプター
     - 仮想スイッチ vSwitch(192.168.122.0) に接続する
     - 高度な機能 MACアドレスのスプーフィングを有効にする をチェックする
+- ネットワークアダプター（追加）
+    - 仮想スイッチ vSwitch(192.168.0.0) に接続する
+    - 高度な機能 MACアドレスのスプーフィングを有効にする をチェックする
 
-ネットワークアダプタは後ほどもう一つ追加します。この時点ではインターネットに出れるネットワークアダプタを一つ接続しておきます。
+仮想マシンを起動する前にやるべきことがあるので、まだ起動はしません。
 
 <br>
 
@@ -168,13 +169,86 @@ Set-VMProcessor -VMName CML2.9 -ExposeVirtualizationExtensions $true
 
 管理者アカウントのデフォルトはsysadminになっていますが、紛らわしくなるのが嫌なので、CMLユーザと同じ `admin` にしておきます。
 
-これでCMLのインストールは完了ですが、快適に使うにはもう少々、設定が必要です。
+これでCMLのインストールは完了ですが、もう少々、設定が必要です。
+
+<br>
+
+### 起動時のスプラッシュ画面を抑止
+
+このままではHyper-VでCMLを起動したときにスプラッシュ画面が表示されて、
+Ubuntuのコンソールが無駄になってしまいます（スプラッシュ画面の存在意義がわからない・・・）
+
+起動時に青い画面で
+
+```bash
+*CML2 -- GNU/Linux
+```
+
+が表示されているときに e キーを叩きます。
+
+`linux /boot/vmlinz- ... ` の行にある splash を削除してから Ctrl-x キーを叩くとCMLが起動します。
+
+コックピットにログインして `/etc/default/grub` を編集します。
+
+```bash
+sudo vi /etc/default/grub
+```
+
+`GRUB_CMDLINE_LINUX="splash quiet mitigations=off"` となっている行の `splash` を削除します。
+
+```bash
+sudo update-grub
+```
+
+これでスプラッシュ画面は表示されなくなります。
+
+<br>
+
+### ブリッジを追加
+
+CMLの仮想マシンを2本足で構成しなかった場合は、手作業でネットワークアダプターを追加します。
+
+CMLを停止します。
+
+Hyper-Vの設定でCMLの設定を変更します。
+
+ハードウェアの追加で「ネットワークアダプター」を追加します。
+
+仮想スイッチ　vSwitch(192.168.0.0)　に接続します。
+
+高度な機能の中にある「MACアドレスのスプーフィングを有効にする」をチェックします。
+
+CMLを起動します。
+
+<br>
+
+コックピットを開いて、左メニューから「ネットワーキング」を選択します。
+
+インタフェースの中にある　「ブリッジの追加」　をクリックします。
+
+名前は　`bridge1`　のままで構いません。
+
+ポートは　`eth1`　を選びます。
+
+ブリッジを追加したら　bridge1　を選択してIPv4アドレスを　192.168.0.212/24　に設定します。
+
+ゲートウェイやDNSは設定しなくて構いません。
+
+コックピットの「端末」から母艦となっているWindowsにpingが飛ぶか確認します。
+
+```bash
+ping 192.168.0.198
+```
 
 <br>
 
 ### PATtyの設定
 
 PATtyを有効にするとCML上の仮想マシンのシリアルコンソールとTCPポート番号を対応付けてくれます。
+
+必須機能なので必ず有効にします。
+
+インストールの途中で有効にしなかった場合は、手作業でサービスを有効化する必要があります。
 
 コックピットに入ります。
 
@@ -205,68 +279,52 @@ CMLで作成する仮想マシンのタグに `serial:5000` や `vnc:7000` な�
 
 <br>
 
-### 起動時のスプラッシュ画面を抑止
+### SSH
 
-このままではHyper-VでCMLを起動したときにスプラッシュ画面が表示されて起動しなくなってしまいます。
+/etc/ssh/sshd_config ファイルから以下のコメントを外します。
 
-起動時に青い画面で
-
-```bash
-*CML2 -- GNU/Linux
+```text
+PasswordAuthentication yes
 ```
 
-が表示されているときに e キーを叩きます。
-
-`linux /boot/vmlinz- ... ` の行にある splash を削除してから Ctrl-x キーを叩くとCMLが起動します。
-
-ログインして `/etc/default/grub` を編集します。
+編集するか、
 
 ```bash
-sudo vi /etc/default/grub
+vi /etc/ssh/sshd_config
 ```
 
-`GRUB_CMDLINE_LINUX="splash quiet mitigations=off"` となっている行の `splash` を削除します。
+sedで書き換えます。
 
 ```bash
-sudo update-grub
+sed -i -e "s/^#PasswordAuthentication yes\$/PasswordAuthentication yes/" /etc/ssh/sshd_config
 ```
-
-これでスプラッシュ画面は表示されなくなります。
 
 <br>
 
-### ブリッジを追加
+### アカウント追加
 
-CMLを停止します。
+コックピットからアカウント追加します。
 
-Hyper-Vの設定でCMLの設定を変更します。
+グループとして `sudo` と `admin` を加えておきます。
 
-ハードウェアの追加で「ネットワークアダプター」を追加します。
+普段使っている端末から、次のコマンドでSSHの公開鍵を送り込んでおきます。
 
-仮想スイッチ　vSwitch(192.168.0.0)　に接続します。
-
-高度な機能の中にある「MACアドレスのスプーフィングを有効にする」をチェックします。
-
-CMLを起動します。
-
-コックピットを開いて、左メニューから「ネットワーキング」を選択します。
-
-インタフェースの中にある　「ブリッジの追加」　をクリックします。
-
-名前は　`bridge1`　のままで構いません。
-
-ポートは　`eth1`　を選びます。
-
-ブリッジを追加したら　bridge1　を選択してIPv4アドレスを　192.168.0.212/24　に設定します。
-
-ゲートウェイやDNSは設定しなくて構いません。
-
-コックピットの「端末」から母艦となっているWindowsにpingが飛ぶか確認します。
+これでパスワードなしでSSH接続できます。
 
 ```bash
-ping 192.168.0.198
+ssh-copy-id -i ~/.ssh/id_rsa.pub -p 1122 192.168.122.212ssh-copy-id -i ~/.ssh/id_rsa.pub -p 1122 192.168.122.212
 ```
 
+<br>
+
+### IPv6中継
+
+/etc/sysctl.confのパラメータを書き換えます。
+
+```text
+net.ipv4.ip_forward=1
+net.ipv6.conf.all.forwarding=1
+```
 
 <br><br><br>
 
@@ -307,36 +365,18 @@ sudo timedatectl set-timezone Asia/Tokyo
 
 <br>
 
-### 追加パッケージ
+### パッケージを追加
+
+たいていのものはすでに入ってます。
+
+stringsでバイナリファイルの中身を覗いてみたいので、binutilsを入れておきます。
+
+あとzip/unzipも。
 
 ```bash
-sudo apt install -y \
-  binutils \
-  unzip \
-  zip
+sudo apt install -y binutils unzip zip
 ```
 
-<br>
-
-### SSH
-
-/etc/ssh/sshd_config ファイルから以下のコメントを外します。
-
-```text
-PasswordAuthentication yes
-```
-
-編集するか、
-
-```bash
-vi /etc/ssh/sshd_config
-```
-
-sedで書き換えます。
-
-```bash
-sed -i -e "s/^#PasswordAuthentication yes\$/PasswordAuthentication yes/" /etc/ssh/sshd_config
-```
 
 <br><br><br>
 
@@ -401,4 +441,4 @@ PATtyの使い方はこのページが参考になります。firewalldの停止
 [The Cisco Learning Network](https://learningnetwork.cisco.com/s/)
 
 CMLってどこからダウンロードするんだっけ？　ライセンスはなんだっけ？　となりがち。
-まずはここにアクセスして　`Store`　に飛んでからログインすればよい。
+まずはここにアクセスして　`Store`　に飛んで、ログインします。

@@ -133,14 +133,6 @@ ipv6 forwarding is off
 
 # FRRのDockerイメージを作る
 
-docker上でルータを動かすときの注意事項はこちらに記載されています。
-
-https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-on-a-router
-
-
-Dockerでは起動するイメージごとにLinuxカーネルの設定を変えることはできず、母艦になっているLinuxと共有していますので、
-母艦になっているCMLのコントローラのUbuntuでLinuxカーネルの設定を変更します。
-
 コックピットにログインしてターミナルを開きます。
 
 root特権を取ります。
@@ -193,7 +185,12 @@ CML上にUbuntu24のインスタンスと、外部接続を用意します。
 bin/cml_create_lab1.py
 ```
 
+このスクリプトをもう一度実行すると同じ名前のものは消えてしまいますので、
+間違って消さないようにラボの名前を適当に変えておきます。
+
 UbuntuにDockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
+
+ubuntu-0にログインします。
 
 ```bash
 sudo apt update
@@ -366,7 +363,7 @@ make save
 scp frr.tar.gz admin@192.168.122.212:
 ```
 
-ここからはコックピットのターミナルに移ります。
+ここからはコックピットのターミナルに移ります（SSHで接続した方がよいです）。
 
 ルート特権を取ります。
 
@@ -384,6 +381,12 @@ cd /var/lib/libvirt/images/node-definitions
 
 ```bash
 vi frr-10-5-iida.yaml
+```
+
+もしくは元になっているfrr.yamlをコピーします。
+
+```bash
+cp -a frr.yaml frr-10-5-iida.yaml
 ```
 
 [frr/cml_node_definition.yaml](/frr/cml_node_definition.yaml) の内容をコピペして保存します。
@@ -419,6 +422,7 @@ cd frr-10-5-iida
 
 ```bash
 mv /var/local/virl2/dropfolder/frr.tar.gz .
+chown libvirt-qemu:virl2 frr.tar.gz
 ```
 
 イメージ定義ファイルを作成します。
@@ -1052,9 +1056,41 @@ reboot
 ノード定義ファイルでboot.shに `sysctl -w net.ipv6.conf.all.forwarding=1` を加えます。
 
 CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.service`　で起動されていますので、
-ファイルを直接書き換えて `--ipv6 --fixed-cidr-v6 fd00::/80` を加えてデーモンを起動してみたり。
+ファイルを直接書き換えて `--ipv6 --ip-forward-no-drop --ip6tables=false` を加えてデーモンを起動してみたり。
 
 コックピットでプロセスを確認すると　`sysctldisableipv6`　という謎のプロセスが走っているので、
 このサービスをkillしてみたり。
 
 いろいろ試してみましたが、結果的にIPv6ルータとして動かすことはできませんでした。
+
+
+
+<br><br><br>
+
+## 参考文献
+
+<br>
+
+[Docker Engine version 28 release notes](https://docs.docker.com/engine/release-notes/28/)
+
+DockerでのIPv6まわりの挙動は頻繁に更新されています。リリースノートのページを開いてIPv6で検索するとよいでしょう。
+
+<br>
+
+[Docker privileged オプションについて](https://qiita.com/muddydixon/items/d2982ab0846002bf3ea8)
+
+Dockerイメージのノード定義ファイルで作成するconfig.jsonでは、
+"caps"という項目でコンテナに割り当てる権限を列挙します。
+
+どんな権限があるのか、は上記に記載されています。
+
+<br>
+
+[Docker on a router](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-on-a-router)
+
+Dockerの公式マニュアルです。コンテナがルータとして振る舞うときの動作について説明があります。
+
+
+[https://docs.docker.com/reference/cli/dockerd/](https://docs.docker.com/reference/cli/dockerd/)
+
+Dockerの公式マニュアルです。dockerdに与える引数の一覧です。

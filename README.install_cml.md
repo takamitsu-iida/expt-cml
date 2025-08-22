@@ -412,7 +412,11 @@ cd /var/lib/libvirt/images/virl-base-images
 /var/local/virl2/images/
 ```
 
+- dropfolderに移動する
 
+```
+cd /var/local/virl2/dropfolder
+```
 
 <br><br><br>
 

@@ -2,9 +2,9 @@
 
 CML2.9以降でDockerイメージが動作するようになっています。
 
-2025年8月時点、FRRのDocker版のバージョンは `FRRouting 10.2.1` です。
+CML2.9に含まれるFRR(Docker)のバージョンは `FRRouting 10.2.1` です。
 
-試したところ、このバージョンのDockerイメージではOpenFabricは期待通りには動かないようです。
+このイメージでOpenFabricの動作を試したところ、期待通りには動きませんでした。
 
 新しいバージョンのFRRイメージを作成して試します（Dockerイメージの作り方は後述します）。
 
@@ -170,27 +170,27 @@ reboot
 
 > [!NOTE]
 >
-> Dockerは起動時にホストがIPv6中継可能かどうかを見ていますので、`sysctl -p` で反映させただけではだめです。
+> dockerdは起動時にホストがIPv6中継可能かどうかをチェックしていますので、`sysctl -p` で反映させただけではだめです。
 > CMLそのものを再起動したほうが早いです。
 
 <br>
 
 ## DockerをインストールしたUbuntuを用意する
 
-CML上にUbuntu24のインスタンスと、外部接続を用意します。
+CML上にラボを作成してUbuntuと外部接続を用意します。
 
-このスクリプトを実行すると、ラボを一つ作成できます。
+そのくらい簡単なラボは手作業で作ってもよいのですが、このスクリプトを実行すれば自動で作成できます。
 
 ```bash
 bin/cml_create_lab1.py
 ```
 
-このスクリプトをもう一度実行すると同じ名前のものは消えてしまいますので、
+このスクリプトを再度実行すると同じ名前のものは消えてしまいますので、
 間違って消さないようにラボの名前を適当に変えておきます。
 
 UbuntuにDockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
 
-ubuntu-0にログインします。
+Ubuntuにログインします。
 
 ```bash
 sudo apt update
@@ -225,7 +225,7 @@ docker-engineをインストールします。
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-再起動します。
+Ubuntuを再起動します。
 
 ```bash
 sudo reboot
@@ -250,15 +250,17 @@ sudo reboot
 
 ## FRRのDockerイメージをビルドします
 
+Ubuntuを再起動したら再度ログインします。
+
 以降はroot特権で作業します。
 
 ```bash
 sudo -s -E
 ```
 
-このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したのでそれを利用します。
+このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したのでそれを利用してFRRのイメージを作っていきます。
 
-Makefileはこのようになっています。dockerコマンドを直に叩いても結果は同じです。
+Makefileはこのようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じです。
 
 ```bash
 .DEFAULT_GOAL := help
@@ -317,7 +319,7 @@ cd frr
 apt install -y make
 ```
 
-繰り返しdockerイメージを作るときにはキャッシュが悪さをするかもしれませんので、削除します（dockerインストール直後の場合は省略して構いません）。
+繰り返しdockerイメージを作るときにはキャッシュが悪さをするかもしれませんので削除します（dockerインストール直後の場合は省略して構いません）。
 
 ```bash
 docker system prune --all
@@ -344,7 +346,7 @@ root@ubuntu-0:~/expt-cml/frr# make inspect
 "sha256:dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71",
 ```
 
-sha256に続く値はこのあと使いますのでどこかにメモしておきます。
+sha256に続く値がIdの値です。このあと使いますのでどこかにメモしておきます。
 
 イメージをtar形式で保存します。
 
@@ -354,8 +356,16 @@ make save
 
 ファイルfrr.tar.gzが生成されます。
 
-このfrr.tar.gzをCMLにアップロードします。
-アップロード先のディレクトリは指定できず、dropfolderという特別な場所に保存されます。
+このfrr.tar.gzをscpでCMLにアップロードします。
+アップロード先のディレクトリは指定できません。`dropfolder` という特別な場所に保存されます。
+
+<br>
+
+> [!NOTE]
+>
+> dropfolderの実体は `/var/local/virl2/dropfolder` にあります。
+
+<br>
 
 この転送はびっくりするくらい高速です。
 
@@ -363,7 +373,7 @@ make save
 scp frr.tar.gz admin@192.168.122.212:
 ```
 
-ここからはコックピットのターミナルに移ります（SSHで接続した方がよいです）。
+ここからはコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHで接続した方がよいです）。
 
 ルート特権を取ります。
 
@@ -425,7 +435,7 @@ mv /var/local/virl2/dropfolder/frr.tar.gz .
 chown libvirt-qemu:virl2 frr.tar.gz
 ```
 
-イメージ定義ファイルを作成します。
+イメージ定義ファイルを作成します（もしくは `cp -a` で既存のイメージ定義ファイルをコピーします）。
 
 ```bash
 vi frr-10-5-iida.yaml
@@ -472,7 +482,7 @@ frr          10.2.1-r1   1bd2e82159f1   4 months ago   39.8MB
 
 CMLのダッシュボードに移ります。
 
-FRR-10-5-iidaをドラッグイメージを一つ作ってみます。
+FRR-10-5-iidaをドラッグしてイメージを一つ作ってみます。
 
 STARTで起動します。
 
@@ -1025,7 +1035,7 @@ CMLにおけるdockerイメージの起動は、dockerコマンドを直接叩�
 
 初期値（省略した場合）はnetadminになります。
 
-コンテナ内でIPv6の中継を有効にするにはkeepのままでは権限が足りないと思われますので、`-day0privs privileged` をOPTSに加えてみます。
+コンテナ内でIPv6の中継を有効にするには初期値のnetaminでは権限が足りないと思われますので、`-day0privs privileged` をOPTSに加えてみます。
 
 ```bash
 vi /etc/default/docker-shim.env
@@ -1034,18 +1044,20 @@ vi /etc/default/docker-shim.env
 最終行の
 
 ```text
-OPTS="-base /var/local/virl2/images -images /var/lib/libvirt/images/virl-base-images -socket /var/local/virl2/socks/docker-shim-event.sock"
+OPTS="-base /var/local/virl2/images ...
 ```
 
 の部分を
 
 ```text
-OPTS="-day0privs privileged -base /var/local/virl2/images -images /var/lib/libvirt/images/virl-base-images -socket /var/local/virl2/socks/docker-shim-event.sock"
+OPTS="-day0privs privileged -base /var/local/virl2/images ...
 ```
 
 のように書き換えます。
 
 これでコンテナにprivilege権限が付与され、boot.shは特権で実行されます。
+
+ノード定義ファイルでboot.shに `sysctl -w net.ipv6.conf.all.forwarding=1` を実行するように書き加えます。
 
 再起動します。
 
@@ -1053,16 +1065,17 @@ OPTS="-day0privs privileged -base /var/local/virl2/images -images /var/lib/libvi
 reboot
 ```
 
-ノード定義ファイルでboot.shに `sysctl -w net.ipv6.conf.all.forwarding=1` を加えます。
+あらためてラボのFRRのイメージをインスタンス化してみたのですが、残念ながら結果は変わらず。
+
+<br><br><br>
 
 CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.service`　で起動されていますので、
-ファイルを直接書き換えて `--ipv6 --ip-forward-no-drop --ip6tables=false` を加えてデーモンを起動してみたり。
+このファイルを直接書き換えて `--ipv6 --ip-forward-no-drop --ip6tables=false` を加えてデーモンを起動してみたり。
 
 コックピットでプロセスを確認すると　`sysctldisableipv6`　という謎のプロセスが走っているので、
 このサービスをkillしてみたり。
 
 いろいろ試してみましたが、結果的にIPv6ルータとして動かすことはできませんでした。
-
 
 
 <br><br><br>
@@ -1090,6 +1103,7 @@ Dockerイメージのノード定義ファイルで作成するconfig.jsonでは
 
 Dockerの公式マニュアルです。コンテナがルータとして振る舞うときの動作について説明があります。
 
+<br>
 
 [https://docs.docker.com/reference/cli/dockerd/](https://docs.docker.com/reference/cli/dockerd/)
 

@@ -1088,6 +1088,7 @@ https://github.com/moby/moby/pull/47686
 
 dockerはiptablesと密接な関係があるみたい。
 
+`sudo iptables --version` が表示されること、`sudo iptables -L -n -v` でルールが表示されること、を確認してみないとまずいな。
 
 <br><br><br>
 

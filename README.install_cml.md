@@ -394,6 +394,12 @@ sudo -s -E
 systemctl restart virl2.target
 ```
 
+- サービスの起動ファイルの場所に移動する
+
+```bash
+cd /usr/lib/systemd/system
+```
+
 - ノード定義ファイルの場所に移動する
 
 ```bash
@@ -409,7 +415,7 @@ cd /var/lib/libvirt/images/virl-base-images
 - 実体化したイメージのディレクトリに移動する
 
 ```bash
-/var/local/virl2/images/
+/var/local/virl2/images/{{ ラボのUUID }}/{{ イメージのUUID }}
 ```
 
 - dropfolderに移動する

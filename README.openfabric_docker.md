@@ -1067,6 +1067,27 @@ CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.servic
 
 いろいろ試してみましたが、結果的にIPv6ルータとして動かすことはできませんでした。
 
+<br><br><br>
+
+その他に、試してみたいのはこれかな。
+
+[Configure namespaced kernel parameters (sysctls) at runtime (--sysctl)](https://docs.docker.com/reference/cli/docker/container/run/#sysctl)
+
+dockerコマンドでコンテナを起動する時に `--sysctl` でカーネルパラメータを指定できるのですが、CMLの場合はラッパーで包んでいる関係で直接dokerコマンドが走っているわけではありません。どうやってこの引数を渡せばいいのかな？
+
+一度、dockerコマンドを直接叩いて起動してみて、sysctlが効くのか確認してみるか。
+
+`docker inspect {起動中のイメージ名}` を実行して、どうみえるかも確認したい。
+
+https://github.com/moby/moby/pull/47686
+
+
+<br><br><br>
+
+ホストマシンでfirewalldを停止してるけど、もしかして、これってまずいのか？
+
+dockerはiptablesと密接な関係があるみたい。
+
 
 <br><br><br>
 

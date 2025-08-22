@@ -1067,6 +1067,10 @@ CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.servic
 
 いろいろ試してみましたが、結果的にIPv6ルータとして動かすことはできませんでした。
 
+
+
+
+
 <br><br><br>
 
 その他に、試してみたいのはこれかな。
@@ -1079,16 +1083,184 @@ dockerコマンドでコンテナを起動する時に `--sysctl` でカーネ�
 
 `docker inspect {起動中のイメージ名}` を実行して、どうみえるかも確認したい。
 
+```bash
+root@cml-controller:~# docker ps
+CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
+365f489c88d3   frr:10.5-iida   "/start.sh"   35 seconds ago   Up 34 seconds             e080f5bf-5220-4e9a-aaa1-c2395d53466a
+```
+
+```bash
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "none",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": [
+                "CAP_CHOWN",
+                "CAP_DAC_OVERRIDE",
+                "CAP_FOWNER",
+                "CAP_FSETID",
+                "CAP_KILL",
+                "CAP_MKNOD",
+                "CAP_NET_ADMIN",
+                "CAP_NET_BIND_SERVICE",
+                "CAP_NET_RAW",
+                "CAP_SETFCAP",
+                "CAP_SETGID",
+                "CAP_SETPCAP",
+                "CAP_SETUID",
+                "CAP_SYS_ADMIN",
+                "CAP_SYS_CHROOT"
+            ],
+            "CapDrop": [
+                "ALL"
+            ],
+
+
+```
+
+本来ならこの"HostConfig"の中に "Sysctls" が存在してほしいのですが、それがありません。
+
 https://github.com/moby/moby/pull/47686
+
+```bash
+       "HostConfig": {
+            ...
+            "Sysctls": {
+                "net.ipv6.conf.default.disable_ipv6": "0"
+            },
+```
+
+このHostConfigは恐らくはconfig.jsonに起因しているはずなので、sysctlsの設定項目を入れてみる価値はありそう。
+
+
+## dockerコマンドでイメージを走らせてみる（--sysctlなし）
+
+- docker run
+
+```bash
+root@cml-controller:~# docker run -d --rm frr:10.5-iida
+7b5766d395baf26a4b0ad44fb1e159ca39a51d0da8bf7de2235255b9dbdf95b5
+
+root@cml-controller:~# docker ps
+CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
+7b5766d395ba   frr:10.5-iida   "/start.sh"   56 seconds ago   Up 55 seconds             festive_lehmann
+
+root@cml-controller:~# docker exec -it 7b5766d395ba bash
+
+root@7b5766d395ba:~# sysctl net.ipv6.conf.all.forwarding
+net.ipv6.conf.all.forwarding = 0
+
+exit
+
+root@cml-controller:~# docker stop 7b5766d395ba
+```
+
+IPv6の中継は動いていません。
+
+<br>
+
+## dockerコマンドでイメージを走らせてみる（--sysctlあり）
+
+- docker run --sysctl
+
+```bash
+root@cml-controller:~# docker run -d --rm --sysctl net.ipv6.conf.all.forwarding=1 frr:10.5-iida
+aa016aa57fa5cdbf1bf0400f1b021cdcd284f86200b11e489384846b4ffab4e5
+```
+
+- docker ps
+
+```bash
+root@cml-controller:~# docker ps
+CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
+aa016aa57fa5   frr:10.5-iida   "/start.sh"   36 seconds ago   Up 35 seconds             stupefied_curran
+```
+
+- docker exec
+
+```bash
+root@cml-controller:~# docker exec -it  aa016aa57fa5 bash
+```
+
+- sysctl
+
+```bash
+root@aa016aa57fa5:~# sysctl net.ipv6.conf.all.forwarding
+net.ipv6.conf.all.forwarding = 1
+
+root@aa016aa57fa5:~# sysctl net.ipv6.conf.default.disable_ipv6
+net.ipv6.conf.default.disable_ipv6 = 0
+```
+
+- docker stop
+
+```bash
+root@cml-controller:~# docker stop aa016aa57fa5
+```
+
+IPv6の中継も動きますね。
+
+
+
+
+docker runで起動する時に `--sysctl` を付ければよいことがわかります。
+
+
+
 
 
 <br><br><br>
 
-ホストマシンでfirewalldを停止してるけど、もしかして、これってまずいのか？
+dockerとiptablesは密連携しているので、ファイアウォール周りも気になるところです。
 
-dockerはiptablesと密接な関係があるみたい。
+ホストマシンでfirewalldを停止してるものの、iptablesは機能しているので問題なさそうです。
 
-`sudo iptables --version` が表示されること、`sudo iptables -L -n -v` でルールが表示されること、を確認してみないとまずいな。
+- `sudo iptables --version`
+
+```bash
+root@cml-controller:~# iptables --version
+iptables v1.8.10 (nf_tables)
+```
+
+- `sudo iptables -L -n -v`
+
+```bash
+root@cml-controller:~# iptables -L -n -v
+Chain INPUT (policy ACCEPT 378 packets, 45558 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+  175 19067 CML_INP    0    --  *      *       0.0.0.0/0            0.0.0.0/0
+  378 45558 LIBVIRT_INP  0    --  *      *       0.0.0.0/0            0.0.0.0/0
+
+Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 CML        0    --  *      *       0.0.0.0/0            0.0.0.0/0
+    0     0 DOCKER-USER  0    --  *      *       0.0.0.0/0            0.0.0.0/0
+    0     0 DOCKER-FORWARD  0    --  *      *       0.0.0.0/0            0.0.0.0/0
+    0     0 LIBVIRT_FWX  0    --  *      *       0.0.0.0/0            0.0.0.0/0
+    0     0 LIBVIRT_FWI  0    --  *      *       0.0.0.0/0            0.0.0.0/0
+    0     0 LIBVIRT_FWO  0    --  *      *       0.0.0.0/0            0.0.0.0/0
+以下省略
+```
+
+
+
+
 
 <br><br><br>
 

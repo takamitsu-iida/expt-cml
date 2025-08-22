@@ -281,7 +281,9 @@ CMLで作成する仮想マシンのタグに `serial:5000` や `vnc:7000` な�
 
 ### SSH
 
-/etc/ssh/sshd_config ファイルから以下のコメントを外します。
+この作業は恐らく不要。
+
+~~/etc/ssh/sshd_config ファイルから以下のコメントを外します。~~
 
 ```text
 PasswordAuthentication yes

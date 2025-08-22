@@ -517,9 +517,7 @@ total 16
 
 `boot.sh`　と　`node.cfg`　と　`protocols`　はCMLのウェブ画面で指定する設定ファイルです。
 
-`config.json`　はdockerの設定ファイルのようです。
-
-中身はこんな感じです。
+`config.json`　はdockerの設定ファイルのようで、中身はこんな感じになっています。
 
 ```bash
 root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11/894b8a48-3a9f-46d9-bf9f-c3d649dac49c/cfg# cat config.json
@@ -557,14 +555,6 @@ root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11
   "busybox": true
 }
 ```
-
-<br>
-
-> [!NOTE]
->
-> "caps" に列挙されているのはコンテナに与えられる権限です。
->
-> https://linux.die.net/man/7/capabilities
 
 <br>
 
@@ -802,9 +792,9 @@ ui:
 同じノード定義ファイルでイメージ定義だけ差し替える、ということはできないことになります
 （実際にやってみたら、できませんでした）。
 
-結論としては、独自にビルドしたdockerイメージを走らせるときには、ノード定義とイメージ定義の両方を作らないといけません。
+独自にビルドしたdockerイメージを走らせるときには、ノード定義とイメージ定義の両方を作らないといけません。
 
-<br><br>
+<br><br><br>
 
 今度は起動しているFRRイメージにシェルで接続してみます。
 
@@ -830,9 +820,9 @@ BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
 
 このファイルはコンテナの中に焼かれていますので、ビルド時にコピーして渡しているはずです。
 
-このファイルを流用したいので、取り出して保存しておきます。
+このファイルは流用したいので、取り出して保存しておきます。
 
-[frr/start.sh](/frr/start.sh) の中身はこの通りです。
+[start.sh](/frr/start.sh) の中身はこの通りです。
 
 ```bash
 #!/bin/bash
@@ -1012,7 +1002,7 @@ CMLにおけるdockerイメージの起動は、dockerコマンドを直接叩�
 
 このファイルを見てみると、どうやら `/etc/default/docker-shim.env` に設定があるようです。
 
-そのファイルを見てみると、実行するコンテナに割り当てる権限を設定できるようです。
+その設定ファイルを見てみると、実行するコンテナに割り当てる権限を設定できるようです。
 
 ```text
 # The way this works can be configured using the -day0privs flag with the

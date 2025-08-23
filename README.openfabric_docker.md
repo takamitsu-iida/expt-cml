@@ -106,7 +106,7 @@ R1#
 
 <br>
 
-## IPv6はやっぱりおかしい
+## IPv6の中継機能が動作しない
 
 コントロールプレーンは正常に動くのですが、どうしても **IPv6の中継機能** を有効にできません。
 
@@ -121,7 +121,7 @@ ipv6 forwarding is off
 >
 > 2025年8月時点
 >
-> CML2.9においてはdockerのコンテナ内でIPv6ルーティングを使うのは無理、という個人的結論です。
+> CML2.9においてはdockerのコンテナ内でIPv6ルータを使うのは無理、という個人的結論です。
 
 <br>
 
@@ -131,7 +131,13 @@ ipv6 forwarding is off
 
 <br><br><br>
 
-# FRRのDockerイメージを作る
+# FRRのDockerイメージの作り方
+
+少々手間はかかりますが、自分で作ったDockerイメージをCMLで動かすこともできます。
+
+<br>
+
+## 母艦の設定
 
 コックピットにログインしてターミナルを開きます。
 
@@ -158,9 +164,6 @@ net.ipv4.ip_forward=1
 #  based on Router Advertisements for this host
 net.ipv6.conf.all.forwarding=1
 ```
-
-ファイアウォールはコックピットのネットワーク設定で停止します。
-
 
 再起動します。
 
@@ -230,6 +233,8 @@ Ubuntuを再起動します。
 ```bash
 sudo reboot
 ```
+
+これら一連の動作はcloud-initの中でやった方がよかったかもしれません。
 
 <br>
 
@@ -502,7 +507,7 @@ frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
 
 # CML2.9のDockerの挙動を調査してみる
 
-CMLで適当なラボを作って、FRRイメージをインスタンス化して起動してみます。
+CMLで適当なラボを作って、CML2.9に同梱されているFRRをインスタンス化して起動してみます。
 
 コックピットのターミナルでイメージの置かれているディレクトリを確認すると、いくつかファイルが作られています。
 
@@ -558,8 +563,8 @@ root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11
 
 <br>
 
-インスタンス化するたびにこれらファイルが作られるということは、
-どこかでこれらファイルを作成するように指示してはずなんだけど、それはどこだろう？
+ラボ内にイメージを作成するたびにこれらファイルが作られるということは、
+どこかでこれらファイルを作成するように指示してはずです。それはどこでしょう？
 
 ノード定義ファイルを覗いてみます。
 
@@ -766,9 +771,9 @@ ui:
   visible: true
 ```
 
-なるほど、疑問解消です。
+なるほど、疑問解消です。先ほど確認したファイルの内容がノード定義ファイルの中に書かれてますね。
 
-ノード定義ファイルにしたがってイメージをインスタンス化するときに `files:` で指定したファイルが生成されます。
+ラボ内にイメージを作成したときにはノード定義ファイルにある `files:` で指定したファイルが生成されます。
 
 そのうちの一つが `config.json` で、Dockerに対する指示はここに書かれています。
 
@@ -785,18 +790,17 @@ ui:
                 "type=bind,source=cfg/node.cfg,target=/config/node.cfg",
                 "type=bind,source=cfg/protocols,target=/config/protocols"
               ],
-
 ```
 
 上記のように config.json では起動するイメージ名を指定していますので、
 同じノード定義ファイルでイメージ定義だけ差し替える、ということはできないことになります
 （実際にやってみたら、できませんでした）。
 
-独自にビルドしたdockerイメージを走らせるときには、ノード定義とイメージ定義の両方を作らないといけません。
+独自で作成したdockerイメージをCMLに登録するには、ノード定義とイメージ定義の両方を作らないといけません。
 
 <br><br><br>
 
-今度は起動しているFRRイメージにシェルで接続してみます。
+今度は起動中のFRRイメージにシェルで接続してみます。
 
 ```bash
 root@cml-controller:~# docker ps
@@ -814,7 +818,7 @@ HOME_URL="https://alpinelinux.org/"
 BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
 ```
 
-このイメージはAlpineをベースにして動作していることがわかります。
+CML2.9に同梱されているFRRのイメージはAlpineをベースにしていることがわかります。
 
 `/start.sh` が実行されているので、その中身を確認してみます。
 
@@ -869,7 +873,7 @@ while true; do
 done
 ```
 
-コンテナの中の /config には確かにファイルが３個あります。
+コンテナの中の /config ディレクトリには確かにファイルが３個あります。
 
 ```bash
 frr-0:/# ls /config
@@ -879,7 +883,7 @@ frr-0:/#
 
 これらファイルはdocker起動時にマウントされて渡されたもので、
 イメージをインスタンス化したときに作られるディレクトリ、
-すなわちCML本体の `/var/local/virl2/images/ラボのUUID/イメージのUUID/cfg` に実物が置かれています。
+すなわちCML本体の `/var/local/virl2/images/{{ラボのUUID}}/{{イメージのUUID}}/cfg` に実物が置かれています。
 
 <br><br>
 
@@ -987,20 +991,100 @@ COPY --chmod=0755 start.sh /
 CMD ["/start.sh"]
 ```
 
-
-
 <br><br><br>
+
+# コンテナ内でIPv6中継を有効にする試み（現状不可能）
+
+前述のように、CML2.9上で走らせるDockerコンテナはIPv6中継ができません。
+
+なんとかIPv6中継できるように試みます。
 
 <br>
 
-## IPv6を有効にする試み
+## dockerコマンドでイメージを走らせてみる（--sysctlなし）
 
+母艦となっているCMLでdockerコマンドを使ってコンテナを起動してみます。
 
-CMLにおけるdockerイメージの起動は、dockerコマンドを直接叩いているわけではなく、CML用にラッパーに包まれています。
+- docker run
 
+```bash
+root@cml-controller:~# docker run -d --rm frr:10.5-iida
+7b5766d395baf26a4b0ad44fb1e159ca39a51d0da8bf7de2235255b9dbdf95b5
+
+root@cml-controller:~# docker ps
+CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
+7b5766d395ba   frr:10.5-iida   "/start.sh"   56 seconds ago   Up 55 seconds             festive_lehmann
+
+root@cml-controller:~# docker exec -it 7b5766d395ba bash
+
+root@7b5766d395ba:~# sysctl net.ipv6.conf.all.forwarding
+net.ipv6.conf.all.forwarding = 0
+
+exit
+
+root@cml-controller:~# docker stop 7b5766d395ba
+```
+
+そのまま走らせただけではIPv6の中継機能は動いていません。
+
+<br>
+
+## dockerコマンドでイメージを走らせてみる（--sysctlあり）
+
+こんどは`--sysctl`を引数に与えて起動してみます。
+
+- docker run --sysctl
+
+```bash
+root@cml-controller:~# docker run -d --rm --sysctl net.ipv6.conf.all.forwarding=1 frr:10.5-iida
+aa016aa57fa5cdbf1bf0400f1b021cdcd284f86200b11e489384846b4ffab4e5
+```
+
+- docker ps
+
+```bash
+root@cml-controller:~# docker ps
+CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
+aa016aa57fa5   frr:10.5-iida   "/start.sh"   36 seconds ago   Up 35 seconds             stupefied_curran
+```
+
+- docker exec
+
+```bash
+root@cml-controller:~# docker exec -it  aa016aa57fa5 bash
+```
+
+- sysctl
+
+```bash
+root@aa016aa57fa5:~# sysctl net.ipv6.conf.all.forwarding
+net.ipv6.conf.all.forwarding = 1
+
+root@aa016aa57fa5:~# sysctl net.ipv6.conf.default.disable_ipv6
+net.ipv6.conf.default.disable_ipv6 = 0
+```
+
+- docker stop
+
+```bash
+root@cml-controller:~# docker stop aa016aa57fa5
+```
+
+IPv6の中継機能が動きました。
+
+docker runで起動する時に `--sysctl` を付ければよいことがわかります。
+
+また、CMLの母艦になっているUbuntuには問題がないこともわかります。
+
+<br>
+
+## CMLの場合
+
+CMLにおけるdockerイメージの起動は、dockerコマンドを直接叩いているわけではなく、CMLがラッパーに包んでいます。
+Webの設定画面で作成したnode.cfgやprotocolsなど、任意の設定ファイルをコンテナに渡せるようにするためで、
 それが `/usr/lib/systemd/system/virl2-docker-shim.service` というサービスです。
 
-このファイルを見てみると、どうやら `/etc/default/docker-shim.env` に設定があるようです。
+このサービスのファイルを見てみると、どうやら `/etc/default/docker-shim.env` に設定があるようです。
 
 その設定ファイルを見てみると、実行するコンテナに割り当てる権限を設定できるようです。
 
@@ -1025,7 +1109,7 @@ CMLにおけるdockerイメージの起動は、dockerコマンドを直接叩�
 
 初期値（省略した場合）はnetadminになります。
 
-コンテナ内でIPv6の中継を有効にするには初期値のnetaminでは権限が足りないと思われますので、`-day0privs privileged` をOPTSに加えてみます。
+コンテナ内でIPv6の中継を有効にするには初期値のnetaminでは権限が足りない可能性がありますので、`-day0privs privileged` をOPTSに加えてみます。
 
 ```bash
 vi /etc/default/docker-shim.env
@@ -1044,10 +1128,9 @@ OPTS="-day0privs privileged -base /var/local/virl2/images ...
 ```
 
 のように書き換えます。
-
 これでコンテナにprivilege権限が付与され、boot.shは特権で実行されます。
 
-ノード定義ファイルでboot.shに `sysctl -w net.ipv6.conf.all.forwarding=1` を実行するように書き加えます。
+続いてノード定義ファイルを編集してboot.shに `sysctl -w net.ipv6.conf.all.forwarding=1` を実行するように書き加えます。
 
 再起動します。
 
@@ -1057,31 +1140,31 @@ reboot
 
 あらためてラボのFRRのイメージをインスタンス化してみたのですが、残念ながら結果は変わらず。
 
-<br><br><br>
+boot.shの中でsysctlを走らせるのは、タイミング的に遅すぎで、コンテナを起動するときにsysctlを設定しないとダメなんでしょう。
+
+<br>
+
+## dockerdの設定を変えてみる（失敗）
 
 CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.service`　で起動されていますので、
-このファイルを直接書き換えて `--ipv6 --ip-forward-no-drop --ip6tables=false` を加えてデーモンを起動してみたり。
+このファイルを直接書き換えて `--ipv6 --ip-forward-no-drop --ip6tables=false` を加えてデーモンを起動してみます。
 
-コックピットでプロセスを確認すると　`sysctldisableipv6`　という謎のプロセスが走っているので、
-このサービスをkillしてみたり。
+他にもオプションをいろいろ試しましたが、いずれもうまくいきませんでした。
 
-いろいろ試してみましたが、結果的にIPv6ルータとして動かすことはできませんでした。
+<br>
 
+## サービス `sysctldisableipv6` を停止してみる（失敗）
 
+コックピットでプロセスを確認すると　`sysctldisableipv6`　という謎のプロセスが走っています。
+おそらくこれはvirl2-fabricに紐づいて起動しているものだと思われます。
 
-
+このサービスをkillしてからFRRイメージを動かしてみましたが、結果は変わらず。
 
 <br><br><br>
 
-その他に、試してみたいのはこれかな。
+## その他気になること
 
-[Configure namespaced kernel parameters (sysctls) at runtime (--sysctl)](https://docs.docker.com/reference/cli/docker/container/run/#sysctl)
-
-dockerコマンドでコンテナを起動する時に `--sysctl` でカーネルパラメータを指定できるのですが、CMLの場合はラッパーで包んでいる関係で直接dokerコマンドが走っているわけではありません。どうやってこの引数を渡せばいいのかな？
-
-一度、dockerコマンドを直接叩いて起動してみて、sysctlが効くのか確認してみるか。
-
-`docker inspect {起動中のイメージ名}` を実行して、どうみえるかも確認したい。
+`docker inspect {起動中のイメージ名}` を実行して、どうみえるか。
 
 ```bash
 root@cml-controller:~# docker ps
@@ -1130,8 +1213,6 @@ CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PO
             "CapDrop": [
                 "ALL"
             ],
-
-
 ```
 
 本来ならこの"HostConfig"の中に "Sysctls" が存在してほしいのですが、それがありません。
@@ -1146,118 +1227,7 @@ https://github.com/moby/moby/pull/47686
             },
 ```
 
-このHostConfigは恐らくはconfig.jsonに起因しているはずなので、sysctlsの設定項目を入れてみる価値はありそう。
-
-
-## dockerコマンドでイメージを走らせてみる（--sysctlなし）
-
-- docker run
-
-```bash
-root@cml-controller:~# docker run -d --rm frr:10.5-iida
-7b5766d395baf26a4b0ad44fb1e159ca39a51d0da8bf7de2235255b9dbdf95b5
-
-root@cml-controller:~# docker ps
-CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
-7b5766d395ba   frr:10.5-iida   "/start.sh"   56 seconds ago   Up 55 seconds             festive_lehmann
-
-root@cml-controller:~# docker exec -it 7b5766d395ba bash
-
-root@7b5766d395ba:~# sysctl net.ipv6.conf.all.forwarding
-net.ipv6.conf.all.forwarding = 0
-
-exit
-
-root@cml-controller:~# docker stop 7b5766d395ba
-```
-
-IPv6の中継は動いていません。
-
-<br>
-
-## dockerコマンドでイメージを走らせてみる（--sysctlあり）
-
-- docker run --sysctl
-
-```bash
-root@cml-controller:~# docker run -d --rm --sysctl net.ipv6.conf.all.forwarding=1 frr:10.5-iida
-aa016aa57fa5cdbf1bf0400f1b021cdcd284f86200b11e489384846b4ffab4e5
-```
-
-- docker ps
-
-```bash
-root@cml-controller:~# docker ps
-CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
-aa016aa57fa5   frr:10.5-iida   "/start.sh"   36 seconds ago   Up 35 seconds             stupefied_curran
-```
-
-- docker exec
-
-```bash
-root@cml-controller:~# docker exec -it  aa016aa57fa5 bash
-```
-
-- sysctl
-
-```bash
-root@aa016aa57fa5:~# sysctl net.ipv6.conf.all.forwarding
-net.ipv6.conf.all.forwarding = 1
-
-root@aa016aa57fa5:~# sysctl net.ipv6.conf.default.disable_ipv6
-net.ipv6.conf.default.disable_ipv6 = 0
-```
-
-- docker stop
-
-```bash
-root@cml-controller:~# docker stop aa016aa57fa5
-```
-
-IPv6の中継も動きますね。
-
-
-
-
-docker runで起動する時に `--sysctl` を付ければよいことがわかります。
-
-
-
-
-
-<br><br><br>
-
-dockerとiptablesは密連携しているので、ファイアウォール周りも気になるところです。
-
-ホストマシンでfirewalldを停止してるものの、iptablesは機能しているので問題なさそうです。
-
-- `sudo iptables --version`
-
-```bash
-root@cml-controller:~# iptables --version
-iptables v1.8.10 (nf_tables)
-```
-
-- `sudo iptables -L -n -v`
-
-```bash
-root@cml-controller:~# iptables -L -n -v
-Chain INPUT (policy ACCEPT 378 packets, 45558 bytes)
- pkts bytes target     prot opt in     out     source               destination
-  175 19067 CML_INP    0    --  *      *       0.0.0.0/0            0.0.0.0/0
-  378 45558 LIBVIRT_INP  0    --  *      *       0.0.0.0/0            0.0.0.0/0
-
-Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
- pkts bytes target     prot opt in     out     source               destination
-    0     0 CML        0    --  *      *       0.0.0.0/0            0.0.0.0/0
-    0     0 DOCKER-USER  0    --  *      *       0.0.0.0/0            0.0.0.0/0
-    0     0 DOCKER-FORWARD  0    --  *      *       0.0.0.0/0            0.0.0.0/0
-    0     0 LIBVIRT_FWX  0    --  *      *       0.0.0.0/0            0.0.0.0/0
-    0     0 LIBVIRT_FWI  0    --  *      *       0.0.0.0/0            0.0.0.0/0
-    0     0 LIBVIRT_FWO  0    --  *      *       0.0.0.0/0            0.0.0.0/0
-以下省略
-```
-
+このHostConfigは恐らくはconfig.jsonに起因しているはずなので、sysctlsの設定項目をノード定義ファイルに入れてみる価値はありそう。
 
 
 

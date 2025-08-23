@@ -121,13 +121,18 @@ ipv6 forwarding is off
 >
 > 2025年8月時点
 >
-> CML2.9においてはdockerのコンテナ内でIPv6ルータを使うのは無理、という個人的結論です。
+> CML2.9において、dockerコンテナ内でIPv6ルータを使うのは無理、というのが個人的結論です。
+>
+> `docker run --sysctl` コマンドでコンテナを起動すればIPv6中継できるのですが、
+> CMLの場合はdockerをラッパーで包んでいる関係でsysctl関連の振る舞いを変えられません。
+> CMLのバージョンが新しくなれば設定できるようになるかもしれませんが、
+> 現状で困っている人はいないでしょう。
 
 <br>
 
 > [!NOTE]
 >
-> OpenFabricでは、隣接ノードとのやりとりさえIPv6にできれば、ルータ超えのIPv4通信が可能になります。
+> なお、OpenFabricでは隣接ノードとのやりとりさえIPv6にできれば、ルータ超えのIPv4通信が可能になります。
 
 <br><br><br>
 
@@ -1140,7 +1145,15 @@ reboot
 
 あらためてラボのFRRのイメージをインスタンス化してみたのですが、残念ながら結果は変わらず。
 
-boot.shの中でsysctlを走らせるのは、タイミング的に遅すぎで、コンテナを起動するときにsysctlを設定しないとダメなんでしょう。
+`/var/local/virl2/images/{{ ラボのUUID }}/{{ イメージのUUID }}/day0.log` を見てみると、次のようになっています。
+
+```bash
+cat day0.log
+!net.ipv6.conf.all.forwarding = 1
+Tsysctl: setting key "net.ipv6.conf.all.forwarding", ignoring: Read-only file system
+```
+
+boot.shの中でsysctlを走らせるのはタイミング的に遅すぎで、コンテナを起動するときにsysctlを設定しないとダメなんでしょう。
 
 <br>
 
@@ -1229,6 +1242,38 @@ https://github.com/moby/moby/pull/47686
 
 このHostConfigは恐らくはconfig.jsonに起因しているはずなので、sysctlsの設定項目をノード定義ファイルに入れてみる価値はありそう。
 
+
+<br><br><br>
+
+## config.jsonを開いたプロセスを特定する
+
+適当なラボでFRRを作って、一度START-STOPします。
+
+`/var/local/virl2/images/{{ ラボのUUID }}/{{ イメージのUUID }}/cfg` に移動します。
+
+このディレクトリにあるconfig.jsonを開くプロセスを特定します。
+
+`sudo apt install -y inotify-tools`
+
+このような中身のシェルスクリプトを適当な場所に作ります。
+
+`inotifywait -m config.json`
+
+これを実行してからラボのFRRを起動します。
+
+が、何も表示されません。
+
+ということは、config.jsonは最初にイメージを実体化するときに読み取られて別の場所に別の形で保存されている可能性が高いです。
+
+<br>
+
+## grepでconfig.jsonを操作しているファイルを探す
+
+`find /var/local/virl2 -type f -print0 | xargs -0 grep config.json`
+
+/var/local/virl2/.local/lib/python3.12/site-packages/simple_drivers/low_level_driver/docker_shim.py
+
+このファイルはcpuやメモリの設定を反映させているものの、sysctl関連の設定は見ていません。
 
 
 

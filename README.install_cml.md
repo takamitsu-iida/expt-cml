@@ -4,6 +4,18 @@ CMLについての個人的メモです。
 
 新しいバージョンが出るたびに新規で作り直していますので、作業手順を忘れないようにメモを残します。
 
+<br>
+
+> [!NOTE]
+>
+> 一時的なものですが、CML2.9をインストールした後にapt upgradeするとSSHで接続できなくなります(ハマりました)。
+>
+> 2025/08/20 [リリースノート](https://developer.cisco.com/docs/modeling-labs/cml-release-notes/#known-issues-and-caveats-for-cml-29)に追記されました。
+>
+> SSH接続できなくなった場合はリリースノートに記載されているワークアラウンドで復旧できます。
+
+<br>
+
 <br><br>
 
 ## CMLについて

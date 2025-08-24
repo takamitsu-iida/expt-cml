@@ -4,6 +4,18 @@ CMLのインストール方法は　[こちら](/README.install_cml.md)
 
 <br>
 
+> [!NOTE]
+>
+> 一時的なものですが、CML2.9をインストールした後にapt upgradeするとSSHで接続できなくなります(ハマりました)。
+>
+> 2025/08/20 [リリースノート](https://developer.cisco.com/docs/modeling-labs/cml-release-notes/#known-issues-and-caveats-for-cml-29)に追記されました。
+>
+> SSH接続できなくなった場合はリリースノートに記載されているワークアラウンドで復旧できます。
+
+<br>
+
+<br>
+
 virl2-clientを使ったラボの作り方は　[こちら](/README.create_lab.md)
 
 <br>
@@ -23,8 +35,3 @@ FRRをインストールしたUbuntuでOpenFabricの検証は　[こちら](/REA
 CMLで動作するFRRのdockerイメージの作り方は　[こちら](/README.openfabric_docker.md)
 
 <br>
-
-> [!NOTE]
->
-> 2025年8月時点　CML2.9上のdockerコンテナはIPv6の中継機能を有効にできませんでした。
-> （OpenFabricの検証はそれでも問題ありません）

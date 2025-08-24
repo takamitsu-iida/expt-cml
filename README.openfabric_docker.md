@@ -3,10 +3,10 @@
 CML2.9以降でDockerイメージが動作するようになっています。
 
 CML2.9に含まれるFRR(Docker)のバージョンは `FRRouting 10.2.1` です。
-
 このイメージでOpenFabricの動作を試したところ、期待通りには動きませんでした。
 
-新しいバージョンのFRRイメージを作成して試します（Dockerイメージの作り方は後述します）。
+そこで新しいバージョンのFRRイメージを作成して試します。
+Dockerイメージの作り方は後述します。
 
 <br>
 
@@ -62,6 +62,32 @@ f>* 192.168.255.13/32 [115/30] via 192.168.255.9, eth2 onlink, weight 1, 00:02:5
   *                            via 192.168.255.10, eth3 onlink, weight 1, 00:02:54
 ```
 
+R1からR8へのping
+
+```bash
+R1# ping 192.168.255.8
+PING 192.168.255.8 (192.168.255.8): 56 data bytes
+64 bytes from 192.168.255.8: seq=0 ttl=63 time=1.611 ms
+64 bytes from 192.168.255.8: seq=1 ttl=63 time=0.812 ms
+^C
+--- 192.168.255.8 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.812/1.211/1.611 ms
+```
+
+R1からR13へのping
+
+```bash
+R1# ping 192.168.255.13
+PING 192.168.255.13 (192.168.255.13): 56 data bytes
+64 bytes from 192.168.255.13: seq=0 ttl=63 time=0.610 ms
+64 bytes from 192.168.255.13: seq=1 ttl=63 time=0.710 ms
+^C
+--- 192.168.255.13 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.610/0.660/0.710 ms
+```
+
 IPv6のルーティングテーブル。これも期待通りです。
 
 ```bash
@@ -104,35 +130,34 @@ C>* fe80::/64 is directly connected, eth1, weight 1, 00:04:24
 R1#
 ```
 
-<br>
+R1からR8へのping
 
-## IPv6の中継機能が動作しない
-
-コントロールプレーンは正常に動くのですが、どうしても **IPv6の中継機能** を有効にできません。
-
-```bash
-R1# show ipv6 forwarding
-ipv6 forwarding is off
+```
+R1# ping ipv6 2001:db8::8
+PING 2001:db8::8 (2001:db8::8): 56 data bytes
+64 bytes from 2001:db8::8: seq=0 ttl=63 time=0.238 ms
+64 bytes from 2001:db8::8: seq=1 ttl=63 time=0.958 ms
+^C
+--- 2001:db8::8 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.238/0.598/0.958 ms
 ```
 
-<br>
+R1からR13へのping
 
-> [!NOTE]
->
-> 2025年8月時点
->
-> CML2.9において、dockerコンテナ内でIPv6ルータを使うのは無理、というのが個人的結論です。
->
-> `docker run --sysctl` コマンドでコンテナを起動すればIPv6中継できるのですが、
-> CMLの場合はdockerをラッパーで包んでいる関係でsysctl関連の振る舞いを変えられません。
-> CMLのバージョンが新しくなれば設定できるようになるかもしれませんが、
-> 現状で困っている人はいないでしょう。
+```
+R1# ping 2001:db8::13
+PING 2001:db8::13 (2001:db8::13): 56 data bytes
+64 bytes from 2001:db8::13: seq=0 ttl=63 time=0.989 ms
+64 bytes from 2001:db8::13: seq=1 ttl=63 time=0.822 ms
+64 bytes from 2001:db8::13: seq=2 ttl=63 time=0.287 ms
+^C
+--- 2001:db8::13 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max = 0.287/0.699/0.989 ms
+```
 
-<br>
-
-> [!NOTE]
->
-> なお、OpenFabricでは隣接ノードとのやりとりさえIPv6にできれば、ルータ超えのIPv4通信が可能になります。
+ルータ・ルータ間にはIPv6リンクローカルアドレスしか設定していませんが、IPv4およびIPv6ともに疎通できています。
 
 <br><br><br>
 
@@ -397,7 +422,7 @@ sudo -s -E
 cd /var/lib/libvirt/images/node-definitions
 ```
 
-ノード定義ファイルを作ります。
+ノード定義ファイルを新規で作ります。
 
 ```bash
 vi frr-10-5-iida.yaml
@@ -506,6 +531,12 @@ frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
 ```
 
 イメージが一つ、増えました。
+
+> [!NOTE]
+>
+> ラボでイメージをドラッグドロップした時点では何も起きていません。
+> `/usr/local/virl2/images/{{ラボのUUID}}` に実体化されたイメージが格納されますが、ドラッグドロップしただけでは作られません。
+> STARTで起動して初めてイメージが実体化されます。
 
 
 <br><br><br><br><br><br>
@@ -776,7 +807,7 @@ ui:
   visible: true
 ```
 
-なるほど、疑問解消です。先ほど確認したファイルの内容がノード定義ファイルの中に書かれてますね。
+なるほど、疑問解消です。先ほど確認したファイルの内容がノード定義ファイルの中に書かれてます。
 
 ラボ内にイメージを作成したときにはノード定義ファイルにある `files:` で指定したファイルが生成されます。
 
@@ -998,9 +1029,9 @@ CMD ["/start.sh"]
 
 <br><br><br>
 
-# コンテナ内でIPv6中継を有効にする試み（現状不可能）
+# コンテナ内でIPv6中継を有効にする試み
 
-前述のように、CML2.9上で走らせるDockerコンテナはIPv6中継ができません。
+CML2.9に同梱のFRRを起動しても、IPv6中継機能が動作しません。
 
 なんとかIPv6中継できるように試みます。
 
@@ -1030,13 +1061,13 @@ exit
 root@cml-controller:~# docker stop 7b5766d395ba
 ```
 
-そのまま走らせただけではIPv6の中継機能は動いていません。
+そのまま走らせただけではIPv6の中継機能は動いてくれません。
 
 <br>
 
 ## dockerコマンドでイメージを走らせてみる（--sysctlあり）
 
-こんどは`--sysctl`を引数に与えて起動してみます。
+今度は`--sysctl`を引数に与えて起動してみます。
 
 - docker run --sysctl
 
@@ -1064,34 +1095,26 @@ root@cml-controller:~# docker exec -it  aa016aa57fa5 bash
 ```bash
 root@aa016aa57fa5:~# sysctl net.ipv6.conf.all.forwarding
 net.ipv6.conf.all.forwarding = 1
-
-root@aa016aa57fa5:~# sysctl net.ipv6.conf.default.disable_ipv6
-net.ipv6.conf.default.disable_ipv6 = 0
 ```
 
-- docker stop
-
-```bash
-root@cml-controller:~# docker stop aa016aa57fa5
-```
-
-IPv6の中継機能が動きました。
+無事にIPv6の中継機能が動きました。
 
 docker runで起動する時に `--sysctl` を付ければよいことがわかります。
 
-また、CMLの母艦になっているUbuntuには問題がないこともわかります。
+また、dockerコマンドを直接叩けばコンテナ内でIPv6ルーティングできることから、
+CMLの母艦になっているUbuntu自体には問題がないこともわかります。
 
 <br>
 
-## CMLの場合
+## CMLのDockerコンテナでIPv6中継を有効にする試み
 
-CMLにおけるdockerイメージの起動は、dockerコマンドを直接叩いているわけではなく、CMLがラッパーに包んでいます。
-Webの設定画面で作成したnode.cfgやprotocolsなど、任意の設定ファイルをコンテナに渡せるようにするためで、
+CMLにおけるdockerイメージの起動は、dockerコマンドを直接叩いているわけではなく、CML独自のラッパーを経由しています。
+これはWebの設定画面で作成したnode.cfgやprotocolsなど、任意の設定ファイルをコンテナに渡せるようにするためで、
 それが `/usr/lib/systemd/system/virl2-docker-shim.service` というサービスです。
 
 このサービスのファイルを見てみると、どうやら `/etc/default/docker-shim.env` に設定があるようです。
 
-その設定ファイルを見てみると、実行するコンテナに割り当てる権限を設定できるようです。
+docker-shim.envを見てみると、コンテナで最初に実行するスクリプトの権限を設定できるようです。
 
 ```text
 # The way this works can be configured using the -day0privs flag with the
@@ -1153,7 +1176,8 @@ cat day0.log
 Tsysctl: setting key "net.ipv6.conf.all.forwarding", ignoring: Read-only file system
 ```
 
-boot.shの中でsysctlを走らせるのはタイミング的に遅すぎで、コンテナを起動するときにsysctlを設定しないとダメなんでしょう。
+boot.shの中でsysctlを走らせるのはタイミング的に遅すぎなんだと思います。
+いくら特権を持っていてもリードオンリーでマウントされたファイルシステムには書き込めません。
 
 <br>
 
@@ -1164,118 +1188,96 @@ CMLにおけるdockerのサービスは　`/usr/lib/systemd/system/docker.servic
 
 他にもオプションをいろいろ試しましたが、いずれもうまくいきませんでした。
 
+このファイルを変更する必要はありません。
+
 <br>
 
 ## サービス `sysctldisableipv6` を停止してみる（失敗）
 
 コックピットでプロセスを確認すると　`sysctldisableipv6`　という謎のプロセスが走っています。
-おそらくこれはvirl2-fabricに紐づいて起動しているものだと思われます。
 
-このサービスをkillしてからFRRイメージを動かしてみましたが、結果は変わらず。
+このサービスをkillしてからFRRイメージを動かしてみましたが、結果は変わりませんでした。
 
-<br><br><br>
-
-## その他気になること
-
-`docker inspect {起動中のイメージ名}` を実行して、どうみえるか。
-
-```bash
-root@cml-controller:~# docker ps
-CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
-365f489c88d3   frr:10.5-iida   "/start.sh"   35 seconds ago   Up 34 seconds             e080f5bf-5220-4e9a-aaa1-c2395d53466a
-```
-
-```bash
-        "HostConfig": {
-            "Binds": null,
-            "ContainerIDFile": "",
-            "LogConfig": {
-                "Type": "json-file",
-                "Config": {}
-            },
-            "NetworkMode": "none",
-            "PortBindings": {},
-            "RestartPolicy": {
-                "Name": "no",
-                "MaximumRetryCount": 0
-            },
-            "AutoRemove": false,
-            "VolumeDriver": "",
-            "VolumesFrom": null,
-            "ConsoleSize": [
-                0,
-                0
-            ],
-            "CapAdd": [
-                "CAP_CHOWN",
-                "CAP_DAC_OVERRIDE",
-                "CAP_FOWNER",
-                "CAP_FSETID",
-                "CAP_KILL",
-                "CAP_MKNOD",
-                "CAP_NET_ADMIN",
-                "CAP_NET_BIND_SERVICE",
-                "CAP_NET_RAW",
-                "CAP_SETFCAP",
-                "CAP_SETGID",
-                "CAP_SETPCAP",
-                "CAP_SETUID",
-                "CAP_SYS_ADMIN",
-                "CAP_SYS_CHROOT"
-            ],
-            "CapDrop": [
-                "ALL"
-            ],
-```
-
-本来ならこの"HostConfig"の中に "Sysctls" が存在してほしいのですが、それがありません。
-
-https://github.com/moby/moby/pull/47686
-
-```bash
-       "HostConfig": {
-            ...
-            "Sysctls": {
-                "net.ipv6.conf.default.disable_ipv6": "0"
-            },
-```
-
-このHostConfigは恐らくはconfig.jsonに起因しているはずなので、sysctlsの設定項目をノード定義ファイルに入れてみる価値はありそう。
-
-
-<br><br><br>
-
-## config.jsonを開いたプロセスを特定する
-
-適当なラボでFRRを作って、一度START-STOPします。
-
-`/var/local/virl2/images/{{ ラボのUUID }}/{{ イメージのUUID }}/cfg` に移動します。
-
-このディレクトリにあるconfig.jsonを開くプロセスを特定します。
-
-`sudo apt install -y inotify-tools`
-
-このような中身のシェルスクリプトを適当な場所に作ります。
-
-`inotifywait -m config.json`
-
-これを実行してからラボのFRRを起動します。
-
-が、何も表示されません。
-
-ということは、config.jsonは最初にイメージを実体化するときに読み取られて別の場所に別の形で保存されている可能性が高いです。
+おそらくこれはvirl2-fabricに紐づいて起動しているもので、dockerとは無関係と思われます。
 
 <br>
 
-## grepでconfig.jsonを操作しているファイルを探す
+## ノード定義ファイルにmisc_argsを追加する（失敗）
 
-`find /var/local/virl2 -type f -print0 | xargs -0 grep config.json`
+Dockerを使う別のノード定義ファイルを覗いてみるとmisc_argsを指定しているものがあります。
 
-/var/local/virl2/.local/lib/python3.12/site-packages/simple_drivers/low_level_driver/docker_shim.py
+たとえば、thousandeyesの場合はこんな感じで指定しています。
 
-このファイルはcpuやメモリの設定を反映させているものの、sysctl関連の設定は見ていません。
+```yaml
+              "misc_args": [
+                "--memory-swap=2g",
+                "--shm-size=512m"
+              ],
+```
 
+これをまねてFRRのノード定義ファイルにmisc_argsを追加して--sysctlオプションを書いてみます。
 
+```yaml
+    files:
+      - name: config.json
+        editable: false
+        content: |
+          {
+            "docker": {
+              "image": "frr:10.5-iida",
+              "misc_args": [
+                "--sysctl net.ipv6.conf.all.forwarding=1"
+              ]
+            },
+```
+
+このように書いてしまうと、実際のところイメージは起動しなくなるのですが、そのときの/var/log/syslogには次のようなエラーが記録されます。
+
+```bash
+cml-controller docker-shim[112054]:  ERROR output id: 15403b14-74df-4c63-862e-bb1e1d149fd6
+ err: exit status 125
+ stderr: "unknown flag: --sysctl net.ipv6.conf.all.forwarding\n\n
+ Usage:  docker create [OPTIONS] IMAGE [COMMAND] [ARG...]\n\n
+ Run 'docker create --help' for more information\n"
+```
+
+どうやらmisc_argsで指定した文字列はdocker-shimに渡されて、さらにそこから `docker create` が呼び出されて使われるようです。
+
+misc_args以外に指定できるオプションがないか、 `strings /usr/local/bin/docker-shim` で探してみます。
+
+```bash
+root@cml-controller:/usr/local/bin# strings docker-shim | grep _args
+json:"run_args,omitempty"
+json:"misc_args,omitempty"
+json:"name_args,omitempty"
+json:"extra_args,omitempty"
+```
+
+run_argsがそれっぽいです。
+
+<br>
+
+## ノード定義ファイルにrun_argsを追加する（成功）
+
+ノード定義ファイルにrun_argsを書いてみます。
+
+```yaml
+"run_args": [
+  "--sysctl net.ipv6.conf.all.forwarding=1"
+]
+```
+
+これもmisc_argsのときと同じく、docker createに渡されてエラーになってしまいます。
+
+ちょっと書き方を変えてみます。
+
+```yaml
+"run_args": [
+  "--sysctl", "net.ipv6.conf.all.forwarding=1"
+]
+```
+
+するとうまくいきました！！！
 
 <br><br><br>
 

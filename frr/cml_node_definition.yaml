@@ -43,6 +43,9 @@ configuration:
               "env": [
                 "MAX_FDS=100000"
               ]
+              "misc_args": [],
+              "run_args": [ "--sysctl", "net.ipv6.conf.all.forwarding=1" ],
+              "extra_args": []
             },
             "shell": "/bin/bash",
             "day0cmd": [ "/bin/bash", "/config/boot.sh" ],

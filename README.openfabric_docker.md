@@ -1279,7 +1279,29 @@ run_argsがそれっぽいです。
 
 するとうまくいきました！！！
 
-<br><br><br>
+<br>
+
+## おまけ・ライセンス数
+
+このラボ構成ではR1～R13まで合計13台のFRR(docker)を動かしています。
+
+![ラボ構成](/assets/openfabric_docker_lab.png)
+
+このとき消費するライセンス数は・・・
+
+![ライセンス数](./assets/openfabric_docker_lab_license.png)
+
+13でした。
+
+自分で作成したdockerイメージであっても、ライセンス数のカウント対象です。
+
+CML Personalだと最大20台、CML Personal Plusだと40台まで動作します。
+メモリやCPUの関係で20台以上動かすことはないと思ってましたが、
+Dockerをサポートするようになったので、いまのスペックのPCでも、もっとたくさんのノードを動かせそうです。
+
+次に買うときはCML Personal Plusでもいいかも。
+
+<br><br><br><br>
 
 ## 参考文献
 

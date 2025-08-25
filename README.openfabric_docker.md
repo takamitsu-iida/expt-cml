@@ -1475,3 +1475,15 @@ chown libvirt-qemu:virl2 frr.tar.gz
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition_alpine.yaml --output frr-10-4-iida.yaml
 chown libvirt-qemu:virl2 frr-10-4-iida.yaml
 ```
+
+イメージ定義ファイルのsha256をインスペクトした値に置き換える。
+
+```bash
+vi frr-10-4-iida.yaml
+```
+
+サービスを再起動
+
+```bash
+systemctl restart virl2.target
+```

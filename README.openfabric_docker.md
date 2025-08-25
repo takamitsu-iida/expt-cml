@@ -1353,17 +1353,18 @@ apkを作成します。
 ./docker/alpine/build.sh
 ```
 
-```dockerfile
+必要なファイルを取ってきます。
 
+```bash
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/Dockerfile.alpine --output Dockerfile
 
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/start.sh --output start.sh
 ```
-
-
 
 ビルドします。
 
 ```bash
-docker build --rm -f docker/alpine/Dockerfile -t frr:10.4 .
+docker build --rm -f ./Dockerfile -t frr:10.4 .
 ```
 
 `docker images` でイメージを確認します。

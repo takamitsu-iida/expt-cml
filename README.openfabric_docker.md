@@ -406,7 +406,7 @@ make save
 
 > [!NOTE]
 >
-> dropfolderの実体は `/var/local/virl2/dropfolder` にあります。
+> dropfolderの実体は `/var/local/virl2/dropfolder` です。
 
 <br>
 
@@ -450,6 +450,20 @@ cp -a frr.yaml frr-10-5-iida.yaml
 chown libvirt-qemu:virl2 frr-10-5-iida.yaml
 ```
 
+<br>
+
+> [!NOTE]
+>
+> githubにあるものをcurlで取ってきたほうが速いかもしれません。
+>
+> ```bash
+> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-5-iida.yaml
+>
+> chown libvirt-qemu:virl2 frr-10-5-iida.yaml
+> ```
+
+<br>
+
 次にイメージ定義を作ります。
 
 イメージ定義が置かれている場所に移動します。
@@ -478,7 +492,7 @@ mv /var/local/virl2/dropfolder/frr.tar.gz .
 chown libvirt-qemu:virl2 frr.tar.gz
 ```
 
-イメージ定義ファイルを作成します（もしくは `cp -a` で既存のイメージ定義ファイルをコピーします）。
+イメージ定義ファイルを作成します。
 
 ```bash
 vi frr-10-5-iida.yaml
@@ -504,6 +518,20 @@ read_only: true
 schema_version: 0.0.1
 sha256:
 ```
+
+<br>
+
+> [!NOTE]
+>
+> イメージ定義ファイルもgithubから採取した方が簡単かもしれません。
+>
+> ```bash
+> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition_alpine.yaml --output frr-10-5-iida.yaml
+>
+> chown libvirt-qemu:virl2 frr-10-4-iida.yaml
+> ```
+
+<br>
 
 sha256の部分をイメージをインスペクトしたときにメモしたものに置き換えます。
 
@@ -549,7 +577,7 @@ frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
 
 <br><br><br><br><br><br>
 
-# CML2.9のDockerの挙動を調査してみる
+# 【参考】CML2.9のDockerの挙動を調査してみる
 
 CMLで適当なラボを作って、CML2.9に同梱されているFRRをインスタンス化して起動してみます。
 
@@ -1043,13 +1071,13 @@ COPY --chmod=0755 start.sh /
 CMD ["/start.sh"]
 ```
 
-<br><br><br>
+<br><br><br><br><br><br>
 
-# コンテナ内でIPv6中継を有効にする試み
+# 【参考】コンテナ内でIPv6中継を有効にする試み
 
 CML2.9に同梱のFRRを起動しても、IPv6中継機能が動作しません。
 
-なんとかIPv6中継できるように試みます。
+結論としては、ノード定義ファイルの中に記載するconfig.jsonに`run_args`というオプションを追記して、docker create時に `--sysctl net.ipv6.conf.all.forwarding=1` を渡してあげる必要があります。
 
 <br>
 
@@ -1295,62 +1323,10 @@ run_argsがそれっぽいです。
 
 するとうまくいきました！！！
 
-<br>
 
-## おまけ・ライセンス数
+<br><br><br><br><br><br>
 
-このラボ構成ではR1～R13まで合計13台のFRR(docker)を動かしています。
-
-![ラボ構成](/assets/openfabric_docker_lab.png)
-
-このとき消費するライセンス数は・・・
-
-![ライセンス数](./assets/openfabric_docker_lab_license.png)
-
-13でした。
-
-自分で作成したdockerイメージであっても、ライセンス数のカウント対象です。
-
-CML Personalだと最大20台、CML Personal Plusだと40台まで動作します。
-メモリやCPUの関係で20台以上動かすことはないと思ってましたが、
-Dockerをサポートするようになったので、いまのスペックのPCでも、もっとたくさんのノードを動かせそうです。
-
-次に買うときはCML Personal Plusでもいいかも。
-
-<br><br><br><br>
-
-## 参考文献
-
-<br>
-
-[Docker Engine version 28 release notes](https://docs.docker.com/engine/release-notes/28/)
-
-DockerでのIPv6まわりの挙動は頻繁に更新されています。リリースノートのページを開いてIPv6で検索するとよいでしょう。
-
-<br>
-
-[Docker privileged オプションについて](https://qiita.com/muddydixon/items/d2982ab0846002bf3ea8)
-
-Dockerイメージのノード定義ファイルで作成するconfig.jsonでは、
-"caps"という項目でコンテナに割り当てる権限を列挙します。
-
-どんな権限があるのか、は上記に記載されています。
-
-<br>
-
-[Docker on a router](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-on-a-router)
-
-Dockerの公式マニュアルです。コンテナがルータとして振る舞うときの動作について説明があります。
-
-<br>
-
-[https://docs.docker.com/reference/cli/dockerd/](https://docs.docker.com/reference/cli/dockerd/)
-
-Dockerの公式マニュアルです。dockerdに与える引数の一覧です。
-
-<br><br><br><br>
-
-## Alpine版をビルドする
+# 【参考】Alpine版をビルドする
 
 DockerをインストールしたUbuntu24にログインします。
 
@@ -1506,4 +1482,38 @@ systemctl restart virl2.target
 
 これでAlpineをベースにしたFRR(Docker)が登録され、使えるようになります。
 
-ですが、Alpineベースのイメージはバージョン10.4でも挙動が不審です。
+ですが、Alpineベースのイメージはバージョン10.4でも挙動不審です。
+
+サイズは大きくてもUbuntuベースでビルドした方が良さそうです。
+
+
+<br><br><br><br><br><br>
+
+# 参考文献
+
+<br>
+
+[Docker Engine version 28 release notes](https://docs.docker.com/engine/release-notes/28/)
+
+DockerでのIPv6まわりの挙動は頻繁に更新されています。リリースノートのページを開いてIPv6で検索するとよいでしょう。
+
+<br>
+
+[Docker privileged オプションについて](https://qiita.com/muddydixon/items/d2982ab0846002bf3ea8)
+
+Dockerイメージのノード定義ファイルで作成するconfig.jsonでは、
+"caps"という項目でコンテナに割り当てる権限を列挙します。
+
+どんな権限があるのか、は上記に記載されています。
+
+<br>
+
+[Docker on a router](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-on-a-router)
+
+Dockerの公式マニュアルです。コンテナがルータとして振る舞うときの動作について説明があります。
+
+<br>
+
+[https://docs.docker.com/reference/cli/dockerd/](https://docs.docker.com/reference/cli/dockerd/)
+
+Dockerの公式マニュアルです。dockerdに与える引数の一覧です。

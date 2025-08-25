@@ -12,12 +12,12 @@ FROM alpine:latest
 # -rw-r--r-- 1 cisco cisco     6041  8月 25 09:41 libyang-doc-2.1.128-r0.apk
 
 # ローカルにコピー
-COPY docker/alpine/pkgs/apk/x86_64/ /tmp/apks/
+COPY ./frr-10*.apk /tmp/
+COPY ./libyang-2*.apk /tmp/
 
 # apkファイルをインストール
-RUN apk add --allow-untrusted \
-    /tmp/apks/frr-10*.apk \
-    /tmp/apks/libyang-2*.apk
+RUN apk add --allow-untrusted /tmp/frr-10*.apk /tmp/libyang-2*.apk \
+    && rc-update del frr default || true
 
 # busybox-extras (for vtysh) と ethtool を追加インストール
 RUN apk add --no-cache busybox-extras ethtool

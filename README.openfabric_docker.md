@@ -1353,12 +1353,23 @@ apkを作成します。
 ./docker/alpine/build.sh
 ```
 
+これで `./docker/alpine/pkgs/apk/x86_64/` にapkファイルが作成されます。
+
+ディレクトリを変えます。`~/build`を作成して移動します。
+
+```bash
+mkdir -p ~/build
+cd ~/build
+```
+
 必要なファイルを取ってきます。
 
 ```bash
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/Dockerfile.alpine --output Dockerfile
 
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/start.sh --output start.sh
+
+cp ~/src/frr/docker/alpine/pkgs/apk/x86_64/* .
 ```
 
 ビルドします。
@@ -1372,9 +1383,11 @@ docker build --rm -f ./Dockerfile -t frr:10.4 .
 実行例。
 
 ```bash
-cisco@ubuntu-0:~/src/frr$ docker images
-REPOSITORY   TAG       IMAGE ID       CREATED          SIZE
-frr          10.4      7047e3fe1faf   56 seconds ago   192MB
+cisco@ubuntu-0:~/build$ docker images
+REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
+frr          10.4      310cd34f991e   9 seconds ago   120MB
 ```
 
+```bash
 docker run -d -it --rm --name frr frr:10.4
+```

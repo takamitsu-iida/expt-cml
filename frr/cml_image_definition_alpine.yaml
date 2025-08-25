@@ -4,10 +4,10 @@
 # part of VIRL^2
 #
 
-id: frr-10-5-iida
-label: Free Range Routing (frr) 10.5-iida
-description: Free Range Routing (frr) 10.5-iida (Docker)
-node_definition_id: frr-10-5-iida
+id: frr-10-4-iida
+label: Free Range Routing (frr) 10.4-iida
+description: Free Range Routing (frr) 10.4-iida (Docker)
+node_definition_id: frr-10-4-iida
 disk_image: frr.tar.gz
 read_only: true
 schema_version: 0.0.1

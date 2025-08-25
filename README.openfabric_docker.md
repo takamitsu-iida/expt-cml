@@ -1449,3 +1449,29 @@ sudo -s -E
 ```bash
 cd /var/lib/libvirt/images/node-definitions/
 ```
+
+ノード定義ファイルをダウンロード
+
+```bash
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition_alpine.yaml --output frr-10-4-iida.yaml
+
+chown libvirt-qemu:virl2 frr-10-4-iida.yaml
+```
+
+イメージ定義ファイルの場所に移動
+
+```bash
+cd /var/lib/libvirt/images/virl-base-images/
+```
+
+dropfolderからイメージを移動、イメージ定義ファイルをダウンロード
+
+```bash
+mkdir -p frr-10-4-iida
+chown libvirt-qemu:virl2 frr-10-4-iida
+cd frr-10-4-iida
+mv /var/local/virl2/dropfolder/frr.tar.gz .
+chown libvirt-qemu:virl2 frr.tar.gz
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition_alpine.yaml --output frr-10-4-iida.yaml
+chown libvirt-qemu:virl2 frr-10-4-iida.yaml
+```

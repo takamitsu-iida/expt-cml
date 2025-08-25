@@ -1,0 +1,34 @@
+FROM alpine:latest
+
+# cisco@ubuntu-0:~/src/frr$ ls -l docker/alpine/pkgs/apk/x86_64/
+# total 33572
+# -rw-r--r-- 1 cisco cisco     1665  8月 25 10:01 APKINDEX.tar.gz
+# -rw-r--r-- 1 cisco cisco  6082162  8月 25 10:01 frr-10.4.1_git849437679716-r0.apk
+# -rw-r--r-- 1 cisco cisco 22740032  8月 25 10:01 frr-dbg-10.4.1_git849437679716-r0.apk
+# -rw-r--r-- 1 cisco cisco  4846391  8月 25 10:01 frr-dev-10.4.1_git849437679716-r0.apk
+# -rw-r--r-- 1 cisco cisco    67193  8月 25 10:01 frr-doc-10.4.1_git849437679716-r0.apk
+# -rw-r--r-- 1 cisco cisco   505222  8月 25 09:41 libyang-2.1.128-r0.apk
+# -rw-r--r-- 1 cisco cisco   111526  8月 25 09:41 libyang-dev-2.1.128-r0.apk
+# -rw-r--r-- 1 cisco cisco     6041  8月 25 09:41 libyang-doc-2.1.128-r0.apk
+
+# ローカルにコピー
+COPY ./docker/alpine/pkgs/apk/x86_64/ /tmp/apks/
+
+# apkファイルをインストール
+RUN apk add --allow-untrusted \
+    /tmp/apks/frr-10*.apk \
+    /tmp/apks/libyang-2*.apk
+
+# busybox-extras (for vtysh) と ethtool を追加インストール
+RUN apk add --no-cache busybox-extras ethtool
+
+
+RUN mkdir /config \
+    && echo "service integrated-vtysh-config" >> /etc/frr/vtysh.conf \
+    && touch /etc/frr/frr.conf \
+    && chmod 777 /etc/frr/frr.conf \
+    && chmod 777 /etc/frr
+
+COPY --chmod=0755 start.sh /
+
+CMD ["/start.sh"]

@@ -1331,3 +1331,49 @@ Dockerの公式マニュアルです。コンテナがルータとして振る�
 [https://docs.docker.com/reference/cli/dockerd/](https://docs.docker.com/reference/cli/dockerd/)
 
 Dockerの公式マニュアルです。dockerdに与える引数の一覧です。
+
+<br><br><br><br>
+
+## Alpine版をビルドする
+
+DockerをインストールしたUbuntu24にログインします。
+
+githubからソースコードをクローンします。
+
+```bash
+mkdir src
+cd src
+git clone https://github.com/frrouting/frr.git -b stable/10.4
+cd frr
+```
+
+apkを作成します。
+
+```bash
+./docker/alpine/build.sh
+```
+
+```dockerfile
+
+
+```
+
+
+
+ビルドします。
+
+```bash
+docker build --rm -f docker/alpine/Dockerfile -t frr:10.4 .
+```
+
+`docker images` でイメージを確認します。
+
+実行例。
+
+```bash
+cisco@ubuntu-0:~/src/frr$ docker images
+REPOSITORY   TAG       IMAGE ID       CREATED          SIZE
+frr          10.4      7047e3fe1faf   56 seconds ago   192MB
+```
+
+docker run -d -it --rm --name frr frr:10.4

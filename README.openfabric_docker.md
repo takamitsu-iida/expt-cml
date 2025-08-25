@@ -1388,6 +1388,64 @@ REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
 frr          10.4      310cd34f991e   9 seconds ago   120MB
 ```
 
+実行
+
 ```bash
 docker run -d -it --rm --name frr frr:10.4
+```
+
+動作確認
+
+```bash
+docker exec -it frr bash
+```
+
+停止
+
+```bash
+docker stop frr
+```
+
+インスペクトしてIDを確認
+
+```bash
+docker inspect frr:10.4 | grep -i sha256 | head -n 1 | awk '{print $2}'
+```
+
+実行例
+
+```bash
+cisco@ubuntu-0:~/build$ docker inspect frr:10.4 | grep -i sha256 | head -n 1 | awk '{print $2}'
+"sha256:3b4b958f319fecdcbe8f8207447f4ad812e6ff0d76734bf412c75451bfcb44bb",
+```
+
+保存
+
+```bash
+docker save -o frr.tar frr:10.4
+gzip frr.tar
+```
+
+CMLのdropfolderにイメージを転送
+
+```bash
+scp frr.tar.gz admin@192.168.122.212:
+```
+
+コックピットのターミナルに移動
+
+```bash
+ssh 192.168.122.212 -p 1122
+```
+
+ルート特権を取る
+
+```bash
+sudo -s -E
+```
+
+ノード定義ファイルの場所に移動
+
+```bash
+cd /var/lib/libvirt/images/node-definitions/
 ```

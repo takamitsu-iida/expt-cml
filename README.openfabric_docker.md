@@ -175,6 +175,14 @@ round-trip min/avg/max = 0.287/0.699/0.989 ms
 
 <br>
 
+> [!NOTE]
+>
+> Dockerの宿命ですが、ノードをSTOPすると動作中のFRRのrunning-configは消滅します。writeしてfrr.confに保存しても、それも消えてしまいます。
+>
+> LAB→Download LabでYAMLとして保存するのが良さそうです。
+
+<br>
+
 ## 母艦の設定
 
 コックピットにログインしてターミナルを開きます。

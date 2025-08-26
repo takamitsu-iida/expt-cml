@@ -44,7 +44,11 @@ configuration:
                 "MAX_FDS=100000"
               ],
               "misc_args": [],
-              "run_args": [ "--sysctl", "net.ipv6.conf.all.forwarding=1" ],
+              "run_args": [
+                "--sysctl", "net.ipv6.conf.all.forwarding=1",
+                "--sysctl", "net.ipv6.conf.all.seg6_enabled=1",
+                "--sysctl", "net.ipv6.seg6_flowlabel=1",
+              ],
               "extra_args": []
             },
             "shell": "/bin/bash",
@@ -92,7 +96,7 @@ configuration:
           # ospf6d
           # ripd
           # ripngd
-          # isisd
+          isisd
           # pimd
           # pim6d
           # ldpd

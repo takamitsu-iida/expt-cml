@@ -70,13 +70,13 @@ configuration:
               no shutdown
           interface eth1
               !no ip address
-              shutdown
+              no shutdown
           interface eth2
               !no ip address
-              shutdown
+              no shutdown
           interface eth3
               !no ip address
-              shutdown
+              no shutdown
           !
           end
       - name: boot.sh

@@ -177,9 +177,13 @@ round-trip min/avg/max = 0.287/0.699/0.989 ms
 
 > [!NOTE]
 >
-> Dockerの宿命ですが、ノードをSTOPすると動作中のFRRのrunning-configは消滅します。writeしてfrr.confに保存しても、それも消えてしまいます。
+> Dockerの宿命ですが、ノードをSTOPすると動作中のFRRのrunning-configは消滅します。
+> writeしてfrr.confに保存しても、それも消えてしまいます。
 >
-> LAB→Download LabでYAMLとして保存するのが良さそうです。
+> 手間ではありますが、解決方法はあります。
+>
+> CMLでノードを開いて CONFIG → FETCH をクリックするとrunning-configを取得できます。
+> ノードをSTOP、WIPEしてからSAVEボタンをクリックすると、次回以降その設定で起動できます。
 
 <br>
 

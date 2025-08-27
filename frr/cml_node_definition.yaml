@@ -67,15 +67,19 @@ configuration:
           !
           interface eth0
               !no ip address
+              description eth0
               no shutdown
           interface eth1
               !no ip address
+              description eth1
               no shutdown
           interface eth2
               !no ip address
+              description eth2
               no shutdown
           interface eth3
               !no ip address
+              description eth3
               no shutdown
           !
           end

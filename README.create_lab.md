@@ -36,7 +36,19 @@ CML_USERNAME = "admin"
 CML_PASSWORD = "Cisco123"
 ```
 
-これら情報は `.env` に書いた方が安全ですが、ここでは簡単のため、このようにしています。
+アカウント情報は `.env` に環境変数として記述した方が安全ですが、ここでは簡単のためこのようにしています。
+
+<br>
+
+> [!NOTE]
+>
+> マニュアルから引用。
+>
+> If no username or password are given then the environment will be checked,
+> looking for VIRL2_USER or VIRL_USERNAME and VIRL2_PASS or VIRL_PASSWORD, espectively.
+> Environment variables take precedence over those provided in arguments.
+>
+> It’s also possible to pass the URL as an environment variable VIRL2_URL or VIRL_HOST.
 
 <br>
 
@@ -109,6 +121,17 @@ Ubuntuを作りたければ、node_definitionは `ubuntu` を、image_definition
 `bin/cml_create_lab1.py` を使います。
 
 削除するには `-d` を引数に与えます。
+
+<br>
+
+> [!NOTE]
+>
+> 実行時に表示される
+>
+> `SSL Verification disabled`
+>
+> というメッセージを消すには証明書の検証を有効にするしかありません。
+> virl2_clientのソースコード virl2_client.py をみればわかります。
 
 <br>
 

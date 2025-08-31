@@ -159,6 +159,14 @@ round-trip min/avg/max = 0.287/0.699/0.989 ms
 
 ルータ・ルータ間にはIPv6リンクローカルアドレスしか設定していませんが、IPv4およびIPv6ともに疎通できています。
 
+<br>
+
+> [!NOTE]
+>
+> FRRメモ
+>
+> - hostnameコマンドで名前を付けても、それは現在接続しているvtyshにしか反映されません。writeしても、どこにも保存されません。
+
 <br><br><br>
 
 # FRRのDockerイメージの作り方
@@ -172,21 +180,6 @@ round-trip min/avg/max = 0.287/0.699/0.989 ms
 > AlpineをベースにしてFRR 10.4をソースコードからビルドしてみましたが、それも挙動不審でした。
 >
 > サイズは大きくなってしまいますが、Ubuntu24をベースにFRRのDockerイメージを作成します。
-
-<br>
-
-> [!NOTE]
->
-> Dockerの宿命ですが、ノードをSTOPすると動作中のFRRの設定は消滅します。
-> writeして保存される/etc/frr/frr.confはDockerの停止とともに消えてしまいます。
->
-> ノードごとにやらないといけないので手間ではありますが、解決方法はあります。
->
-> CMLでノードを開いて CONFIG → FETCH をクリックするとrunning-configを取得できます。
-> ノードをSTOP、WIPEしてからSAVEボタンをクリックすると、次回以降その設定で起動できます。
->
-> ノードが多いとやってられないので、
-> そういうときはPythonスクリプトでラボとコンフィグを生成するようにした方がいいですね。
 
 <br>
 
@@ -469,6 +462,22 @@ chown libvirt-qemu:virl2 frr-10-5-iida.yaml
 > curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-5-iida.yaml
 >
 > chown libvirt-qemu:virl2 frr-10-5-iida.yaml
+> ```
+
+<br>
+
+> [!NOTE]
+>
+> ノード定義ファイルはCML2.9に同梱のFRRのそれを元にして加工しています。
+> FRRの中でwriteして保存した設定が恒久的に残るように、以下のようにマウント設定を変えています。
+> この設定にすると/etc/frr/frr.conf.savを作れずにエラーを吐きますが無視して構いません。
+>
+> ```json
+> "mounts": [
+>   "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
+>   "type=bind,source=cfg/node.cfg,target=/etc/frr/frr.conf",
+>   "type=bind,source=cfg/protocols,target=/config/protocols"
+> ],
 > ```
 
 <br>

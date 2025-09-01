@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG=/config/node.cfg
+CONFIG=/etc/frr/frr.conf
 BOOT=/config/boot.sh
 PROTOCOLS=/config/protocols
 
@@ -20,17 +20,21 @@ while IFS= read -r line; do
     fi
 done <"$PROTOCOLS"
 
+
+#
+# day0 config frr.conf is mounted to /etc/frr/frr.conf directly in CML node_definition
+#
+
 # day0 config for the router
-if [ -f $CONFIG ]; then
-    cp $CONFIG /etc/frr/frr.conf
-    rm -f $CONFIG
-fi
+#if [ -f $CONFIG ]; then
+#    cp $CONFIG /etc/frr/frr.conf
+#fi
 
 # set the hostname from the provided config if it's there
-if [ -f /etc/frr/frr.conf ]; then
+if [ -f $CONFIG ]; then
     hostname_value="router"
-    if grep -q "^hostname" /etc/frr/frr.conf; then
-        hostname_value=$(awk '/^hostname/ {print $2}' /etc/frr/frr.conf)
+    if grep -q "^hostname" $CONFIG; then
+        hostname_value=$(awk '/^hostname/ {print $2}' $CONFIG)
     fi
     hostname $hostname_value
 fi

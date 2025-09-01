@@ -924,7 +924,7 @@ CML2.9に同梱されているFRRのイメージはAlpineをベースにして�
 
 このファイルは流用したいので、取り出して保存しておきます。
 
-[start.sh](/frr/start.sh) の中身はこの通りです。
+中身はこの通りです。
 
 ```bash
 #!/bin/bash
@@ -970,6 +970,19 @@ while true; do
     /usr/bin/vtysh
 done
 ```
+
+<br>
+
+> [!NOTE]
+>
+> このリポジトリに置いてある[start.sh](/frr/start.sh)は上記を少しだけ書き換えています。
+>
+> - CMLのUIで初期設定するときのファイルをcfg/node.cfgからcfg/frr.confに変更
+> - 初期設定ファイルcfg/frr.confを/etc/frr/frr.confにバインド
+>
+> このようにすることで、frrの設定を永続化しています。
+
+<br>
 
 コンテナの中の /config ディレクトリには確かにファイルが３個あります。
 
@@ -1079,10 +1092,7 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /var/lib/cache/* \
     && rm -rf ${WORKING_DIRECTORY}/frr \
-    && rm -rf ${WORKING_DIRECTORY}/libyang \
-    # Enable IPv6 forwarding
-    && sed -i '/^net.ipv6.conf.all.forwarding/s/^.*$/net.ipv6.conf.all.forwarding=1/' /etc/sysctl.conf \
-    && grep -q '^net.ipv6.conf.all.forwarding=1' /etc/sysctl.conf || echo 'net.ipv6.conf.all.forwarding=1' >> /etc/sysctl.conf
+    && rm -rf ${WORKING_DIRECTORY}/libyang
 
 COPY --chmod=0755 start.sh /
 

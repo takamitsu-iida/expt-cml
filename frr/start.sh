@@ -23,14 +23,17 @@ done <"$PROTOCOLS"
 # day0 config for the router
 if [ -f $CONFIG ]; then
     cp $CONFIG /etc/frr/frr.conf
+    rm -f $CONFIG
 fi
 
 # set the hostname from the provided config if it's there
-hostname_value="router"
-if grep -q "^hostname" $CONFIG; then
-    hostname_value=$(awk '/^hostname/ {print $2}' $CONFIG)
+if [ -f /etc/frr/frr.conf ]; then
+    hostname_value="router"
+    if grep -q "^hostname" /etc/frr/frr.conf; then
+        hostname_value=$(awk '/^hostname/ {print $2}' /etc/frr/frr.conf)
+    fi
+    hostname $hostname_value
 fi
-hostname $hostname_value
 
 /usr/lib/frr/frrinit.sh start
 

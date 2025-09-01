@@ -20,7 +20,7 @@ configuration:
               "image": "frr:10.5-iida",
               "mounts": [
                 "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
-                "type=bind,source=cfg/node.cfg,target=/etc/frr/frr.conf",
+                "type=bind,source=cfg/frr.conf,target=/etc/frr/frr.conf",
                 "type=bind,source=cfg/protocols,target=/config/protocols"
               ],
               "caps": [
@@ -56,7 +56,7 @@ configuration:
             "day0cmd": [ "/bin/bash", "/config/boot.sh" ],
             "busybox": true
           }
-      - name: node.cfg
+      - name: frr.conf
         editable: true
         content: |
           !

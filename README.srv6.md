@@ -196,7 +196,7 @@ uSIDの場合、宛先IPv6アドレスの中にSIDの情報を詰め込みます
 
 - static sidを設定するとき、behavior DT DXはdefault以外のVrfが必要
 
-
+- Encapはできるけど、Decapができない
 
 <br>
 

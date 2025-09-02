@@ -192,29 +192,78 @@ uSIDの場合、宛先IPv6アドレスの中にSIDの情報を詰め込みます
 
 ## FRR
 
+ロケータ定義
+
+MAINはこのロケータにつけた名称
+
 ```text
 !
 segment-routing
-  srv6
-    locators
-      locator MAIN
-        prefix fd00:aaaa:1::/48
-        format usid-f3216
-    !
+ srv6
+  locators
+   locator MAIN
+    prefix fd00:1:1::/48
+    format usid-f3216
+   exit
+   !
+  exit
+  !
+ exit
+ !
+exit
 !
 ```
 
-
-## ISIS
+ISISでロケータを配信
 
 ```text
 !
 router isis 1
-  net 00.0000.0000.0001.00
-  is-type level-1
-  segment-routing srv6
-    locator MAIN
+ is-type level-1
+ net 49.0001.0000.0000.0001.00
+ segment-routing srv6
+  locator MAIN
+ exit
+exit
+!
 ```
+
+SIDを確認
+
+```text
+P1# show segment-routing srv6 sid
+ SID              Behavior    Context             Daemon/Instance    Locator    AllocationType
+ ---------------------------  ------------------  -----------------  ---------  ----------------
+ fd00:1:1::       uN          -                   isis(0)            MAIN       dynamic
+ fd00:1:1:e000::  uA          Interface 'eth0'    isis(0)            MAIN       dynamic
+ fd00:1:1:e001::  uA          Interface 'eth1'    isis(0)            MAIN       dynamic
+ fd00:1:1:e002::  uA          Interface 'eth2'    isis(0)            MAIN       dynamic
+ fd00:1:1:e003::  uA          Interface 'eth3'    isis(0)            MAIN       dynamic
+```
+
+先頭32ビットの fd00:0001 はSRv6を形成するドメインで共通のプレフィクスです。
+
+このルータのノード部16ビットは 0001 としています。
+
+結果、ロケータはfd00:1:1::/48となります。
+
+SID fd00:1:1:: はロケータと同じです。uN(Endpoint)です。ルーティングテーブルを見て中継します。
+
+SID fd00:1:1:e000:: はuAで、eth0に中継します。
+
+SID fd00:1:1:e001:: はuAで、eth1に中継します。
+
+SID fd00:1:1:e002:: はuAで、eth2に中継します。
+
+SID fd00:1:1:e003:: はuAで、eth3に中継します。
+
+
+全てのルータにロケータを設定して、ISISで配信するようにします。
+
+
+
+
+
 
 
 ## Traffic Steering into SRv6

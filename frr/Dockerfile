@@ -85,7 +85,7 @@ cd frr
     --enable-group=frr \
     --enable-vty-group=frrvty \
     --with-pkg-git-version \
-    --with-pkg-extra-version=-${DATE} \
+    --with-pkg-extra-version=${DATE} \
     --disable-doc
 make
 

@@ -190,11 +190,11 @@ uSIDの場合、宛先IPv6アドレスの中にSIDの情報を詰め込みます
 
 <br><br><br>
 
-## FRR
+# FRRの設定
 
-ロケータ定義
+<br>
 
-MAINはこのロケータにつけた名称
+## ロケータ定義
 
 ```text
 !
@@ -214,7 +214,15 @@ exit
 !
 ```
 
-ISISでロケータを配信
+MAINというのは、このロケータにつけた名称です。ロケータは複数持てます。
+
+<br>
+
+## ロケータをISISで配信
+
+ロケータはIPv6のプレフィクスと同等ですので、ルーティングプロトコルで配信しておけば、SRv6に関心のないルータにもルーティングテーブルに反映されます。
+
+FRRのISISの設定では、redistributeではなく、segment-routing srv6で設定します。
 
 ```text
 !
@@ -228,7 +236,15 @@ exit
 !
 ```
 
-SIDを確認
+これで/48の経路が配信されます。
+
+<br>
+
+## SIDを確認
+
+ロケータを作成すると、そのルータの中には最低限のSIDが作られます。
+
+`show segment-routing srv6 sid`
 
 ```text
 P1# show segment-routing srv6 sid
@@ -241,11 +257,11 @@ P1# show segment-routing srv6 sid
  fd00:1:1:e003::  uA          Interface 'eth3'    isis(0)            MAIN       dynamic
 ```
 
-先頭32ビットの fd00:0001 はSRv6を形成するドメインで共通のプレフィクスです。
+先頭32ビットの fd00:1 はSRv6を形成するドメインで共通のプレフィクスです。
 
-このルータのノード部16ビットは 0001 としています。
+このルータのノード部16ビットは 1 としています。
 
-結果、ロケータはfd00:1:1::/48となります。
+その結果、ロケータはfd00:1:1::/48となります。
 
 SID fd00:1:1:: はロケータと同じです。uN(Endpoint)です。ルーティングテーブルを見て中継します。
 
@@ -257,21 +273,46 @@ SID fd00:1:1:e002:: はuAで、eth2に中継します。
 
 SID fd00:1:1:e003:: はuAで、eth3に中継します。
 
+全ルータにロケータを設定して、ISISで配信したとしても、これら個々のSIDがISISで配信されることはありません。
+ISISではあくまで/48の経路情報が流れてくるだけです。
 
-全てのルータにロケータを設定して、ISISで配信するようにします。
-
-
-
-
-
-
+<br><br>
 
 ## Traffic Steering into SRv6
 
+
+PE11からPE13への最短経路は `PE11 ---(e0) P1(e2) --- PE13` です。
+
+P1が持っているSIDのうち `fd00:1:1:e001` は eth1 に中継するSIDです。
+
+PE11では、このSIDを通るようにスタティックルーティングを書いてみます。
+
 ```text
-ipv6 route 2001:db8:1:2::/64 eth0 segments fd00:aaaa:2:3:fe00::
-ip route 192.168.2.0/24 eth0 segments fd00:aaaa:2:3:fe00::
+ipv6 route 2001:db8:ffff::13/128 eth0 segments fd00:1:1:e001::
 ```
+
+PE11のルーティングテーブルはこのようになります。
+
+```text
+E11# show ipv6 route
+Codes: K - kernel route, C - connected, L - local, S - static,
+       R - RIPng, O - OSPFv3, I - IS-IS, B - BGP, N - NHRP,
+       T - Table, v - VNC, V - VNC-Direct, A - Babel, F - PBR,
+       f - OpenFabric, t - Table-Direct,
+       > - selected route, * - FIB route, q - queued, r - rejected, b - backup
+       t - trapped, o - offload failure
+
+IPv6 unicast VRF default:
+
+S>* 2001:db8:ffff::13/128 [1/0] is directly connected, eth0, seg6 fd00:1:1:e001::, weight 1, 00:00:05
+
+```
+
+
+
+ip route 192.168.2.0/24 eth0 segments fd00:aaaa:2:3:fe00::
+
+
 
 
 ## Static

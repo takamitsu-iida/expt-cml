@@ -53,7 +53,7 @@ apt install -y libsqlite3-dev
 # ZeroMQ
 apt install -y libzmq5 libzmq3-dev
 
-# utilities
+# Utilities
 apt install -y vim
 
 # Add FRR user and groups
@@ -62,10 +62,17 @@ groupadd -r -g 85 frrvty
 adduser --system --ingroup frr --home /var/run/frr/ --gecos "FRR suite" --shell /sbin/nologin frr
 usermod -a -G frrvty frr
 
-# Compile
+# Download FRR source code
 export GIT_SSL_NO_VERIFY=true
 cd ${WORKING_DIRECTORY}
-git clone https://github.com/frrouting/frr.git frr
+
+# stable 10.4
+git clone -b stable/10.4 https://github.com/FRRouting/frr.git frr
+
+# latest
+# git clone https://github.com/frrouting/frr.git frr
+
+# Compile
 cd frr
 ./bootstrap.sh
 ./configure \
@@ -89,7 +96,7 @@ cd frr
     --disable-doc
 make
 
-# install
+# Install
 make install
 install -m 775 -o frr -g frr -d /var/log/frr
 install -m 775 -o frr -g frr -d /etc/frr
@@ -99,7 +106,7 @@ install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf
 install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons
 install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf
 
-# create mountpoint directory
+# Create mountpoint directory
 mkdir /config
 
 # Clean up

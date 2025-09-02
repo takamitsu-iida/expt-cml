@@ -1,31 +1,194 @@
 # SRv6 uSID
 
-## SID構造
+<br>
+
+## SIDの構造
+
+SRv6におけるSegment ID (SID)はIPv6アドレスと同じ形式をとりますが、意味合いは違います。
 
 ```text
 1111:2222:3333:4444 : 5555:6666:7777:8888
 ------------------    -------------------
 locator               function
+```
 
+- locatorは、そのノードに到達するための経路情報で、ルータに割り当てるIPv6のサブネットと同等です。
+- functionは、そのノードで実行されるアクション、サービスの番号です
+
+ロケータはさらに次のようにブロック部とノード部に別れます。
+
+```text
 1111 : 2222 : 3333 : 4444 : 5555 : 6666 : 7777 : 8888
 -----------   ----   ----   ----
 Block         NodeID Func   Argument
 ```
 
+ブロック部はSRv6ドメインで同じ値です。
+言い換えると、ドメインを分割したときにはブロック部の値を変更します。
+SRv6ドメイン同士を接続したときの経路情報の交換は、このブロック部の情報だけをお互いに交換すればいいことになります。
 
-## F3216
+ノード部は、SRv6ドメイン内におけるノードを識別する部分になります。ドメイン内ではノードごとに異なるノード部を持ちます。
 
-F3216は、IPv6のプレフィクス長が32ビット、SIDが16ビット、合計で48ビットです。
-ロケータの定義は /48 になります。
+Full-lengthのSIDはIPv6アドレスと同じフォーマットですので128ビットの長さを持っていますが、実のところ冗長な部分が多く、パケットの中に埋め込む情報としては長すぎです。
 
-先頭の32ビットはSRv6を形成するドメイン内で共通の値です。ローカルな環境であればfc00もしくはfd00が使われることが多いです。
+パケットに埋め込むことを想定して、本当に必要な情報だけに絞り込んでサイズを小さくしたのがマイクロセグメント（uSID）です。
+
+<br>
+
+## F3216フォーマット
+
+F3216は、ブロック部が32ビット、uSIDが16ビットのフォーマットです。ルータにおけるロケータの定義は32+16=48なので /48 になります。
+
+先頭32ビットのブロック部はSRv6を形成するドメイン内で共通の値です。
+ローカルな環境であれば `fcxx:xxxx` もしくは `fdxx:xxxx` の中から採番されることが多いです。
 
 SIDの16ビット部分は、特定のルータやそのルータ内で定義されるサービスを識別する役割を担います。
 
+IPv6アドレスの形式には最大6個のuSIDを格納できます。
+
+```text
+fc00:0001 : 0001 : 0002 : 0003 : 0004 : 0005 : 0006
+---------   ----   ----   ----   ----   ----   ----
+block       node1  node2  node3  node4  node5  node6
+```
+
+6個以下のuSIDですむのであればSRヘッダを使うことなく、宛先IPv6アドレスだけでuSIDのリストを表現できます。
+
+7個以上のuSIDを格納するときにはSRヘッダを使う必要がでてきます。
+
+<br>
+
+## behaviors
+
+| name                     | behavior            |
+| ------------------------ | ------------------- |
+| End uN                   | Endpoint [Node SID] |
+| End.X uA                 | Endpoint with Layer-3 cross-connect [Adj SID] |
+| End.B6.Insert uB6.Insert | Endpoint bound to an SRv6 policy [BSID] |
+| End.B6.Encap uB6.Encaps  | Endpoint bound to an SRv6 encapsulation policy [BSID] |
+| End.DX6 uDX6             | Endpoint with decapsulation and IPv6 cross-connect [L3VPN Per-CE] |
+| End.DX4 uDX4             | Endpoint with decapsulation and IPv4 cross-connect [L3VPN Per-CE] |
+| End.DT6 uDT6             | Endpoint with decapsulation and specific IPv6 table lookup [L3VPN Per-VRF] |
+| End.DT4 uDT4             | Endpoint with decapsulation and specific IPv4 table lookup [L3VPN Per-VRF] |
+| End.DT46 uDT46           | Endpoint with decapsulation and specific IP table lookup [L3VPN Per-VRF] |
+| End.DX2 uDX2             | Endpoint with decapsulation and L2 cross-connect [E-LINE] |
+| End.DT2U/M uDT2U/M       | Endpoint with decapsulation and L2 unicast lookup / flooding [E-LAN] |
+| End.DTM uDTM             | Endpoint with decapsulation and MPLS table lookup [Interworking] |
+| H.Insert / H.Encaps      | Headend with Insertion / Encapsulation of / into an SRv6 policy [TiLFA] |
+| H. Encaps.L2             | H.Encaps Applied to Received L2 Frames [L2 Port Mode] |
+| H.Encaps.M               | H.Encaps Applied to MPLS Label Stack [Interworking] |
+
+<br>
+
+### END
+
+full-length SID
+
+ENDという名前ですが、実際には中継動作です
+
+- パケットを受信したら、ルーティングヘッダのSegment Leftを-1して、宛先IPv6アドレスを次のSIDに変更
+- 自分自身の**ルーティングテーブルを参照して転送**
+
+<br>
+
+### uN
+
+uSID
+
+- 宛先IPv6アドレスから自分自身のuSIDを取り除いて左にシフトします
+- 一番右を0x0000でパディングします（End-of-Carrier)
+- このようにして変更した宛先アドレスに向けて自分のルーティングテーブルに従って転送します
+
+<br>
+
+### END.X
+
+full-length SID
+
+- パケットを受信したら、ルーティングヘッダのSegment Leftを-1して、宛先IPv6アドレスを次のSIDに変更
+- **特定のインタフェース**にパケットを転送
+
+<br>
+
+### uA
+
+uSID
+
+- 宛先IPv6アドレスから自分自身のuSIDを取り除いて左にシフトします
+- 一番右を0x0000でパディングします（End-of-Carrier)
+- **特定のインタフェース**にパケットを転送
+
+<br>
+
+### END.DX4 END.DX6 END.DX2
+
+full-length SID
+
+Decapsulation(カプセル化解除) and Xconnect(特定のインタフェースに転送)の頭文字を取ってDXです。
+
+SRv6ドメインから出ていく通信の中継処理、すなわちVPNサービスです。
+
+PEルータにパケットが到着したときにはルーティングヘッダのSegment Leftは0のはずです。
+
+- パケットを受信したらIPv6ヘッダを取り除きます
+- 特定のインタフェースに向けてパケットを転送します
+
+<br>
+
+### uDX
+
+uSID
+
+Decapsulation(カプセル化解除) and Xconnect(特定のインタフェースに転送)の頭文字を取ってDXです。
+
+PEルータにパケットが到着したときには、uSIDキャリアの最後のノードのはずです。
+
+- パケットを受信したらIPv6ヘッダを取り除きます
+- 特定のインタフェースに向けてパケットを転送します
+
+<br>
+
+### END.DT4 END.DT6
+
+full-length SID
+
+Decapsulation(カプセル化解除) and Table-lookup(テーブル参照)の頭文字を取ってDTです。
+
+SRv6ドメインから出ていく通信の中継処理、すなわちVPNサービスです。
+
+PEルータにパケットが到着したときにはルーティングヘッダのSegment Leftは0のはずです。
+
+- パケットを受信したらIPv6ヘッダを取り除きます
+- 特定のVRFテーブルを検索してパケットを転送します
+
+<br>
+
+### uDT
+
+uSID
+
+Decapsulation(カプセル化解除) and Table-lookup(テーブル参照)の頭文字を取ってDTです。
+
+PEルータにパケットが到着したときには、uSIDキャリアの最後のノードのはずです。
+
+- パケットを受信したらIPv6ヘッダを取り除きます
+- 特定のVRFテーブルを検索してパケットを転送します
+
+<br>
+
+## データプレーン
+
+uSIDの場合、宛先IPv6アドレスの中にSIDの情報を詰め込みます。
+
+パケットを受信したら宛先IPv6アドレスの中の自分のuSIDを削除して左にシフト、右には0x0000をパディングして宛先アドレスを変えていきますので、
+ルータを経由するたびに宛先IPv6アドレスが変わっていきます。
+
+宛先アドレスの形式はあくまでIPv6のままですので、途中にSRv6を理解しないルータがいても大丈夫です。宛先をみて中継するだけです。
+
+通常SRv6ドメインのエッジルータ（PEルータ）では何かしらのサービスを実行しますので、uDTやuDXなど、PEルータ自身が決めた動作を行います。
 
 
-
-
+<br><br><br>
 
 ## FRR
 

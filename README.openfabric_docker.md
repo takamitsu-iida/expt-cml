@@ -159,33 +159,44 @@ round-trip min/avg/max = 0.287/0.699/0.989 ms
 
 ルータ・ルータ間にはIPv6リンクローカルアドレスしか設定していませんが、IPv4およびIPv6ともに疎通できています。
 
-<br>
-
-> [!NOTE]
->
-> FRRメモ
->
-> - hostnameコマンドで名前を付けても、それは現在接続しているvtyshにしか反映されません。writeしても、どこにも保存されません。
 
 <br><br><br>
 
-# FRRのDockerイメージの作り方
+# Dockerイメージの作り方
 
-少々手間はかかりますが、自分で作ったDockerイメージをCMLで動かすこともできます。
+CML2.9以降では、自分で作ったDockerイメージを動かすこともできます。
 
 <br>
 
-> [!NOTE]
->
-> AlpineをベースにしてFRR 10.4をソースコードからビルドしてみましたが、それも挙動不審でした。
->
-> サイズは大きくなってしまいますが、Ubuntu24をベースにFRRのDockerイメージを作成します。
+## CML2.9のFRR(Docker)について
+
+CML2.9に同梱のFRR(Docker)は次のような特徴を持っています。
+
+- Alpineをベースにしています
+- FRRのバージョンは10.2です
+- IPv6のルーティングはできません（CMLのノード定義ファイルの不備です）
+- FRRの設定は永続されません（ノードを停止するとwriteしたfrr.confも消えます）
+
+FRRの中でhostnameコマンドで名前を付けても、それは現在接続しているvtyshにしか反映されません。
+writeしてもhostname設定は保存されません（マニュアルにそう書いてあります）。
+
+CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコマンドが入っていたら、
+それを取り出して、Dockerのホスト名に反映させています(start.shを見ればわかります)
+
+<br>
+
+## 作成するFRR(Docker)について
+
+- Ubuntu24をベースにDockerイメージを作成します
+- サイズは大きくなってしまいますが、一度Dockerイメージを登録すれば、以降のノード起動は高速かつ軽量です
+- FRRの設定(frr.conf)を永続できるようにします（writeしておけばノードを停止しても、次回起動時に継続されます）
+- IPv6中継できるようにします（sysctl net.ipv6.conf.all.forwarding=1を設定します）
 
 <br>
 
 ## 母艦の設定
 
-コックピットにログインしてターミナルを開きます。
+CMLのコックピットにログインしてターミナルを開きます。
 
 root特権を取ります。
 
@@ -228,7 +239,7 @@ reboot
 
 CML上にラボを作成してUbuntuと外部接続を用意します。
 
-そのくらい簡単なラボは手作業で作ってもよいのですが、このスクリプトを実行すれば自動で作成できます。
+そのくらい簡単なラボは手作業で作ってもよいのですが、[このスクリプト](/bin/cml_create_lab1.py)を実行すれば自動で作成できます。
 
 ```bash
 bin/cml_create_lab1.py
@@ -237,9 +248,9 @@ bin/cml_create_lab1.py
 このスクリプトを再度実行すると同じ名前のものは消えてしまいますので、
 間違って消さないようにラボの名前を適当に変えておきます。
 
-UbuntuにDockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
+<br>
 
-Ubuntuにログインします。
+UbuntuにDockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
 
 ```bash
 sudo apt update
@@ -345,7 +356,7 @@ clean: ## Dockerイメージを削除する
 	@rm -f frr.tar.gz
 ```
 
-リポジトリをクローンします。
+このリポジトリをクローンします。
 
 ```bash
 git clone https://github.com/takamitsu-iida/expt-cml.git
@@ -391,7 +402,7 @@ root@ubuntu-0:~/expt-cml/frr# make inspect
 "sha256:dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71",
 ```
 
-sha256に続く値がIdの値です。このあと使いますのでどこかにメモしておきます。
+sha256に続く値がIdの値です。**このあと使いますのでどこかにメモしておきます**。
 
 イメージをtar形式で保存します。
 
@@ -468,14 +479,21 @@ chown libvirt-qemu:virl2 frr-10-5-iida.yaml
 
 > [!NOTE]
 >
-> ノード定義ファイルはCML2.9に同梱のFRRのそれを元にして加工しています。
-> FRRの中でwriteして保存した設定が恒久的に残るように、以下のようにマウント設定を変えています。
-> この設定にすると/etc/frr/frr.conf.savを作れずにエラーを吐きますが無視して構いません。
+> CML2.9に同梱のFRR(Docker)のノード定義ファイルは以下のようにマウントしています。
+> これだと /etc/frr/frr.conf に保存されるFRRの設定がDockerの停止と共に消えてしまいます。
 >
 > ```json
 > "mounts": [
 >   "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
->   "type=bind,source=cfg/node.cfg,target=/etc/frr/frr.conf",
+>   "type=bind,source=cfg/node.cfg,target=/config/node.cfg",
+>   "type=bind,source=cfg/protocols,target=/config/protocols"
+> ],
+>
+> そこで、次のようにfrr.confを直接バインドするように変更しています。
+>
+> "mounts": [
+>   "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
+>   "type=bind,source=cfg/frr.conf,target=/etc/frr/frr.conf",
 >   "type=bind,source=cfg/protocols,target=/config/protocols"
 > ],
 > ```
@@ -503,7 +521,7 @@ chown libvirt-qemu:virl2 frr-10-5-iida
 cd frr-10-5-iida
 ```
 
-コックピット側のdropfolderからファイルを移動します。
+dropfolderからファイルを移動します。
 
 ```bash
 mv /var/local/virl2/dropfolder/frr.tar.gz .
@@ -591,7 +609,6 @@ frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
 > ラボでイメージをドラッグドロップした時点では何も起きていません。
 > `/usr/local/virl2/images/{{ラボのUUID}}` に実体化されたイメージが格納されますが、ドラッグドロップしただけでは作られません。
 > STARTで起動して初めてイメージが実体化されます。
-
 
 <br><br><br><br><br><br>
 

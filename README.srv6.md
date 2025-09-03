@@ -196,7 +196,6 @@ uSIDの場合、宛先IPv6アドレスの中にSIDの情報を詰め込みます
 
 - static sidを設定するとき、behavior DT DXはdefault以外のVrfが必要
 
-- Encapはできるけど、Decapができない
 
 <br>
 
@@ -287,36 +286,30 @@ ISISではあくまで/48の経路情報が流れてくるだけです。
 ## Traffic Steering into SRv6
 
 
-PE11からPE13への最短経路は `PE11 ---(e0) P1(e2) --- PE13` です。
+CE101からCE102への最短経路は `CE101---PE11---P1---PE13---CE102` です。
 
-P1が持っているSIDのうち `fd00:1:1:e001` は eth1 に中継するSIDです。
+これをPE11で曲げてみます。
 
-PE11では、このSIDを通るようにスタティックルーティングを書いてみます。
+スタティックルートを書きます。
 
-```text
-ipv6 route 2001:db8:ffff::13/128 eth0 segments fd00:1:1:e001::
-```
-
-PE11のルーティングテーブルはこのようになります。
+指定しているのはSIDではないループバックアドレスになっているところが気になりますが、こうしないと動きませんでした。
 
 ```text
-E11# show ipv6 route
-Codes: K - kernel route, C - connected, L - local, S - static,
-       R - RIPng, O - OSPFv3, I - IS-IS, B - BGP, N - NHRP,
-       T - Table, v - VNC, V - VNC-Direct, A - Babel, F - PBR,
-       f - OpenFabric, t - Table-Direct,
-       > - selected route, * - FIB route, q - queued, r - rejected, b - backup
-       t - trapped, o - offload failure
-
-IPv6 unicast VRF default:
-
-S>* 2001:db8:ffff::13/128 [1/0] is directly connected, eth0, seg6 fd00:1:1:e001::, weight 1, 00:00:05
-
+ip route 10.0.102.0/24 lo segments 2001:db8:ffff::1/2001:db8:ffff::12/2001:db8:ffff::2/2001:db8:ffff::13
 ```
 
+これで `CE101---PE11---P1---PE12---P2---PE13---CE102` という順路になります。
 
 
-ip route 192.168.2.0/24 eth0 segments fd00:aaaa:2:3:fe00::
+
+> [!NOTE]
+>
+> なぜSIDを指定すると動かないんだろう？？？
+>
+> ループバックのアドレスをSIDの中から採番すればいい？？？
+
+
+
 
 
 

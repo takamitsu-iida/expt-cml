@@ -8,7 +8,7 @@
 # https://docs.frrouting.org/en/latest/zebra.html#sysctl-settings
 
 
-id: frr-10-5-iida
+id: frr-10-4
 configuration:
   generator:
     driver: iosv
@@ -21,7 +21,7 @@ configuration:
         content: |
           {
             "docker": {
-              "image": "frr:10.5-iida",
+              "image": "frr:10.4",
               "mounts": [
                 "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
                 "type=bind,source=cfg/frr.conf,target=/etc/frr/frr.conf",
@@ -199,9 +199,9 @@ pyats:
   config_extract_command: show run
 ui:
   description: |
-    Free Range Routing (frr) 10.5
+    Free Range Routing (frr) 10.4
   group: Others
   icon: router
-  label: FRR-10-5-iida
+  label: FRR-10-4
   label_prefix: frr-
   visible: true

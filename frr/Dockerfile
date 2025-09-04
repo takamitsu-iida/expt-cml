@@ -67,10 +67,10 @@ export GIT_SSL_NO_VERIFY=true
 cd ${WORKING_DIRECTORY}
 
 # stable 10.4
-# git clone -b stable/10.4 https://github.com/FRRouting/frr.git frr
+git clone -b stable/10.4 https://github.com/FRRouting/frr.git frr
 
 # latest
-git clone https://github.com/frrouting/frr.git frr
+# git clone https://github.com/frrouting/frr.git frr
 
 # Compile
 cd frr

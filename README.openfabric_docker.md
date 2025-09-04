@@ -191,6 +191,15 @@ CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコ�
 - サイズは大きくなってしまいますが、一度Dockerイメージを登録すれば、以降のノード起動は高速かつ軽量です
 - FRRの設定(frr.conf)を永続できるようにします（writeしておけばノードを停止しても、次回起動時に継続されます）
 - IPv6中継できるようにします（sysctl net.ipv6.conf.all.forwarding=1を設定します）
+- FRR stable 10.4 をコンパイルします
+
+
+<br>
+
+> [!NOTE]
+>
+> 将来のCMLのバージョンアップでノード定義の名前が重複するのが怖いですが、
+> frr-10-4という名前でノード定義を作ります。
 
 <br>
 
@@ -324,7 +333,7 @@ Makefileはこのようになっていますので、これを見ながらdocker
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-TAG ?= frr:10.5-iida
+TAG ?= frr:10.4
 
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
@@ -333,15 +342,12 @@ build: ## Dockerイメージを作成する
 inspect: ## DockerイメージのIDをインスペクトする
 	@docker inspect ${TAG} | grep -i sha256 | head -n 1 | awk '{print $$2}'
 
-
 save: ## Dockerイメージを保存する
 	@docker save -o frr.tar ${TAG}
 	@gzip frr.tar
 
-
 run: ## Dockerコンテナを起動する
 	@docker run -d --rm --init --privileged --name frr-iida ${TAG}
-
 
 shell: ## Dockerコンテナにシェルで入る
 	@docker exec -it frr-iida bash
@@ -446,13 +452,13 @@ cd /var/lib/libvirt/images/node-definitions
 ノード定義ファイルを新規で作ります。
 
 ```bash
-vi frr-10-5-iida.yaml
+vi frr-10-4.yaml
 ```
 
 もしくは元になっているfrr.yamlをコピーします。
 
 ```bash
-cp -a frr.yaml frr-10-5-iida.yaml
+cp -a frr.yaml frr-10-4.yaml
 ```
 
 [frr/cml_node_definition.yaml](/frr/cml_node_definition.yaml) の内容をコピペして保存します。
@@ -460,7 +466,7 @@ cp -a frr.yaml frr-10-5-iida.yaml
 ファイルのオーナーを変更します。
 
 ```bash
-chown libvirt-qemu:virl2 frr-10-5-iida.yaml
+chown libvirt-qemu:virl2 frr-10-4.yaml
 ```
 
 <br>
@@ -470,9 +476,9 @@ chown libvirt-qemu:virl2 frr-10-5-iida.yaml
 > githubにあるものをcurlで取ってきたほうが速いかもしれません。
 >
 > ```bash
-> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-5-iida.yaml
+> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-4.yaml
 >
-> chown libvirt-qemu:virl2 frr-10-5-iida.yaml
+> chown libvirt-qemu:virl2 frr-10-4.yaml
 > ```
 
 <br>
@@ -511,14 +517,14 @@ cd /var/lib/libvirt/images/virl-base-images
 ディレクトリを作ります。
 
 ```bash
-mkdir frr-10-5-iida
-chown libvirt-qemu:virl2 frr-10-5-iida
+mkdir frr-10-4
+chown libvirt-qemu:virl2 frr-10-4
 ```
 
 移動します。
 
 ```bash
-cd frr-10-5-iida
+cd frr-10-4
 ```
 
 dropfolderからファイルを移動します。
@@ -531,7 +537,7 @@ chown libvirt-qemu:virl2 frr.tar.gz
 イメージ定義ファイルを作成します。
 
 ```bash
-vi frr-10-5-iida.yaml
+vi frr-10-4.yaml
 ```
 
 [frr/cml_image_definition.yaml](/frr/cml_image_definition.yaml) の内容をコピペします。
@@ -545,10 +551,10 @@ vi frr-10-5-iida.yaml
 # part of VIRL^2
 #
 
-id: frr-10-5-iida
-label: Free Range Routing (frr) 10.5-iida
-description: Free Range Routing (frr) 10.5-iida (Docker)
-node_definition_id: frr-10-5-iida
+id: frr-10-4
+label: Free Range Routing (frr) 10.4
+description: Free Range Routing (frr) 10.4 (Docker)
+node_definition_id: frr-10-4
 disk_image: frr.tar.gz
 read_only: true
 schema_version: 0.0.1
@@ -562,9 +568,9 @@ sha256:
 > イメージ定義ファイルもgithubから採取した方が簡単かもしれません。
 >
 > ```bash
-> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition_alpine.yaml --output frr-10-5-iida.yaml
+> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition_alpine.yaml --output frr-10-4.yaml
 >
-> chown libvirt-qemu:virl2 frr-10-4-iida.yaml
+> chown libvirt-qemu:virl2 frr-10-4.yaml
 > ```
 
 <br>
@@ -580,7 +586,7 @@ systemctl restart virl2.target
 dockerのイメージを確認します。
 
 ```bash
-root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-5-iida# docker images
+root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-4# docker images
 REPOSITORY   TAG         IMAGE ID       CREATED        SIZE
 frr          10.2.1-r1   1bd2e82159f1   4 months ago   39.8MB
 ```
@@ -589,16 +595,16 @@ frr          10.2.1-r1   1bd2e82159f1   4 months ago   39.8MB
 
 CMLのダッシュボードに移ります。
 
-FRR-10-5-iidaをドラッグしてイメージを一つ作ってみます。
+FRR-10-4をドラッグしてイメージを一つ作ってみます。
 
 STARTで起動します。
 
 コックピットでdockerのイメージを確認します。
 
 ```bash
-root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-5-iida# docker images
+root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-4# docker images
 REPOSITORY   TAG         IMAGE ID       CREATED         SIZE
-frr          10.5-iida   dcb26c9c1ba6   8 minutes ago   1.06GB
+frr          10.4        dcb26c9c1ba6   8 minutes ago   1.06GB
 frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
 ```
 
@@ -1133,12 +1139,12 @@ CML2.9に同梱のFRRを起動しても、IPv6中継機能が動作しません�
 - docker run
 
 ```bash
-root@cml-controller:~# docker run -d --rm frr:10.5-iida
+root@cml-controller:~# docker run -d --rm frr:10.4
 7b5766d395baf26a4b0ad44fb1e159ca39a51d0da8bf7de2235255b9dbdf95b5
 
 root@cml-controller:~# docker ps
 CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
-7b5766d395ba   frr:10.5-iida   "/start.sh"   56 seconds ago   Up 55 seconds             festive_lehmann
+7b5766d395ba   frr:10.4        "/start.sh"   56 seconds ago   Up 55 seconds             festive_lehmann
 
 root@cml-controller:~# docker exec -it 7b5766d395ba bash
 
@@ -1161,7 +1167,7 @@ root@cml-controller:~# docker stop 7b5766d395ba
 - docker run --sysctl
 
 ```bash
-root@cml-controller:~# docker run -d --rm --sysctl net.ipv6.conf.all.forwarding=1 frr:10.5-iida
+root@cml-controller:~# docker run -d --rm --sysctl net.ipv6.conf.all.forwarding=1 frr:10.4
 aa016aa57fa5cdbf1bf0400f1b021cdcd284f86200b11e489384846b4ffab4e5
 ```
 
@@ -1170,7 +1176,7 @@ aa016aa57fa5cdbf1bf0400f1b021cdcd284f86200b11e489384846b4ffab4e5
 ```bash
 root@cml-controller:~# docker ps
 CONTAINER ID   IMAGE           COMMAND       CREATED          STATUS          PORTS     NAMES
-aa016aa57fa5   frr:10.5-iida   "/start.sh"   36 seconds ago   Up 35 seconds             stupefied_curran
+aa016aa57fa5   frr:10.4        "/start.sh"   36 seconds ago   Up 35 seconds             stupefied_curran
 ```
 
 - docker exec
@@ -1313,7 +1319,7 @@ Dockerを使う別のノード定義ファイルを覗いてみるとmisc_args�
         content: |
           {
             "docker": {
-              "image": "frr:10.5-iida",
+              "image": "frr:10.4",
               "misc_args": [
                 "--sysctl net.ipv6.conf.all.forwarding=1"
               ]
@@ -1490,9 +1496,9 @@ cd /var/lib/libvirt/images/node-definitions/
 ノード定義ファイルをダウンロード
 
 ```bash
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition_alpine.yaml --output frr-10-4-iida.yaml
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition_alpine.yaml --output frr-10-4.yaml
 
-chown libvirt-qemu:virl2 frr-10-4-iida.yaml
+chown libvirt-qemu:virl2 frr-10-4.yaml
 ```
 
 イメージ定義ファイルの場所に移動
@@ -1504,19 +1510,19 @@ cd /var/lib/libvirt/images/virl-base-images/
 dropfolderからイメージを移動、イメージ定義ファイルをダウンロード
 
 ```bash
-mkdir -p frr-10-4-iida
-chown libvirt-qemu:virl2 frr-10-4-iida
-cd frr-10-4-iida
+mkdir -p frr-10-4
+chown libvirt-qemu:virl2 frr-10-4
+cd frr-10-4
 mv /var/local/virl2/dropfolder/frr.tar.gz .
 chown libvirt-qemu:virl2 frr.tar.gz
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition_alpine.yaml --output frr-10-4-iida.yaml
-chown libvirt-qemu:virl2 frr-10-4-iida.yaml
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition_alpine.yaml --output frr-10-4.yaml
+chown libvirt-qemu:virl2 frr-10-4.yaml
 ```
 
 イメージ定義ファイルのsha256をインスペクトした値に置き換える。
 
 ```bash
-vi frr-10-4-iida.yaml
+vi frr-10-4.yaml
 ```
 
 サービスを再起動

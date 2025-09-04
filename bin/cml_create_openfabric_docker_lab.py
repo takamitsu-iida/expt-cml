@@ -13,10 +13,10 @@ LAB_NAME = "Docker FRR OpenFabric"
 SERIAL_PORT = 7000
 
 # ノード定義（Docker FRR）
-NODE_DEFINITION = "frr-10-5-iida"
+NODE_DEFINITION = "frr-10-4"
 
 # イメージ定義
-IMAGE_DEFINITION = "frr-10-5-iida"
+IMAGE_DEFINITION = "frr-10-4"
 
 # node_cfgのテンプレート
 NODE_CFG_FILENAME = "openfabric_docker_lab_node_cfg.j2"

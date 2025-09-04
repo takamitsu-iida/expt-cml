@@ -13,10 +13,10 @@ LAB_NAME = "Docker FRR SRv6"
 SERIAL_PORT = 5000
 
 # ノード定義（Docker FRR）
-NODE_DEFINITION = "frr-10-5-iida"
+NODE_DEFINITION = "frr-10-4"
 
 # イメージ定義
-IMAGE_DEFINITION = "frr-10-5-iida"
+IMAGE_DEFINITION = "frr-10-4"
 
 # protocolsファイルの内容
 PROTOCOLS_TEXT = """\

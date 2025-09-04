@@ -59,6 +59,11 @@ apt install -y vim
 # Install snmpd
 apt install -y snmpd
 
+# enable snmpd
+systemctl enable snmpd
+
+# Configure snmpd for FRR
+echo "# agentx" >> /etc/snmp/snmpd.conf
 echo "agentxsocket /var/agentx/master" >> /etc/snmp/snmpd.conf
 echo "agentxperms 777 777" >> /etc/snmp/snmpd.conf
 

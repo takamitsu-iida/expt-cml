@@ -59,9 +59,6 @@ apt install -y vim
 # Install snmpd
 apt install -y snmpd
 
-# enable snmpd
-systemctl enable snmpd
-
 # Configure snmpd for FRR
 echo "# agentx" >> /etc/snmp/snmpd.conf
 echo "agentxsocket /var/agentx/master" >> /etc/snmp/snmpd.conf
@@ -133,6 +130,8 @@ rm -rf ${WORKING_DIRECTORY}/libyang
 
 EOF
 
+# snmpdをバックグランドで起動
+CMD ["/usr/sbin/snmpd", "-Lsd"]
 
 COPY --chmod=0755 start.sh /
 

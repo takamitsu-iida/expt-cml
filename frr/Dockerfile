@@ -69,6 +69,8 @@ echo "agentxperms 777 777" >> /etc/snmp/snmpd.conf
 sed -i 's/^rocommunity  public default -V systemonly$/rocommunity  public default/' /etc/snmp/snmpd.conf
 sed -i 's/^rocommunity6 public default -V systemonly$/rocommunity6 public default/' /etc/snmp/snmpd.conf
 sed -i 's/^agentaddress  127.0.0.1,[::1]$/agentAddress 0.0.0.0/' /etc/snmp/snmpd.conf
+sed -i 's/^agentaddress  127/#&/' /etc/snmp/snmpd.conf
+echo "agentaddress udp:161,udp6:[::1]:161" >> /etc/snmp/snmpd.conf
 
 #
 # snmpd should run in start.sh

@@ -99,6 +99,11 @@ interface eth1
  isis network point-to-point
 exit
 !
+interface eth2
+ description TO CE ROUTER
+ ip address 10.0.{{ ROUTER_NUMBER }}.1/24
+exit
+!
 """
 
 P_INTERFACE_TEMPLATE = """\
@@ -132,6 +137,18 @@ interface eth3
 exit
 !
 """
+
+CE_CONFIG_TEMPLATE = """\
+hostname {{ HOSTNAME }}
+!
+interface eth0
+ ip address {{ PE_CE_ADDR }}
+exit
+!
+
+"""
+
+
 
 ###########################################################
 
@@ -261,7 +278,7 @@ if __name__ == '__main__':
         # (X, Y)座標
         x = 0
         y = 0
-        x_grid_width = 240
+        x_grid_width = 200
         y_grid_width = 160
 
         # Jinja2のTemplateをインスタンス化する
@@ -295,7 +312,7 @@ if __name__ == '__main__':
             node.image_definition = IMAGE_DEFINITION
 
             # スマートタグを設定
-            # node.add_tag(tag="P")
+            # node.add_tag(tag="SRv6")
 
             # pattyのタグを設定
             # 例 serial:5001
@@ -345,7 +362,7 @@ if __name__ == '__main__':
             node.image_definition = IMAGE_DEFINITION
 
             # スマートタグを設定
-            # node.add_tag(tag="PE")
+            # node.add_tag(tag="SRv6")
 
             # pattyのタグを設定
             # 例 serial:5001
@@ -398,6 +415,97 @@ if __name__ == '__main__':
             p_interface = p_routers[1].get_interface_by_label(f"eth{index}")
             # 接続する
             lab.create_link(pe_interface, p_interface, wait=True)
+
+        # SRv6ドメインがわかるように、スマートアノテーションを作る
+        lab.create_smart_annotation('SRv6', p_routers + pe_routers, **{
+            'fill_color': "#F3EAEAFF",
+            'border_color': '#F3EAEAFF'
+        })
+
+
+        # CEルータ用のテンプレート
+        ce_config_template = Template(CE_CONFIG_TEMPLATE)
+
+        # CE101を作る
+        pe11 = pe_routers[0]
+        ce101 = lab.create_node("CE101", NODE_DEFINITION, pe11.x - x_grid_width, pe11.y, wait=True)
+        ce101.image_definition = IMAGE_DEFINITION
+        ce101.add_tag(tag=f"serial:{SERIAL_PORT + 101}")
+        # インタフェースを4個作成する
+        for _ in range(4):
+            ce101.create_interface(_, wait=True)
+        # CEルータの設定を作る
+        ce101.configuration = [{
+            'name': 'frr.conf',
+            'content': ce_config_template.render({
+                "HOSTNAME": "CE101",
+                "PE_CE_ADDR": "10.0.11.101/24"
+            })
+        }]
+        # CEルータのeth0とPEのeth2を接続する
+        ce101_eth0 = ce101.get_interface_by_label("eth0")
+        pe11_eth2 = pe11.get_interface_by_label("eth2")
+        lab.create_link(ce101_eth0, pe11_eth2, wait=True)
+
+        # CE102を作る
+        pe12 = pe_routers[1]
+        ce102 = lab.create_node("CE102", NODE_DEFINITION, pe12.x - x_grid_width, pe12.y, wait=True)
+        ce102.image_definition = IMAGE_DEFINITION
+        ce102.add_tag(tag=f"serial:{SERIAL_PORT + 102}")
+        # インタフェースを4個作成する
+        for _ in range(4):
+            ce102.create_interface(_, wait=True)
+        # CEルータの設定を作る
+        ce102.configuration = [{
+            'name': 'frr.conf',
+            'content': ce_config_template.render({
+                "HOSTNAME": "CE102",
+                "PE_CE_ADDR": "10.0.12.102/24"
+            })
+        }]
+        # CEルータのeth0とPEのeth2を接続する
+        ce102_eth0 = ce102.get_interface_by_label("eth0")
+        pe12_eth2 = pe12.get_interface_by_label("eth2")
+        lab.create_link(ce102_eth0, pe12_eth2, wait=True)
+
+        # CE103を作る
+        pe13 = pe_routers[2]
+        ce103 = lab.create_node("CE103", NODE_DEFINITION, pe13.x + x_grid_width, pe13.y, wait=True)
+        ce103.image_definition = IMAGE_DEFINITION
+        ce103.add_tag(tag=f"serial:{SERIAL_PORT + 103}")
+        # インタフェースを4個作成する
+        for _ in range(4):
+            ce103.create_interface(_, wait=True)
+        # CEルータの設定を作る
+        ce103.configuration = [{
+            'name': 'frr.conf',
+            'content': ce_config_template.render({
+                "HOSTNAME": "CE103",
+                "PE_CE_ADDR": "10.0.13.103/24"
+            })
+        }]
+        ce103_eth0 = ce103.get_interface_by_label("eth0")
+        pe13_eth2 = pe13.get_interface_by_label("eth2")
+        lab.create_link(ce103_eth0, pe13_eth2, wait=True)
+
+        # CE104を作る
+        pe14 = pe_routers[3]
+        ce104 = lab.create_node("CE104", NODE_DEFINITION, pe14.x + x_grid_width, pe14.y, wait=True)
+        ce104.image_definition = IMAGE_DEFINITION
+        ce104.add_tag(tag=f"serial:{SERIAL_PORT + 104}")
+        # インタフェースを4個作成する
+        for _ in range(4):
+            ce104.create_interface(_, wait=True)
+        ce104.configuration = [{
+            'name': 'frr.conf',
+            'content': ce_config_template.render({
+                "HOSTNAME": "CE104",
+                "PE_CE_ADDR": "10.0.14.104/24"
+            })
+        }]
+        ce104_eth0 = ce104.get_interface_by_label("eth0")
+        pe14_eth2 = pe14.get_interface_by_label("eth2")
+        lab.create_link(ce104_eth0, pe14_eth2, wait=True)
 
 
         # アノテーションを作成する

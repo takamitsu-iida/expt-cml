@@ -50,11 +50,17 @@ apt install -y libgrpc++-dev protobuf-compiler-grpc
 # Install Config Rollbacks
 apt install -y libsqlite3-dev
 
-# ZeroMQ
+# Install ZeroMQ
 apt install -y libzmq5 libzmq3-dev
 
-# Utilities
+# Install utilities
 apt install -y vim
+
+# Install snmpd
+apt install -y snmpd
+
+echo "agentxsocket /var/agentx/master" >> /etc/snmp/snmpd.conf
+echo "agentxperms 777 777" >> /etc/snmp/snmpd.conf
 
 # Add FRR user and groups
 groupadd -r -g 92 frr
@@ -105,6 +111,9 @@ install -m 640 -o frr -g frr tools/etc/frr/frr.conf /etc/frr/frr.conf
 install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf
 install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons
 install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf
+
+# enable snmp
+sed -i '/^zebra_options=/ s/"$/ -M snmp"/' /etc/frr/daemons
 
 # Create mountpoint directory
 mkdir /config

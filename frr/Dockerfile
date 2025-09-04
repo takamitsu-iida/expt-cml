@@ -60,9 +60,20 @@ apt install -y vim
 apt install -y snmpd
 
 # Configure snmpd for FRR
+echo "" >> /etc/snmp/snmpd.conf
 echo "# agentx" >> /etc/snmp/snmpd.conf
 echo "agentxsocket /var/agentx/master" >> /etc/snmp/snmpd.conf
 echo "agentxperms 777 777" >> /etc/snmp/snmpd.conf
+
+# modify snmpd.conf to allow read-only access from any host
+sed -i 's/^rocommunity  public default -V systemonly$/rocommunity  public default/' /etc/snmp/snmpd.conf
+sed -i 's/^rocommunity6 public default -V systemonly$/rocommunity6 public default/' /etc/snmp/snmpd.conf
+sed -i 's/^agentaddress  127.0.0.1,[::1]$/agentAddress 0.0.0.0/' /etc/snmp/snmpd.conf
+
+#
+# snmpd should run in start.sh
+# https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/start.sh
+#
 
 # Add FRR user and groups
 groupadd -r -g 92 frr
@@ -129,9 +140,6 @@ rm -rf ${WORKING_DIRECTORY}/frr
 rm -rf ${WORKING_DIRECTORY}/libyang
 
 EOF
-
-# snmpdをバックグランドで起動
-CMD ["/usr/sbin/snmpd", "-Lsd"]
 
 COPY --chmod=0755 start.sh /
 

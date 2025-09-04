@@ -449,7 +449,7 @@ sudo -s -E
 cd /var/lib/libvirt/images/node-definitions
 ```
 
-ノード定義ファイルを新規で作ります。
+ノード定義ファイルを新規で作ります（後述するようにgithubからファイルをcurlで取得した方が楽です）。
 
 ```bash
 vi frr-10-4.yaml
@@ -473,7 +473,7 @@ chown libvirt-qemu:virl2 frr-10-4.yaml
 
 > [!NOTE]
 >
-> githubにあるものをcurlで取ってきたほうが速いかもしれません。
+> githubにあるものをcurlで取ってきたほうが簡単です。
 >
 > ```bash
 > curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-4.yaml
@@ -494,9 +494,11 @@ chown libvirt-qemu:virl2 frr-10-4.yaml
 >   "type=bind,source=cfg/node.cfg,target=/config/node.cfg",
 >   "type=bind,source=cfg/protocols,target=/config/protocols"
 > ],
+> ```
 >
 > そこで、次のようにfrr.confを直接バインドするように変更しています。
 >
+> ```json
 > "mounts": [
 >   "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
 >   "type=bind,source=cfg/frr.conf,target=/etc/frr/frr.conf",
@@ -534,7 +536,7 @@ mv /var/local/virl2/dropfolder/frr.tar.gz .
 chown libvirt-qemu:virl2 frr.tar.gz
 ```
 
-イメージ定義ファイルを作成します。
+イメージ定義ファイルを作成します（後述のようにgithubにあるファイルをcurlで取ってきた方が楽です）。
 
 ```bash
 vi frr-10-4.yaml
@@ -565,10 +567,10 @@ sha256:
 
 > [!NOTE]
 >
-> イメージ定義ファイルもgithubから採取した方が簡単かもしれません。
+> イメージ定義ファイルもgithubから採取した方が簡単です。
 >
 > ```bash
-> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition_alpine.yaml --output frr-10-4.yaml
+> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition.yaml --output frr-10-4.yaml
 >
 > chown libvirt-qemu:virl2 frr-10-4.yaml
 > ```
@@ -591,7 +593,7 @@ REPOSITORY   TAG         IMAGE ID       CREATED        SIZE
 frr          10.2.1-r1   1bd2e82159f1   4 months ago   39.8MB
 ```
 
-この時点では登録されていません。
+この時点では登録されていません（10.2.1-r1はCML2.9に同梱のものです）。
 
 CMLのダッシュボードに移ります。
 

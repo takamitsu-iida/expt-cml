@@ -12,6 +12,11 @@ PROTOCOLS=/config/protocols
 #   fi
 # done
 
+#
+# run snmpd in the background
+#
+/usr/sbin/snmpd -Lsd
+
 # enable the requested protocols
 while IFS= read -r line; do
     line=$(echo "$line" | xargs) # no whitespace
@@ -19,7 +24,6 @@ while IFS= read -r line; do
         sed -r -e "s/^(${line}=)no$/\1yes/" -i /etc/frr/daemons
     fi
 done <"$PROTOCOLS"
-
 
 #
 # day0 config frr.conf is mounted to /etc/frr/frr.conf directly in CML node_definition

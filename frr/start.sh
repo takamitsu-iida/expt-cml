@@ -24,7 +24,7 @@ fi
 # run sshd in the background
 #
 if [ -x /usr/sbin/sshd ]; then
-    /usr/sbin/sshd -D
+    /usr/sbin/sshd
 fi
 
 # enable the requested protocols

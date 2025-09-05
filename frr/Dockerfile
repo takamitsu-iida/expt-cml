@@ -67,14 +67,17 @@ FROM base AS builder
 # Based on the official FRR documentation for building on Ubuntu 24.04
 # https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
-ENV WORKING_DIRECTORY=/root
+ENV WORKING_DIRECTORY=/var/tmp/build
 ENV DATE=20250905
 
 WORKDIR ${WORKING_DIRECTORY}
 
-USER root
+# USER root
 
 RUN <<EOF
+
+mkdir -p ${WORKING_DIRECTORY}
+cd ${WORKING_DIRECTORY}
 
 # Install libyang
 git clone https://github.com/CESNET/libyang.git
@@ -159,8 +162,7 @@ apt autoremove -y
 apt clean
 rm -rf /var/lib/apt/lists/*
 rm -rf /var/lib/cache/*
-rm -rf ${WORKING_DIRECTORY}/frr
-rm -rf ${WORKING_DIRECTORY}/libyang
+rm -rf ${WORKING_DIRECTORY}
 
 EOF
 

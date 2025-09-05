@@ -24,6 +24,7 @@ fi
 # run sshd in the background
 #
 if [ -x /usr/sbin/sshd ]; then
+    /usr/bin/ssh-keygen -A
     /usr/sbin/sshd
 fi
 
@@ -61,6 +62,5 @@ echo "READY" >/dev/console
 
 trap '' INT TSTP
 while true; do
-    su -s /bin/bash frr -c "/usr/bin/vtysh"
-    # /usr/bin/vtysh
+    /usr/bin/vtysh -u frr -g frrvty
 done

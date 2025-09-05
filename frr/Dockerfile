@@ -65,10 +65,11 @@ apt install -y libsqlite3-dev
 apt install -y libzmq5 libzmq3-dev
 
 # Install utilities
-apt install -y vim
+apt install -y --no-install-recommends vim
+apt install -y --no-install-recommends nload ethtool
 
 # Install snmpd
-apt install -y snmpd
+apt install -y --no-install-recommends snmpd
 
 # Configure snmpd for FRR
 echo "" >> /etc/snmp/snmpd.conf

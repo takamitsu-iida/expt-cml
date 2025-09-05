@@ -3,8 +3,7 @@
 # 本スクリプトはgithubにおいてあるので、このコマンドをコックピットのターミナルで実行する
 # curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
 
-# 特権ユーザのシェルを取る
-# パスワードを聞かれる
+# 特権ユーザのシェルを取る（事前に実行しておいた方がよい）
 sudo -s -E
 
 COPY_SRC="ubuntu-24-04-20250503"

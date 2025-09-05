@@ -15,6 +15,10 @@ CMLに含まれるUbuntuのイメージはRead Onlyになっていますので�
 
 <br>
 
+全て手作業で実施する前提で手順を書いていきます。
+
+<br>
+
 ## 手順１．コックピットでUbuntuのイメージをコピーする
 
 CMLに登録されているUbuntuのイメージはRead Onlyなので、変更可能なイメージを作成します。
@@ -61,6 +65,8 @@ cd virl-base-images
 ```
 
 ここにはUbuntuだけでなく様々なイメージが保存されています。
+
+CMLのバージョンによって同梱されるイメージは変わってきますので、元にしたいUbuntuのイメージを確認します。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images# ls -l
@@ -165,7 +171,7 @@ schema_version: 0.0.1
 
 - disk_imageの値はそのままにしておきます
 
-- read_onlyをtrueから**false**に変えます
+- **read_onlyをtrueからfalseに変えます**
 
 編集後はこのようになります。
 
@@ -195,11 +201,11 @@ schema_version: 0.0.1
 systemctl restart virl2.target
 ```
 
-サービスを再起動しても稼働中のラボには影響しませんが、ブラウザでCMLにログインしていた場合、すべてログアウトされます。
+サービスを再起動しても稼働中のラボには影響しませんが、ブラウザでCMLにログインしていた場合は強制的にログアウトされます。
 
 <br>
 
-## 以上のコックピットでの作業を自動化するシェルスクリプト（自分専用）
+## 以上のコックピットでの作業を自動化するシェルスクリプト
 
 実験中は試行錯誤しながらUbuntuのイメージを何度も作り変えますので、ここまでのコックピットでの作業をシェルスクリプトにしました。
 
@@ -208,11 +214,7 @@ systemctl restart virl2.target
 ```bash
 #!/bin/bash
 
-# 本スクリプトはgithubにおいてあるので、このコマンドをコックピットのターミナルで実行する
-# curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
-
-# 特権ユーザのシェルを取る
-# パスワードを聞かれる
+# 特権ユーザのシェルを取る（事前に実行しておいた方が良い）
 sudo -s -E
 
 COPY_SRC="ubuntu-24-04-20250503"
@@ -251,13 +253,17 @@ systemctl restart virl2.target
 cat ${COPY_DST}.yaml
 ```
 
-自分の場合はgithub上のシェルスクリプトを（改版せずにそのまま）実行するだけなので、コックピットのターミナルで以下をコピペするだけです。
+自分の場合はgithub上のシェルスクリプトを（改版せずにそのまま）実行するだけなので、コックピットのターミナルで `sudo -s -E` で特権を取ってから以下をコピペするだけです。
 
 ```bash
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
 ```
 
-コックピットのターミナルに貼り付けて実行するのであれば、`sudo -s -E`で特権ユーザのシェルを手動で取ってから上記をコピペすればよいでしょう。
+シェルスクリプトをダウンロードして、編集してから実行してもいいでしょう。curlでダウンロードするにはこうします。
+
+```bash
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh --output copy_image_definition.sh
+```
 
 <br><br>
 
@@ -312,7 +318,7 @@ drwxr-xr-x 2 virl2        virl2       4096 Feb 21 07:38 cfg
 -rw-r--r-- 1 libvirt-qemu kvm   3188523008 Feb 21 07:49 node0.img
 ```
 
-node0.imgファイルは元のイメージからの変更を保持していますので、これを元のイメージに反映します。
+node0.imgファイルは元のイメージからの変更を保持していますので、これを保存します。
 
 ```bash
 qemu-img commit node0.img
@@ -367,3 +373,18 @@ sudo qemu-img commit node0.img
 ```
 
 これで変更が確定しますので、次回以降このイメージ定義を使えば、カスタマイズされた状態のUbuntuが起動します。
+
+
+<br><br><br><br>
+
+# 手順まとめ
+
+<br>
+
+## コックピットのターミナルでUbuntuのイメージをコピーするシェルスクリプトを実行する
+
+## bin/cml_create_custom_ubuntu.py を実行してラボを作る
+
+## ラボの中のUbuntuをいじる
+
+## コックピットのターミナルでqemu-img commit node0.imgを実行する（実行場所はラボを作ったときに表示される）

@@ -68,6 +68,5 @@ echo "READY" >/dev/console
 
 trap '' INT TSTP
 while true; do
-    su -s /bin/bash frr -c "/usr/bin/vtysh"
-    # /usr/bin/vtysh
+    /usr/bin/vtysh
 done

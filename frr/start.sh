@@ -30,7 +30,6 @@ if [ -x /usr/sbin/sshd ]; then
 
     mkdir -p /var/run/sshd
     echo "root:cisco" | chpasswd
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
     /usr/sbin/sshd
 fi

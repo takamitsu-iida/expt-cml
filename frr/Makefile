@@ -14,6 +14,7 @@ inspect: ## DockerイメージのIDをインスペクトする
 
 
 save: ## Dockerイメージを保存する
+	@rm -f frr.tar.gz
 	@docker save -o frr.tar ${TAG}
 	@gzip frr.tar
 

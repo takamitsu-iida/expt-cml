@@ -57,6 +57,8 @@ apt install -y --no-install-recommends openssh-server
 
 echo 'root:cisco' | chpasswd
 sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
 
 EOF
 

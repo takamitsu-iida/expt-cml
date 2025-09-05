@@ -31,7 +31,7 @@ if [ -x /usr/sbin/sshd ]; then
     mkdir -p /var/run/sshd
     echo "root:cisco" | chpasswd
 
-    /usr/sbin/sshd
+    /usr/sbin/sshd -E /var/log/sshd.log
 fi
 
 # enable the requested protocols
@@ -68,5 +68,6 @@ echo "READY" >/dev/console
 
 trap '' INT TSTP
 while true; do
-    /usr/bin/vtysh
+    su -s /bin/bash frr -c "/usr/bin/vtysh"
+    # /usr/bin/vtysh
 done

@@ -162,6 +162,7 @@ mkdir /config
 apt remove -y
 apt autoremove -y
 apt clean
+cd /
 rm -rf /var/lib/apt/lists/*
 rm -rf /var/lib/cache/*
 rm -rf ${WORKING_DIRECTORY}

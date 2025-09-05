@@ -42,9 +42,11 @@ isisd
 
 CONFIG_TEMPLATE = """\
 !
-integrated-vtysh-config
-!
+frr defaults traditional
 hostname {{ HOSTNAME }}
+log syslog informational
+service integrated-vtysh-config
+!
 ip router-id 192.168.255.{{ ROUTER_NUMBER }}
 !
 {{ INTERFACES }}

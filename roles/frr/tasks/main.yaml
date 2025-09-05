@@ -86,6 +86,7 @@
       --enable-group=frr
       --enable-vty-group=frrvty
       --with-pkg-git-version
+      --enable-shell-access
 #      --with-pkg-extra-version=-MyOwnFRRVersion
   args:
     chdir: /tmp/frr

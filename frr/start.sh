@@ -23,8 +23,13 @@ fi
 #
 # run sshd in the background
 #
+if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+    ssh-keygen -A
+fi
+
 if [ -x /usr/sbin/sshd ]; then
-    /usr/bin/ssh-keygen -A
+    mkdir -p /var/run/sshd
+    echo "root:cisco" | chpasswd
     /usr/sbin/sshd
 fi
 

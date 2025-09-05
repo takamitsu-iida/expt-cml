@@ -1,37 +1,15 @@
 # Dockerfile for building FRRouting (FRR) on Ubuntu 24.04
 
-# ===== ベースステージ（updateのみ） =====
+# ===== ベースステージ（updateと必要ライブラリのインストール） =====
 FROM ubuntu:24.04 AS base
+
+ENV TZ=Asia/Tokyo
+ENV LANG=ja_JP.UTF-8
 
 RUN <<EOF
 
 apt update
 apt upgrade -y
-
-EOF
-
-
-# ===== ビルドステージ =====
-FROM base AS builder
-
-# Based on the official FRR documentation for building on Ubuntu 24.04
-# https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
-
-ENV TZ=Asia/Tokyo
-ENV LANG=ja_JP.UTF-8
-ENV WORKING_DIRECTORY=/root
-
-ENV DATE=20250905
-
-WORKDIR $WORKING_DIRECTORY
-
-USER root
-
-RUN <<EOF
-
-# update
-# apt update
-# apt upgrade -y
 
 # install prerequisites
 apt install -y \
@@ -44,16 +22,6 @@ apt install -y \
 
 # Install libyang build requirements
 apt install -y cmake libpcre2-dev
-
-# Install libyang
-git clone https://github.com/CESNET/libyang.git
-cd libyang
-git checkout v2.1.128
-mkdir build; cd build
-cmake --install-prefix /usr -D CMAKE_BUILD_TYPE:String="Release" ..
-make
-make install
-cd ${WORKING_DIRECTORY}
 
 # Install GRPC
 apt install -y libgrpc++-dev protobuf-compiler-grpc
@@ -84,10 +52,33 @@ sed -i 's/^agentaddress  127.0.0.1,[::1]$/agentAddress 0.0.0.0/' /etc/snmp/snmpd
 sed -i 's/^agentaddress  127/#&/' /etc/snmp/snmpd.conf
 echo "agentaddress udp:161,udp6:[::1]:161" >> /etc/snmp/snmpd.conf
 
-#
-# snmpd should run in start.sh
-# https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/start.sh
-#
+EOF
+
+
+# ===== ビルドステージ =====
+FROM base AS builder
+
+# Based on the official FRR documentation for building on Ubuntu 24.04
+# https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
+
+ENV WORKING_DIRECTORY=/root
+ENV DATE=20250905
+
+WORKDIR ${WORKING_DIRECTORY}
+
+USER root
+
+RUN <<EOF
+
+# Install libyang
+git clone https://github.com/CESNET/libyang.git
+cd libyang
+git checkout v2.1.128
+mkdir build; cd build
+cmake --install-prefix /usr -D CMAKE_BUILD_TYPE:String="Release" ..
+make
+make install
+cd ${WORKING_DIRECTORY}
 
 # Add FRR user and groups
 groupadd -r -g 92 frr
@@ -143,11 +134,17 @@ install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr
 # enable snmp
 sed -i '/^zebra_options=/ s/"$/ -M snmp"/' /etc/frr/daemons
 
+#
+# snmpd should run in start.sh
+# https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/start.sh
+#
+
 # Create mountpoint directory
 mkdir /config
 
 # Clean up
 apt remove -y
+apt autoremove -y
 apt clean
 rm -rf /var/lib/apt/lists/*
 rm -rf /var/lib/cache/*

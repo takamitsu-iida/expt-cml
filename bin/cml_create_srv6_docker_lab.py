@@ -41,6 +41,9 @@ isisd
 """
 
 CONFIG_TEMPLATE = """\
+!
+integrated-vtysh-config
+!
 hostname {{ HOSTNAME }}
 ip router-id 192.168.255.{{ ROUTER_NUMBER }}
 !

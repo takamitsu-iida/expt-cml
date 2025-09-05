@@ -1,7 +1,18 @@
 # Dockerfile for building FRRouting (FRR) on Ubuntu 24.04
 
-ARG UBUNTU_VERSION=24.04
-FROM ubuntu:$UBUNTU_VERSION
+# ===== ベースステージ（updateのみ） =====
+FROM ubuntu:24.04 AS base
+
+RUN <<EOF
+
+apt update
+apt upgrade -y
+
+EOF
+
+
+# ===== ビルドステージ =====
+FROM base AS builder
 
 # Based on the official FRR documentation for building on Ubuntu 24.04
 # https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
@@ -19,8 +30,8 @@ USER root
 RUN <<EOF
 
 # update
-apt update
-apt upgrade -y
+# apt update
+# apt upgrade -y
 
 # install prerequisites
 apt install -y \

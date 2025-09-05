@@ -117,6 +117,7 @@ cd frr
     --enable-vty-group=frrvty \
     --with-pkg-git-version \
     --with-pkg-extra-version=${DATE} \
+    --enable-shell-access \
     --disable-doc
 
 make

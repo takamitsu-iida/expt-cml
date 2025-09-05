@@ -45,12 +45,21 @@ echo "# agentx" >> /etc/snmp/snmpd.conf
 echo "agentxsocket /var/agentx/master" >> /etc/snmp/snmpd.conf
 echo "agentxperms 777 777" >> /etc/snmp/snmpd.conf
 
-# modify snmpd.conf to allow read-only access from any host
+#
+# add snmpd (should run in start.sh)
+#
 sed -i 's/^rocommunity  public default -V systemonly$/rocommunity  public default/' /etc/snmp/snmpd.conf
 sed -i 's/^rocommunity6 public default -V systemonly$/rocommunity6 public default/' /etc/snmp/snmpd.conf
 sed -i 's/^agentaddress  127.0.0.1,[::1]$/agentAddress 0.0.0.0/' /etc/snmp/snmpd.conf
 sed -i 's/^agentaddress  127/#&/' /etc/snmp/snmpd.conf
 echo "agentaddress udp:161,udp6:[::1]:161" >> /etc/snmp/snmpd.conf
+
+#
+# add sshd (should run in start.sh)
+#
+apt install -y --no-install-recommends openssh-server
+echo 'root:cisco' | chpasswd
+sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 EOF
 

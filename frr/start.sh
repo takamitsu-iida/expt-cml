@@ -20,6 +20,13 @@ if [ -x /usr/sbin/snmpd ]; then
     /usr/sbin/snmpd -LS 5 d -Lf /dev/null
 fi
 
+#
+# run sshd in the background
+#
+if [ -x /usr/sbin/sshd ]; then
+    /usr/sbin/sshd -D
+fi
+
 # enable the requested protocols
 while IFS= read -r line; do
     line=$(echo "$line" | xargs) # no whitespace

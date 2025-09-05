@@ -4,13 +4,14 @@ FROM ubuntu:24.04 AS builder
 ENV TZ=Asia/Tokyo
 ENV LANG=ja_JP.UTF-8
 ENV WORKING_DIRECTORY=/root
-ENV DATE=20250817
+ENV DATE=20250905
 
 WORKDIR $WORKING_DIRECTORY
 
 # Based on the official FRR documentation for building on Ubuntu 24.04
 # https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
+USER root
 
 RUN <<EOF
 
@@ -18,7 +19,10 @@ RUN <<EOF
 apt update
 apt upgrade -y
 
-# install prerequisites
+# Install git
+apt install -y git
+
+# Install prerequisites
 apt install -y \
     git autoconf automake libtool make libreadline-dev texinfo \
     pkg-config libpam0g-dev libjson-c-dev bison flex \

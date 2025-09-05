@@ -387,4 +387,6 @@ sudo qemu-img commit node0.img
 
 ## ラボの中のUbuntuをいじる
 
+## `/var/lib/cloud` ディレクトリを丸ごと消去する
+
 ## コックピットのターミナルでqemu-img commit node0.imgを実行する（実行場所はラボを作ったときに表示される）

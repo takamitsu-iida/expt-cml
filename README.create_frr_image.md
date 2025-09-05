@@ -59,14 +59,20 @@ systemctl restart virl2.target
 cat ${COPY_DST}.yaml
 ```
 
-自分の場合はgithubにあるスクリプトを（書き換えることなくそのまま）実行すればよいので、
+自分の場合はgithubにある[このスクリプト](/bin/copy_image_definition_frr.sh)を（書き換えることなくそのまま）実行すればよいので、
 以下をコックピットのターミナルにコピペします。
 
 ```bash
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh | bash -s
 ```
 
-コックピットのターミナルに貼り付けて実行するのであれば、`sudo -s -E`で特権ユーザのシェルを手動で取ってから上記をコピペすればよいでしょう。
+もしくはシェルスクリプトをダウンロードして、編集してから実行します。curlでダウンロードするにはこうします。
+
+```bash
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh --output copy_image_definition.sh
+```
+
+`sudo -s -E`で特権ユーザのシェルを取ってからシェルを実行します。
 
 <br><br>
 
@@ -91,6 +97,13 @@ sudo qemu-img commit node0.img
 
 <br>
 
+>[!NOTE]
+>
+> このラボのUbuntuは起動時にcloud-initの中でアプリをインストールしますので、処理完了まで長い時間かかります。
+> `cloud-init status` で状況を確認してください。
+
+<br>
+
 ## 手順３．FRRをインストールする（手作業の場合）
 
 ここからは起動したUbuntuで作業します。
@@ -99,24 +112,16 @@ sudo qemu-img commit node0.img
 
 FRRのマニュアルに記載されている通りに実行します。
 
-https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2204.html
-
-<br>
-
-> [!NOTE]
->
-> CML2.9からUbuntuのバージョンが24になっています。正しい参照先はこちら
->
-> https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
+https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
 
 <br>
 
 必要なパッケージをインストールします。
 
 ```bash
-sudo apt install \
-   git autoconf \
-   automake libtool make libreadline-dev texinfo \
+sudo apt update
+sudo apt-get install -y \
+   git autoconf automake libtool make libreadline-dev texinfo \
    pkg-config libpam0g-dev libjson-c-dev bison flex \
    libc-ares-dev python3-dev python3-sphinx \
    install-info build-essential libsnmp-dev perl \
@@ -127,8 +132,8 @@ sudo apt install \
 libyangをインストールします。libyangは新しいものが必要なのでソースコードからmakeします。
 
 ```bash
-sudo apt install cmake
-sudo apt install libpcre2-dev
+sudo apt install -y cmake
+sudo apt install -y libpcre2-dev
 
 mkdir ~/src
 cd ~/src
@@ -214,6 +219,7 @@ sudo install -m 640 -o frr -g frrvty tools/etc/frr/vtysh.conf /etc/frr/vtysh.con
 sudo install -m 640 -o frr -g frr tools/etc/frr/frr.conf /etc/frr/frr.conf
 sudo install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf
 sudo install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons
+sudo install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf
 ```
 
 カーネル設定を変更するために `/etc/sysctl.conf `を編集します。
@@ -295,12 +301,10 @@ sudo rm -rf /var/lib/cloud
 Ubuntuにログインしてから以下を実行します。
 
 ```bash
-sudo -s -E
-
 git clone https://github.com/takamitsu-iida/expt-cml.git
-
 cd expt-cml
 
+sudo -s -E
 ansible-playbook install-frr-playbook.yaml
 ```
 
@@ -309,12 +313,6 @@ ansible-playbook install-frr-playbook.yaml
 何らかの理由でこの仮想マシンを再起動してしまうと再びcloud-initが走ってしまうので、再起動したときには `rm -rf /var/lib/cloud` を忘れずに実行します。
 
 その他、気が済むまでいじったらUbuntuを停止します。
-
-<br>
-
-> [!NOTE]
->
-> cloud-initのログは `/var/log/cloud-init.log` にあります。
 
 <br>
 

@@ -15,7 +15,8 @@ PROTOCOLS=/config/protocols
 #
 # run snmpd in the background
 #
-/usr/sbin/snmpd -Lsd
+# /usr/sbin/snmpd -Lsd
+/usr/sbin/snmpd -LS 5 d -Lf /dev/null
 
 # enable the requested protocols
 while IFS= read -r line; do

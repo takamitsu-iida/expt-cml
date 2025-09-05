@@ -1,3 +1,5 @@
+# うまく動かないDockerfile
+
 # ===== ビルドステージ =====
 FROM ubuntu:24.04 AS builder
 
@@ -118,6 +120,7 @@ ENV TZ=Asia/Tokyo
 ENV LANG=ja_JP.UTF-8
 
 RUN <<EOF
+
 # 必要なランタイムパッケージをインストール
 apt update
 # apt install -y libreadline8 libjson-c5 libsnmp40 libcap2 libelf1 libunwind8 libc-ares2 libyang2 libzmq5

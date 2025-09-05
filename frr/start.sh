@@ -23,13 +23,15 @@ fi
 #
 # run sshd in the background
 #
-if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-    ssh-keygen -A
-fi
-
 if [ -x /usr/sbin/sshd ]; then
+    if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+        ssh-keygen -A
+    fi
+
     mkdir -p /var/run/sshd
     echo "root:cisco" | chpasswd
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
     /usr/sbin/sshd
 fi
 

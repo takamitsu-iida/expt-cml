@@ -97,6 +97,10 @@ git clone -b stable/10.4 https://github.com/FRRouting/frr.git frr
 # git clone https://github.com/frrouting/frr.git frr
 
 # Compile
+# --enable-shell-access: enable vtysh shell access for frr user
+# --disable-doc: do not build documentation (to avoid requiring LaTeX)
+# --enable-snmp: build with SNMP support
+
 cd frr
 ./bootstrap.sh
 ./configure \

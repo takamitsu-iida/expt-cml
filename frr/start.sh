@@ -26,11 +26,7 @@ while IFS= read -r line; do
     fi
 done <"$PROTOCOLS"
 
-#
-# day0 config frr.conf is mounted to /etc/frr/frr.conf directly in CML node_definition
-#
-
-# day0 config for the router
+# Not needed to copy the day0 config as it's mounted directly to /etc/frr/frr.conf
 #if [ -f $CONFIG ]; then
 #    cp $CONFIG /etc/frr/frr.conf
 #fi

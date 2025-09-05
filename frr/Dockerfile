@@ -12,7 +12,7 @@ apt update
 apt upgrade -y
 
 # install prerequisites
-apt install -y \
+apt install -y --no-install-recommends \
     git autoconf automake libtool make libreadline-dev texinfo \
     pkg-config libpam0g-dev libjson-c-dev bison flex \
     libc-ares-dev python3-dev python3-sphinx \
@@ -21,16 +21,16 @@ apt install -y \
     protobuf-c-compiler libprotobuf-c-dev
 
 # Install libyang build requirements
-apt install -y cmake libpcre2-dev
+apt install -y --no-install-recommends cmake libpcre2-dev
 
 # Install GRPC
-apt install -y libgrpc++-dev protobuf-compiler-grpc
+apt install -y --no-install-recommends libgrpc++-dev protobuf-compiler-grpc
 
 # Install Config Rollbacks
-apt install -y libsqlite3-dev
+apt install -y --no-install-recommends libsqlite3-dev
 
 # Install ZeroMQ
-apt install -y libzmq5 libzmq3-dev
+apt install -y --no-install-recommends libzmq5 libzmq3-dev
 
 # Install utilities
 apt install -y --no-install-recommends vim

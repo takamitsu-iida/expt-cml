@@ -301,7 +301,7 @@ git clone https://github.com/takamitsu-iida/expt-cml.git
 
 cd expt-cml
 
-ansible-playbook playbook.yaml
+ansible-playbook install-frr-playbook.yaml
 ```
 
 このプレイブックの最後では `/var/lib/cloud/` ディレクトリを削除して、次に起動したときにcloud-initが走るようにしています。

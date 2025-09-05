@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-
 ###########################################################
-
 #
 # 作成するラボの情報
 #
@@ -13,15 +11,72 @@ LAB_NAME = "cml_create_lab2"
 # ノード定義
 NODE_DEFINITION = "frr"
 
-# イメージ定義
+# イメージ定義 CML2.9に同梱のFRR(Docker)イメージ
 IMAGE_DEFINITION = "frr-10-2-1-r1"
 
 # ノードにつけるタグ
 NODE_TAG = "serial:6000"
 
-# dataフォルダにある、FRRノードに与える初期設定のテンプレート
-FRR_NODE_CFG_FILENAME = "lab2_frr_node_cfg.j2"
-FRR_PROTOCOLS_FILENAME = "lab2_frr_protocols.j2"
+# FRR(Docker)イメージに設定するnode.cfgのJinja2テンプレート
+FRR_NODE_CFG = """
+! FRR Config generated on 2025-01-22 17:55
+! just an example -- You need to need to change it
+!
+hostname frr-0
+!
+interface lo
+    ip address 10.0.0.1/32
+    ip ospf passive
+!
+interface eth0
+    description to eth0.frr-1
+    ip address 172.16.128.2/30
+    no shutdown
+interface eth1
+    description to eth0.frr-2
+    ip address 172.16.128.9/30
+    no shutdown
+interface eth2
+    description not connected
+    !no ip address
+    shutdown
+interface eth3
+    description not connected
+    !no ip address
+    shutdown
+!
+router ospf
+    ospf router-id 10.0.0.1
+    network 10.0.0.1/32 area 10
+    network 172.16.128.0/30 area 10
+    network 172.16.128.8/30 area 10
+!
+end
+"""
+
+FRR_PROTOCOLS = """
+# enable / disable needed routing protocols by adding / removing
+# the hashmark in front of the lines below
+#
+bgpd
+ospfd
+ospf6d
+ripd
+ripngd
+isisd
+pimd
+pim6d
+ldpd
+nhrpd
+eigrpd
+babeld
+sharpd
+pbrd
+bfdd
+fabricd
+vrrpd
+pathd
+"""
 
 ###########################################################
 
@@ -37,7 +92,6 @@ from pathlib import Path
 # 外部ライブラリのインポート
 #
 try:
-    from jinja2 import Template
     from virl2_client import ClientLibrary
 except ImportError as e:
     logging.critical(str(e))
@@ -122,15 +176,6 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
-    def read_template_config(filename='') -> str:
-        p = data_dir.joinpath(filename)
-        try:
-            with p.open() as f:
-                return f.read()
-        except FileNotFoundError:
-            logger.error(f"{filename} not found")
-            sys.exit(1)
-
     def main():
 
         # 引数処理
@@ -154,6 +199,13 @@ if __name__ == '__main__':
         if args.delete:
             return 0
 
+        # 指定されたimage_definitionが存在するか確認して、なければ終了する
+        image_defs = client.definitions.image_definitions()
+        image_def_ids = [img['id'] for img in image_defs]
+        if IMAGE_DEFINITION not in image_def_ids:
+            logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
+            return 1
+
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
 
@@ -169,39 +221,15 @@ if __name__ == '__main__':
         # NATとfrrを接続する
         lab.connect_two_nodes(ext_conn_node, frr_node)
 
-        # FRRに設定するnode.cfgのJinja2テンプレートを取り出す
-        node_cfg_j2 = read_template_config(filename=FRR_NODE_CFG_FILENAME)
-
-        # Jinja2のTemplateをインスタンス化する
-        node_cfg_template = Template(node_cfg_j2)
-
-        # templateに渡すコンテキストオブジェクト
-        node_cfg_context = {}
-
-        # FRRに設定するnode.cfgのテキストを作る
-        node_cfg_text = node_cfg_template.render(node_cfg_context)
-
-        # FRRに設定するprotocolsのJinja2テンプレートを取り出す
-        protocols_j2 = read_template_config(filename=FRR_PROTOCOLS_FILENAME)
-
-        # Jinja2のTemplateをインスタンス化する
-        protocols_template = Template(protocols_j2)
-
-        # templateに渡すコンテキストオブジェクト
-        protocols_context = {}
-
-        # FRRに設定するprotocolsのテキストを作る
-        protocols_text = protocols_template.render(protocols_context)
-
         # FRRに設定するファイル一式
         frr_configurations = [
             {
                 'name': 'node.cfg',
-                'content': node_cfg_text
+                'content': FRR_NODE_CFG
             },
             {
                 'name': 'protocols',
-                'content': protocols_text
+                'content': FRR_PROTOCOLS
             }
         ]
 

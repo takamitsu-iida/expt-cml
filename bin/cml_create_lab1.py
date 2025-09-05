@@ -19,9 +19,6 @@ IMAGE_DEFINITION = "ubuntu-24-04-20250503"
 # ノードにつけるタグ
 NODE_TAG = "serial:6000"
 
-# Ubuntuノードに与える初期設定のテンプレート
-UBUNTU_CONFIG_FILENAME = "ubuntu_config.yaml.j2"
-
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うホスト名
 UBUNTU_HOSTNAME = "ubuntu-0"
 
@@ -30,6 +27,82 @@ UBUNTU_USERNAME = "cisco"
 
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うパスワード
 UBUNTU_PASSWORD = "cisco"
+
+# id_rsa.pubの中身をそのまま貼り付けます
+# SSH_PUBLIC_KEY = "YOUR_SSH_PUBLIC_KEY_HERE"
+SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
+
+# Ubuntuノードに設定するcloud-initのJinja2テンプレート
+UBUNTU_CONFIG = """#cloud-config
+hostname: {{ HOSTNAME }}
+manage_etc_hosts: True
+system_info:
+  default_user:
+    name: {{ USERNAME }}
+password: {{ PASSWORD }}
+chpasswd: { expire: False }
+ssh_pwauth: True
+ssh_authorized_keys:
+  - ssh-rsa {{ SSH_PUBLIC_KEY }}
+
+timezone: Asia/Tokyo
+locale: ja_JP.utf8
+
+# run apt-get update
+# default false
+package_update: true
+
+# default false
+package_upgrade: true
+
+# reboot if required
+package_reboot_if_required: true
+
+# packages
+packages:
+  - git
+  - ansible
+
+#
+# ansible-pull
+#
+
+#ansible:
+#  install_method: distro
+#  package_name: ansible-core
+#  pull:
+#    url: "https://github.com/takamitsu-iida/expt-cml.git"
+#    playbook_name: playbook.yaml
+
+write_files:
+  #
+  # refer to netplan document
+  # https://netplan.readthedocs.io/en/latest/netplan-yaml/
+  #
+  - path: /etc/netplan/60-cloud-init.yaml
+    permissions: '0600'
+    owner: root:root
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          ens2:
+            dhcp4: true
+            dhcp6: false
+            link-local: []
+
+runcmd:
+
+  - |
+    cat - << 'EOS' >> /etc/bash.bashrc
+    rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf '\e7\e[r\e[999;999H\e[6n\e8'); IFS='[;' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi
+    rsz
+    EOS
+
+  - sudo systemctl disable systemd-networkd-wait-online.service
+  - sudo systemctl mask systemd-networkd-wait-online.service
+"""
 
 ###########################################################
 
@@ -130,15 +203,6 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
-    def read_template_config(filename='') -> str:
-        p = data_dir.joinpath(filename)
-        try:
-            with p.open() as f:
-                return f.read()
-        except FileNotFoundError:
-            logger.error(f"{filename} not found")
-            sys.exit(1)
-
     def main():
 
         # 引数処理
@@ -160,6 +224,13 @@ if __name__ == '__main__':
         # -d で起動していたらここで処理終了
         if args.delete:
             return 0
+
+        # 指定されたimage_definitionが存在するか確認して、なければ終了する
+        image_defs = client.definitions.image_definitions()
+        image_def_ids = [img['id'] for img in image_defs]
+        if IMAGE_DEFINITION not in image_def_ids:
+            logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
+            return 1
 
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
@@ -183,17 +254,15 @@ if __name__ == '__main__':
         # NATとubuntuを接続する
         lab.connect_two_nodes(ext_conn_node, ubuntu_node)
 
-        # Ubuntuに設定するcloud-init.yamlのJinja2テンプレートを取り出す
-        template_config = read_template_config(filename=UBUNTU_CONFIG_FILENAME)
-
         # Jinja2のTemplateをインスタンス化する
-        template = Template(template_config)
+        template = Template(UBUNTU_CONFIG)
 
         # templateに渡すコンテキストオブジェクト
         context = {
             "HOSTNAME": UBUNTU_HOSTNAME,
             "USERNAME": UBUNTU_USERNAME,
             "PASSWORD": UBUNTU_PASSWORD,
+            "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY
         }
 
         # Ubuntuに設定するcloud-init.yamlのテキストを作る

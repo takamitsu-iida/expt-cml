@@ -353,10 +353,10 @@ Ubuntuを停止します。
 
 ラボ作成時に表示されたメッセージをコックピットのターミナルで実行します。
 
-このメッセージは `log/cml_create_frr_ubuntu.log` に残っていますので、確認します。
+このメッセージは `log/cml_create_custom_ubuntu.log` に残っていますので、確認します。
 
 ```bash
-cat log/cml_create_frr_ubuntu.log
+cat log/cml_create_custom_ubuntu.log
 ```
 
 例。

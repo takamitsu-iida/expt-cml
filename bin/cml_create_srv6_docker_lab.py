@@ -272,6 +272,13 @@ if __name__ == '__main__':
         if args.delete:
             return 0
 
+        # 指定されたimage_definitionが存在するか確認して、なければ終了する
+        image_defs = client.definitions.image_definitions()
+        image_def_ids = [img['id'] for img in image_defs]
+        if IMAGE_DEFINITION not in image_def_ids:
+            logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
+            return 1
+
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
 

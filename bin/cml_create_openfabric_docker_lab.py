@@ -18,11 +18,63 @@ NODE_DEFINITION = "frr-10-4"
 # イメージ定義
 IMAGE_DEFINITION = "frr-10-4"
 
-# node_cfgのテンプレート
-NODE_CFG_FILENAME = "openfabric_docker_lab_node_cfg.j2"
+###########################################################
+
+# frr.confのテンプレート
+FRR_CONF = """
+!
+frr defaults traditional
+hostname {{ HOSTNAME }}
+log syslog informational
+service integrated-vtysh-config
+{%- for i in range(0, 8) %}
+!
+interface eth{{ i }}
+ ip router openfabric 1
+ ipv6 address fe80::{{ IPv6_ROUTER_ID }}/64
+ ipv6 router openfabric 1
+exit
+{%- endfor %}
+!
+interface lo
+ ip address 192.168.255.{{ IPv4_ROUTER_ID }}/32
+ ip router openfabric 1
+ ipv6 address 2001:db8::{{ IPv6_ROUTER_ID }}/128
+ ipv6 router openfabric 1
+ openfabric passive
+exit
+!
+router openfabric 1
+ net 49.0000.0000.00{{ IPv6_ROUTER_ID }}.00
+ fabric-tier {{ TIER }}
+exit
+!
+end
+"""
 
 # protocolsのテンプレート
-PROTOCOLS_FILENAME = "openfabric_docker_lab_protocols.j2"
+PROTOCOLS = """
+bgpd
+#ospfd
+#ospf6d
+#ripd
+#ripngd
+#isisd
+#pimd
+#pim6d
+#ldpd
+#nhrpd
+#eigrpd
+#babeld
+#sharpd
+#pbrd
+#bfdd
+fabricd
+#vrrpd
+#pathd
+"""
+
+
 
 ###########################################################
 
@@ -123,15 +175,6 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
-    def read_template_config(filename='') -> str:
-        p = data_dir.joinpath(filename)
-        try:
-            with p.open() as f:
-                return f.read()
-        except FileNotFoundError:
-            logger.error(f"{filename} not found")
-            sys.exit(1)
-
 
     def main():
 
@@ -155,6 +198,13 @@ if __name__ == '__main__':
         # -d で起動していたらここで処理終了
         if args.delete:
             return 0
+
+        # 指定されたimage_definitionが存在するか確認して、なければ終了する
+        image_defs = client.definitions.image_definitions()
+        image_def_ids = [img['id'] for img in image_defs]
+        if IMAGE_DEFINITION not in image_def_ids:
+            logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
+            return 1
 
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
@@ -180,25 +230,19 @@ if __name__ == '__main__':
         # bridge1とスイッチを接続する
         lab.connect_two_nodes(ext_conn_node, ext_switch_node)
 
-        # FRRに設定するnode.cfgのJinja2テンプレートを取り出す
-        node_cfg_j2 = read_template_config(filename=NODE_CFG_FILENAME)
-
         # Jinja2のTemplateをインスタンス化する
-        node_cfg_template = Template(node_cfg_j2)
+        frr_conf_template = Template(FRR_CONF)
 
-        # node_cfg_templateに渡すコンテキストオブジェクトの初期値
-        node_cfg_context = {
+        # frr_conf_templateに渡すコンテキストオブジェクトの初期値
+        frr_conf_context = {
             "HOSTNAME": "R",
             "IPv4_ROUTER_ID": "",
             "IPv6_ROUTER_ID": "",
             "TIER": "0",
         }
 
-        # FRRに設定するprotocolsのJinja2テンプレートを取り出す
-        protocols_j2 = read_template_config(filename=PROTOCOLS_FILENAME)
-
         # Jinja2のTemplateをインスタンス化する
-        protocols_template = Template(protocols_j2)
+        protocols_template = Template(PROTOCOLS)
 
         # templateに渡すコンテキストオブジェクト
         protocols_context = {}
@@ -255,17 +299,17 @@ if __name__ == '__main__':
             # lab.connect_two_nodes(ext_switch_node, node)
 
             # FRRの設定を作る
-            node_cfg_context["HOSTNAME"] = node_name
-            node_cfg_context["IPv4_ROUTER_ID"] = str(router_number)
-            node_cfg_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
-            node_cfg_context["TIER"] = "2"
-            node_cfg_text = node_cfg_template.render(node_cfg_context)
+            frr_conf_context["HOSTNAME"] = node_name
+            frr_conf_context["IPv4_ROUTER_ID"] = str(router_number)
+            frr_conf_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
+            frr_conf_context["TIER"] = "2"
+            frr_conf_text = frr_conf_template.render(frr_conf_context)
 
             # FRRに設定するファイル一式
             frr_configurations = [
                 {
-                    'name': 'node.cfg',
-                    'content': node_cfg_text
+                    'name': 'frr.conf',
+                    'content': frr_conf_text
                 },
                 {
                     'name': 'protocols',
@@ -313,17 +357,17 @@ if __name__ == '__main__':
                 node.add_tag(tag=node_tag)
 
                 # FRRの設定を作る
-                node_cfg_context["HOSTNAME"] = node_name
-                node_cfg_context["IPv4_ROUTER_ID"] = str(router_number)
-                node_cfg_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
-                node_cfg_context["TIER"] = "1"
-                node_cfg_text = node_cfg_template.render(node_cfg_context)
+                frr_conf_context["HOSTNAME"] = node_name
+                frr_conf_context["IPv4_ROUTER_ID"] = str(router_number)
+                frr_conf_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
+                frr_conf_context["TIER"] = "1"
+                frr_conf_text = frr_conf_template.render(frr_conf_context)
 
                 # FRRに設定するファイル一式
                 frr_configurations = [
                     {
-                        'name': 'node.cfg',
-                        'content': node_cfg_text
+                        'name': 'frr.conf',
+                        'content': frr_conf_text
                     },
                     {
                         'name': 'protocols',
@@ -369,17 +413,17 @@ if __name__ == '__main__':
                 node.add_tag(tag=node_tag)
 
                 # FRRの設定を作る
-                node_cfg_context["HOSTNAME"] = node_name
-                node_cfg_context["IPv4_ROUTER_ID"] = str(router_number)
-                node_cfg_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
-                node_cfg_context["TIER"] = "0"
-                node_cfg_text = node_cfg_template.render(node_cfg_context)
+                frr_conf_context["HOSTNAME"] = node_name
+                frr_conf_context["IPv4_ROUTER_ID"] = str(router_number)
+                frr_conf_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
+                frr_conf_context["TIER"] = "0"
+                frr_conf_text = frr_conf_template.render(frr_conf_context)
 
                 # FRRに設定するファイル一式
                 frr_configurations = [
                     {
-                        'name': 'node.cfg',
-                        'content': node_cfg_text
+                        'name': 'frr.conf',
+                        'content': frr_conf_text
                     },
                     {
                         'name': 'protocols',

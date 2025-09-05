@@ -15,8 +15,10 @@ PROTOCOLS=/config/protocols
 #
 # run snmpd in the background
 #
-# /usr/sbin/snmpd -Lsd
-/usr/sbin/snmpd -LS 5 d -Lf /dev/null
+if [ -x /usr/sbin/snmpd ]; then
+    # /usr/sbin/snmpd -Lsd
+    /usr/sbin/snmpd -LS 5 d -Lf /dev/null
+fi
 
 # enable the requested protocols
 while IFS= read -r line; do
@@ -38,6 +40,12 @@ if [ -f $CONFIG ]; then
         hostname_value=$(awk '/^hostname/ {print $2}' $CONFIG)
     fi
     hostname $hostname_value
+fi
+
+# exit if frrinit.sh is not found
+if [ ! -f /usr/lib/frr/frrinit.sh ]; then
+    echo "/usr/lib/frr/frrinit.sh not found. Exiting."
+    exit 1
 fi
 
 /usr/lib/frr/frrinit.sh start

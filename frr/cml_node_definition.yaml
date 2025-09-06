@@ -48,7 +48,7 @@ configuration:
               ],
               "env": [
                 "MAX_FDS=100000",
-                "SHELL"="/usr/bin/bash"
+                "SHELL=/bin/bash"
               ],
               "misc_args": [],
               "run_args": [

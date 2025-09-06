@@ -44,7 +44,21 @@ configuration:
                 "CAP_SETUID",
                 "CAP_SYS_CHROOT",
                 "NET_ADMIN",
-                "SYS_ADMIN"
+                "SYS_ADMIN",
+                "CHOWN",
+                "DAC_OVERRIDE",
+                "FOWNER",
+                "FSETID",
+                "KILL",
+                "MKNOD",
+                "NET_BIND_SERVICE",
+                "NET_RAW",
+                "SETFCAP",
+                "SETGID",
+                "SETUID",
+                "SETPCAP",
+                "SYS_CHROOT",
+                "IPC_LOCK"
               ],
               "env": [
                 "MAX_FDS=100000"

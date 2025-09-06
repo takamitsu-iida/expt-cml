@@ -62,6 +62,10 @@ if [ ! -f /usr/lib/frr/frrinit.sh ]; then
     exit 1
 fi
 
+# change frr user shell to bash
+usermod -s /bin/bash frr
+
+# start frr
 /usr/lib/frr/frrinit.sh start
 
 echo "READY" >/dev/console

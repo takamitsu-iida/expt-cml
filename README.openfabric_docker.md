@@ -195,7 +195,8 @@ CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコ�
 - dockerイメージのタグ名はfrr:10.4とします
 - CMLのノード定義名はfrr-10-4とします
 - SNMPを有効にします
-- SSHで外部から乗り込めるようにします(アカウントはroot/cisco固定)
+- FRRバージョン8以降はvtyshからシェルコマンドを呼び出せません
+- 対策としてSSHで外部から乗り込めるようにします(アカウントはroot/cisco固定)
 
 <br>
 
@@ -310,6 +311,7 @@ sudo reboot
 >
 > dockerコマンド早見表
 >
+> - `docker run --rm`　起動します。停止するとコンテナを削除します。
 > - `docker ps -a`　止まっているものを含めてプロセスを確認
 > - `docker stop`　停止
 > - `docker rm`　削除
@@ -318,6 +320,7 @@ sudo reboot
 > - `docker system prune --all`　キャッシュの削除、再ビルドする前に実行
 > - `docker tag IMAGE_ID IMAGE_NAME:TAG`　作成済みイメージの名前とタグを変更
 > - `docker exec -it ID bash`　シェルを起動
+> - `docker logs ID`　ログを見ます
 
 <br>
 

@@ -108,8 +108,7 @@ git clone -b stable/10.4 https://github.com/FRRouting/frr.git frr
 # git clone https://github.com/frrouting/frr.git frr
 
 # Compile
-# --enable-shell-access: enable vtysh shell access for frr user
-# --disable-doc: do not build documentation (to avoid requiring LaTeX)
+# --disable-doc: do not build documentation
 # --enable-snmp: build with SNMP support
 
 cd frr
@@ -132,7 +131,6 @@ cd frr
     --enable-vty-group=frrvty \
     --with-pkg-git-version \
     --with-pkg-extra-version=${DATE} \
-    --enable-shell-access \
     --disable-doc
 
 make
@@ -147,7 +145,7 @@ install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf
 install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons
 install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf
 
-# enable snmp
+# enable snmp in /etc/frr/daemons
 sed -i '/^zebra_options=/ s/"$/ -M snmp"/' /etc/frr/daemons
 
 #

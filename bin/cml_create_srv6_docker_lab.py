@@ -18,6 +18,22 @@ NODE_DEFINITION = "frr-10-4"
 # イメージ定義
 IMAGE_DEFINITION = "frr-10-4"
 
+# 管理用ubuntuイメージ定義
+UBUNTU_IMAGE_DEFINITION = "ubuntu-24-04-20250503"
+
+# 管理用ubuntuノードのホスト名
+UBUNTU_HOSTNAME = "ubuntu"
+
+# 管理用ubuntuノードのログイン名
+UBUNTU_USERNAME = "root"
+
+# 管理用ubuntuノードのパスワード
+UBUNTU_PASSWORD = "cisco"
+
+# id_rsa.pubの中身をそのまま貼り付けます
+# SSH_PUBLIC_KEY = "YOUR_SSH_PUBLIC_KEY_HERE"
+SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
+
 # protocolsファイルの内容
 PROTOCOLS_TEXT = """\
 bgpd
@@ -40,7 +56,7 @@ isisd
 # pathd
 """
 
-CONFIG_TEMPLATE = """\
+FRR_CONF_TEMPLATE = """\
 !
 frr defaults traditional
 hostname {{ HOSTNAME }}
@@ -141,6 +157,12 @@ interface eth3
  isis network point-to-point
 exit
 !
+interface eth4
+ description MANAGEMENT
+ ip address 192.168.254.{{ ROUTER_NUMBER }}/24
+ ip router isis 1
+exit
+!
 """
 
 CE_CONFIG_TEMPLATE = """\
@@ -150,10 +172,83 @@ interface eth0
  ip address {{ PE_CE_ADDR }}
 exit
 !
-
 """
 
+# Ubuntuノードに設定するcloud-initのJinja2テンプレート
+UBUNTU_CONFIG_TEMPLATE = """\
+#cloud-config
+hostname: {{ HOSTNAME }}
+manage_etc_hosts: True
+system_info:
+  default_user:
+    name: {{ USERNAME }}
+password: {{ PASSWORD }}
+chpasswd: { expire: False }
+ssh_pwauth: True
+ssh_authorized_keys:
+  - ssh-rsa {{ SSH_PUBLIC_KEY }}
 
+timezone: Asia/Tokyo
+locale: ja_JP.utf8
+
+# run apt-get update
+# default false
+# package_update: true
+
+# default false
+# package_upgrade: true
+
+# reboot if required
+# package_reboot_if_required: true
+
+write_files:
+  #
+  # refer to netplan document
+  # https://netplan.readthedocs.io/en/latest/netplan-yaml/
+  #
+  - path: /etc/netplan/60-cloud-init.yaml
+    permissions: '0600'
+    owner: root:root
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          ens2:
+            dhcp4: false
+            dhcp6: false
+            link-local: []
+            addresses: [ 192.168.0.254/24 ]
+          ens3:
+            dhcp4: false
+            dhcp6: false
+            link-local: []
+            addresses: [ 192.168.254.254/24 ]
+            routes:
+              - to: 0.0.0.0/0
+                via: 192.168.254.1
+
+runcmd:
+  - |
+    cat - << 'EOS' >> /etc/bash.bashrc
+    rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf '\e7\e[r\e[999;999H\e[6n\e8'); IFS='[;' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi
+    rsz
+    EOS
+
+  - systemctl disable systemd-networkd-wait-online.service
+  - systemctl mask    systemd-networkd-wait-online.service
+  - netplan apply
+
+  - sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+  - grep -q '^PermitRootLogin yes' /etc/ssh/sshd_config || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+  - sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  - grep -q '^PasswordAuthentication yes' /etc/ssh/sshd_config || echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
+  - sed -i 's/UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
+  - grep -q '^UsePAM no' /etc/ssh/sshd_config || echo 'UsePAM no' >> /etc/ssh/sshd_config
+  - sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+  - grep -q '^PermitEmptyPasswords yes' /etc/ssh/sshd_config || echo 'PermitEmptyPasswords yes' >> /etc/ssh/sshd_config
+
+"""
 
 ###########################################################
 
@@ -294,7 +389,7 @@ if __name__ == '__main__':
         y_grid_width = 160
 
         # Jinja2のTemplateをインスタンス化する
-        config_template = Template(CONFIG_TEMPLATE)
+        config_template = Template(FRR_CONF_TEMPLATE)
         pe_interface_template = Template(PE_INTERFACE_TEMPLATE)
         p_interface_template = Template(P_INTERFACE_TEMPLATE)
 
@@ -316,8 +411,8 @@ if __name__ == '__main__':
             node_name = f"P{router_number}"
             node = lab.create_node(node_name, NODE_DEFINITION, x, y)
 
-            # インタフェースを4個作成する
-            for _ in range(4):
+            # インタフェースを4+1個作成する
+            for _ in range(5):
                 node.create_interface(_, wait=True)
 
             # 起動イメージを指定する
@@ -433,7 +528,6 @@ if __name__ == '__main__':
             'fill_color': "#F3EAEAFF",
             'border_color': '#F3EAEAFF'
         })
-
 
         # CEルータ用のテンプレート
         ce_config_template = Template(CE_CONFIG_TEMPLATE)
@@ -571,6 +665,81 @@ if __name__ == '__main__':
             'y1': -80.0,
             'z_index': 2
         })
+
+        # 外部接続用のブリッジを作成する
+        ext_conn_node = lab.create_node("bridge1", "external_connector", x_grid_width, -y_grid_width, wait=True)
+
+        # デフォルトはNATとして動作するので、これを"bridge1"に変更する
+        # bridge1は追加したブリッジで、インターネット接続はない
+        # このLANに足を出せば、母艦のWindows11の他、別のラボの仮想マシンであっても通信できる
+        ext_conn_node.configuration = "bridge1"
+
+        # インタフェースを一つ作る
+        ext_conn_port = ext_conn_node.create_interface(0, wait=True)
+
+        # ubuntuノードを作成する
+        ubuntu_node = lab.create_node("ubuntu", "ubuntu", 0, -y_grid_width, wait=True)
+        ubuntu_node.image_definition = UBUNTU_IMAGE_DEFINITION
+        # ubuntuノードに設定するcloud-initの内容を作成する
+        ubuntu_node.configuration = Template(UBUNTU_CONFIG_TEMPLATE).render({
+            "HOSTNAME": UBUNTU_HOSTNAME,
+            "USERNAME": UBUNTU_USERNAME,
+            "PASSWORD": UBUNTU_PASSWORD,
+            "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY
+        })
+        # pattyのタグを設定
+        ubuntu_node.add_tag(tag=f"serial:{SERIAL_PORT + 200}")
+
+        # ens2, ens3を作成
+        for i in range(2):
+            ubuntu_node.create_interface(i, wait=True)
+
+        # ubuntuノードのens2を外部接続用ブリッジに接続する
+        ubuntu_ens2 = ubuntu_node.get_interface_by_label("ens2")
+
+        # 接続する
+        lab.create_link(ubuntu_ens2, ext_conn_port, wait=True)
+
+        # ubuntuノードのens3をPE1のeth4に接続する
+        ubuntu_ens3 = ubuntu_node.get_interface_by_label("ens3")
+        pe1_eth4 = p_routers[0].get_interface_by_label("eth4")
+        lab.create_link(ubuntu_ens3, pe1_eth4, wait=True)
+
+        text_content = '192.168.254.254'
+        lab.create_annotation('text', **{
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': 20.0,
+            'y1': -120.0,
+            'z_index': 3
+        })
+
+        text_content = '192.168.0.254'
+        lab.create_annotation('text', **{
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': 20.0,
+            'y1': -200.0,
+            'z_index': 3
+        })
+
+
 
         # start the lab
         # lab.start()

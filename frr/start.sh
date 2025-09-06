@@ -29,7 +29,7 @@ if [ -x /usr/sbin/sshd ]; then
     fi
 
     mkdir -p /var/run/sshd
-    echo "root:cisco" | chpasswd
+    # echo "root:cisco" | chpasswd
 
     /usr/sbin/sshd -E /var/log/sshd.log
 fi

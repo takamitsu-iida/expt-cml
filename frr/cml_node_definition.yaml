@@ -44,24 +44,11 @@ configuration:
                 "CAP_SETUID",
                 "CAP_SYS_CHROOT",
                 "NET_ADMIN",
-                "SYS_ADMIN",
-                "CHOWN",
-                "DAC_OVERRIDE",
-                "FOWNER",
-                "FSETID",
-                "KILL",
-                "MKNOD",
-                "NET_BIND_SERVICE",
-                "NET_RAW",
-                "SETFCAP",
-                "SETGID",
-                "SETUID",
-                "SETPCAP",
-                "SYS_CHROOT",
-                "IPC_LOCK"
+                "SYS_ADMIN"
               ],
               "env": [
-                "MAX_FDS=100000"
+                "MAX_FDS=100000",
+                "SHELL"="/usr/bin/bash"
               ],
               "misc_args": [],
               "run_args": [

@@ -195,6 +195,7 @@ CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコ�
 - dockerイメージのタグ名はfrr:10.4とします
 - CMLのノード定義名はfrr-10-4とします
 - SNMPを有効にします
+- SSHで外部から乗り込めるようにします(アカウントはroot/cisco固定)
 
 <br>
 

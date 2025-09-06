@@ -99,8 +99,9 @@ runcmd:
     rsz
     EOS
 
-  - sudo systemctl disable systemd-networkd-wait-online.service
-  - sudo systemctl mask systemd-networkd-wait-online.service
+  - systemctl disable systemd-networkd-wait-online.service
+  - systemctl mask    systemd-networkd-wait-online.service
+  - netplan apply
 """
 
 ###########################################################

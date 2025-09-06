@@ -25,7 +25,7 @@ UBUNTU_IMAGE_DEFINITION = "ubuntu-24-04-20250503"
 UBUNTU_HOSTNAME = "ubuntu"
 
 # 管理用ubuntuノードのログイン名
-UBUNTU_USERNAME = "root"
+UBUNTU_USERNAME = "cisco"
 
 # 管理用ubuntuノードのパスワード
 UBUNTU_PASSWORD = "cisco"
@@ -238,15 +238,6 @@ runcmd:
   - systemctl disable systemd-networkd-wait-online.service
   - systemctl mask    systemd-networkd-wait-online.service
   - netplan apply
-
-  - sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-  - grep -q '^PermitRootLogin yes' /etc/ssh/sshd_config || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
-  - sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-  - grep -q '^PasswordAuthentication yes' /etc/ssh/sshd_config || echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
-  - sed -i 's/UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
-  - grep -q '^UsePAM no' /etc/ssh/sshd_config || echo 'UsePAM no' >> /etc/ssh/sshd_config
-  - sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
-  - grep -q '^PermitEmptyPasswords yes' /etc/ssh/sshd_config || echo 'PermitEmptyPasswords yes' >> /etc/ssh/sshd_config
 
 """
 

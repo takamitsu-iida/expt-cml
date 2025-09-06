@@ -156,12 +156,14 @@ interface eth3
  ipv6 router isis 1
  isis network point-to-point
 exit
+{% if ROUTER_NUMBER == 1 %}
 !
 interface eth4
  description MANAGEMENT
  ip address 192.168.254.{{ ROUTER_NUMBER }}/24
  ip router isis 1
 exit
+{% endif %}
 !
 """
 
@@ -177,12 +179,12 @@ exit
 # Ubuntuノードに設定するcloud-initのJinja2テンプレート
 UBUNTU_CONFIG_TEMPLATE = """\
 #cloud-config
-hostname: {{ HOSTNAME }}
+hostname: {{ UBUNTU_HOSTNAME }}
 manage_etc_hosts: True
 system_info:
   default_user:
-    name: {{ USERNAME }}
-password: {{ PASSWORD }}
+    name: {{ UBUNTU_USERNAME }}
+password: {{ UBUNTU_PASSWORD }}
 chpasswd: { expire: False }
 ssh_pwauth: True
 ssh_authorized_keys:
@@ -238,6 +240,17 @@ runcmd:
   - systemctl disable systemd-networkd-wait-online.service
   - systemctl mask    systemd-networkd-wait-online.service
   - netplan apply
+
+  - |
+    mkdir -p /home/{{ UBUNTU_USERNAME }}/.ssh
+    cat <<'EOS' >> /home/{{ UBUNTU_USERNAME }}/.ssh/config
+    Host 192.168.255.*
+      StrictHostKeyChecking no
+      UserKnownHostsFile=/dev/null
+      User root
+    EOS
+    chown {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh/config
+    chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/config
 
 """
 
@@ -673,9 +686,9 @@ if __name__ == '__main__':
         ubuntu_node.image_definition = UBUNTU_IMAGE_DEFINITION
         # ubuntuノードに設定するcloud-initの内容を作成する
         ubuntu_node.configuration = Template(UBUNTU_CONFIG_TEMPLATE).render({
-            "HOSTNAME": UBUNTU_HOSTNAME,
-            "USERNAME": UBUNTU_USERNAME,
-            "PASSWORD": UBUNTU_PASSWORD,
+            "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
+            "UBUNTU_USERNAME": UBUNTU_USERNAME,
+            "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
             "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY
         })
         # pattyのタグを設定
@@ -730,7 +743,66 @@ if __name__ == '__main__':
             'z_index': 3
         })
 
+        lab.create_annotation('ellipse', **{
+            'border_color': '#808080FF',
+            'border_style': '',
+            'color': '#E2D6D6',
+            'rotation': 0,
+            'thickness': 2,
+            'x1': 280.0,
+            'y1': -200.0,
+            'x2': 40.0,
+            'y2': 40.0,
+            'z_index': 3
+        })
 
+        lab.create_annotation('line', **{
+            'border_color': '#808080FF',
+            'border_style': '',
+            'color': '#FFFFFFFF',
+            'line_end': 'arrow',
+            'line_start': None,
+            'thickness': 1,
+            'x1': 240.0,
+            'y1': -200.0,
+            'x2': 160.0,
+            'y2': -200.0,
+            'z_index': 4
+        })
+
+        text_content = 'JUMP HOST'
+        lab.create_annotation('text', **{
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': 40.0,
+            'y1': -240.0,
+            'z_index': 5
+        })
+
+        text_content = 'Windows Hyper-V HOST'
+        lab.create_annotation('text', **{
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': 200.0,
+            'y1': -240.0,
+            'z_index': 5
+        })
 
         # start the lab
         # lab.start()

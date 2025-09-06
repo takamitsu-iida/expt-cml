@@ -47,8 +47,7 @@ configuration:
                 "SYS_ADMIN"
               ],
               "env": [
-                "MAX_FDS=100000",
-                "SHELL=/bin/bash"
+                "MAX_FDS=100000"
               ],
               "misc_args": [],
               "run_args": [

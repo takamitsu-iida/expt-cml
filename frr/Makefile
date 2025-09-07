@@ -7,6 +7,7 @@ TAG ?= frr:10.4
 CML_HOST = 192.168.122.212
 CML_UPLOAD_DIR = /var/tmp
 SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
+SOURCE_NODE_DEFINITION = cml_node_definition.yaml
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = frr-test
 
@@ -16,6 +17,7 @@ build: ## Dockerイメージを作成する
 
 inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlのsha256を更新する
 	@cp -f ${SOURCE_IMAGE_DEFINITION} image_definition.yaml
+	@cp -f ${SOURCE_NODE_DEFINITION} node_definition.yaml
 	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
 	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; \
 	echo $$SHA256
@@ -50,4 +52,4 @@ clean: ## Dockerイメージを削除する
 
 
 upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
-	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}
+	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}

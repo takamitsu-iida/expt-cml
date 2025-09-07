@@ -459,7 +459,7 @@ Dockerfileの内容に従ってビルドします。長い時間かかります�
 make build
 ```
 
-作成したdockerイメージをインスペクトしてIdの値を調べます。
+作成したdockerイメージをインスペクトしてIdの値をイメージ定義ファイルに反映します。
 
 実行例。
 
@@ -478,7 +478,7 @@ dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71
 
 `make inspect` を実行すると、image_definition.yamlを作成して、SHA256: の部分にこの文字列を埋め込みます。
 
-イメージをtar形式で保存します。ファイルサイズが大きいため、この処理も長い時間かかります。
+次にイメージをtar.gz形式で保存します。ファイルサイズが大きいため、この処理も長い時間かかります。
 
 ```bash
 make save
@@ -486,9 +486,9 @@ make save
 
 ファイルfrr.tar.gzが生成されます。
 
-このファイルおよび作成したイメージ定義ファイルをCMLに転送します。
+このfrr.tar.gzおよび作成したイメージ定義ファイル、ノード定義ファイルをまとめてCMLに転送します。
 
-CMLでSSHサーバ(ポート1122番）を有効にしている場合は、次のコマンドで送り込めます。
+CMLでSSHサーバ(ポート1122番）を有効にしている場合、次のコマンドでCMLの/var/tmpに送り込みます。
 
 ```bash
 make upload
@@ -501,6 +501,7 @@ CMLの22番ポートのscpは特別な扱いになっていて、転送先は必
 ```bash
 scp frr.tar.gz admin@192.168.122.212:
 scp image_definition.yaml admin@192.168.122.212:
+scp node_definition.yaml admin@192.168.122.212:
 ```
 
 <br>
@@ -525,11 +526,11 @@ sudo -s -E
 cd /var/lib/libvirt/images/node-definitions
 ```
 
-[frr/cml_node_definition.yaml](/frr/cml_node_definition.yaml) をcurlでダウンロードします。
+/var/tmpからファイルを移動します。
 
-> ```bash
-> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-4.yaml
-> ```
+```bash
+mv /var/tmp/node_definition.yaml frr-10-4.yaml
+```
 
 ファイルのオーナーを変更します。
 
@@ -537,15 +538,17 @@ cd /var/lib/libvirt/images/node-definitions
 chown libvirt-qemu:virl2 frr-10-4.yaml
 ```
 
-<br>
-
-`make upload` を実行した場合は、所定の場所にイメージ定義がアップロードされています。
-
-`systemctl restart virl2.target` でサービスを再起動してください。
+> [!NOTE]
+>
+> コックピットからgithubのファイルを直接ダウンロードするには、次のようにします。SCPで送り込むより簡単かもしれません。
+>
+> ```bash
+> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-4.yaml
+> ```
 
 <br><br>
 
-frr.tar.gzとイメージ定義ファイルを手動でアップロードした場合、イメージ定義が置かれている場所に移動します。
+続いてイメージ定義ファイルの場所に移動します。
 
 ```bash
 cd /var/lib/libvirt/images/virl-base-images
@@ -558,20 +561,20 @@ mkdir frr-10-4
 chown libvirt-qemu:virl2 frr-10-4
 ```
 
-移動します。
+作成したディレクトリに移動します。
 
 ```bash
 cd frr-10-4
 ```
 
-dropfolderからファイルを移動します。
+ファイルを移動します。
 
 ```bash
-mv /var/local/virl2/dropfolder/frr.tar.gz .
+mv /var/tmp/frr.tar.gz .
 chown libvirt-qemu:virl2 frr.tar.gz
 
-mv /var/local/virl2/dropfolder/image_definition.yaml
-chown libvirt-qemu:virl2 image_definition.yaml
+mv /var/tmp/image_definition.yaml frr-10-4.yaml
+chown libvirt-qemu:virl2 frr-10-4.yaml
 ```
 
 <br>
@@ -1468,7 +1471,7 @@ docker save -o frr.tar frr:10.4
 gzip frr.tar
 ```
 
-CMLのdropfolderにイメージを転送
+CMLのdropfolder(/var/local/virl2/dropfolder/)にイメージを転送
 
 ```bash
 scp frr.tar.gz admin@192.168.122.212:
@@ -1506,7 +1509,8 @@ chown libvirt-qemu:virl2 frr-10-4.yaml
 cd /var/lib/libvirt/images/virl-base-images/
 ```
 
-dropfolderからイメージを移動、イメージ定義ファイルをダウンロード
+dropfolder(/var/local/virl2/dropfolder/)からイメージを移動、イメージ定義ファイルをダウンロード
+
 
 ```bash
 mkdir -p frr-10-4

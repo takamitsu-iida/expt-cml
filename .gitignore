@@ -8,6 +8,8 @@ wheels_dir/
 radkit/
 log/
 
+# makeで自動生成したCMLのイメージ定義ファイルは無視する
+frr/image_definition.yaml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

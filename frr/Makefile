@@ -41,4 +41,5 @@ clean: ## Dockerイメージを削除する
 
 
 upload: ## frr.tar.gzをCMLにアップロードする
-	@scp frr.tar.gz admin:Cisco123@192.168.122.212:/var/tmp/ -p 1122
+	@scp -P 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null frr.tar.gz admin@
+192.168.122.212:/var/tmp/

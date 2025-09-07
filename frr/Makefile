@@ -40,5 +40,5 @@ clean: ## Dockerイメージを削除する
 	@rm -f frr.tar.gz
 
 
-make upload: ## frr.tar.gzをCMLにアップロードする
+upload: ## frr.tar.gzをCMLにアップロードする
 	@scp frr.tar.gz admin:Cisco123@192.168.122.212:/var/tmp/ -p 1122

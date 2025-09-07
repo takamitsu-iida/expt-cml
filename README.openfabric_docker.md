@@ -328,9 +328,47 @@ sudo reboot
 
 Ubuntuを再起動したら再度ログインします。
 
-このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したのでそれを利用してFRRのイメージを作っていきます。
+このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したので、それを利用してFRRのイメージを作っていきます。
 
-Makefileはこのようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じです。
+
+<br><br>
+
+### 事前準備１．CMLでSSHサーバを有効にする
+
+有効にしていない場合のみ、コックピットで有効にしてください。ラジオボタンを有効にするだけです。
+
+CMLのSSHサーバはポート1122で待ち受けています。
+
+<br>
+
+### 事前準備２．SSHの公開鍵を送り込んでおく
+
+SSHの鍵を作ります。
+
+```bash
+ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
+```
+
+この公開鍵を送り込んでおきます。
+
+```bash
+ssh-copy-id -p 1122 admin@192.168.122.212
+```
+
+<br>
+
+### 事前準備３．makeコマンドをインストールする
+
+Makefileの変数部分を適当に書き換えてから、makeコマンドを実行した方が簡単です。
+
+```bash
+apt install -y make
+```
+
+<br><br>
+
+Makefileは以下のようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じですが、
+いろいろ試行錯誤することになるので、makeコマンドを使ったほうが楽です。
 
 ```bash
 .DEFAULT_GOAL := help
@@ -340,32 +378,61 @@ help:
 
 TAG ?= frr:10.4
 
+IMAGE_DEFINITION_DIR = /var/lib/libvirt/images/virl-base-images/frr-10-4/
+SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
+
+CML_HOST = 192.168.122.212
+SCP_OPTS = -P 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+CONTAINER_NAME = frr-iida
+
+
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
 
 
-inspect: ## DockerイメージのIDをインスペクトする
-	@docker inspect ${TAG} | grep -i sha256 | head -n 1 | awk '{print $$2}'
+inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlのsha256を更新する
+	@cp -f ${SOURCE_IMAGE_DEFINITION} image_definition.yaml
+	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
+	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; \
+	echo $$SHA256
+
 
 save: ## Dockerイメージを保存する
+	@rm -f frr.tar.gz
 	@docker save -o frr.tar ${TAG}
 	@gzip frr.tar
 
+
 run: ## Dockerコンテナを起動する
-	@docker run -d --rm --init --privileged --name frr-iida ${TAG}
+	@docker run -d --rm --init --privileged --name ${CONTAINER_NAME} ${TAG}
+
 
 shell: ## Dockerコンテナにシェルで入る
-	@docker exec -it frr-iida bash
+	@docker exec -it ${CONTAINER_NAME} bash
 
 
 stop: ## Dockerコンテナを停止する
-	@docker stop frr-iida
+	@if [ -n "$$(docker ps -q -f name=${CONTAINER_NAME})" ]; then docker stop ${CONTAINER_NAME}; fi
+
+
+prune: ## Dockerの不要なイメージを削除する
+	@docker system prune -f --all
 
 
 clean: ## Dockerイメージを削除する
-	@docker rmi $$(docker images -q)
+	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
 	@rm -f frr.tar.gz
+	@rm -f image_definition.yaml
+
+
+upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（オーナとグループは別途変更が必要）
+	@scp ${SCP_OPTS} frr.tar.gz admin@${CML_HOST}:${IMAGE_DEFINITION_DIR}
+	@scp ${SCP_OPTS} image_definition.yaml admin@${CML_HOST}:${IMAGE_DEFINITION_DIR}
 ```
+
+<br><br><br>
+
+## Dockerイメージを作成してCMLに登録します
 
 このリポジトリをクローンします。
 
@@ -378,12 +445,6 @@ git clone https://github.com/takamitsu-iida/expt-cml.git
 ```bash
 cd expt-cml
 cd frr
-```
-
-ラクをするためにmakeを使いたいのでインストールします。
-
-```bash
-sudo apt install -y make
 ```
 
 繰り返しdockerイメージを作るときにはキャッシュが悪さをするかもしれませんので削除します（dockerインストール直後の場合は省略して構いません）。
@@ -410,12 +471,14 @@ make inspect
 
 ```bash
 root@ubuntu-0:~/expt-cml/frr# make inspect
-"sha256:dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71",
+dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71
 ```
 
-sha256に続く値がIdの値です。**このあと使いますのでどこかにメモしておきます**。
+~~IDの文字列はこのあと使いますのでどこかにメモしておきます。~~
 
-イメージをtar形式で保存します。
+`make inspect` を実行すると、image_definition.yamlを作成して、SHA256: の部分にこの文字列を埋め込みます。
+
+イメージをtar形式で保存します。ファイルサイズが大きいため、この処理も長い時間かかります。
 
 ```bash
 make save
@@ -423,22 +486,30 @@ make save
 
 ファイルfrr.tar.gzが生成されます。
 
-このfrr.tar.gzをscpでCMLにアップロードします。
-アップロード先のディレクトリは指定できません。`dropfolder` という特別な場所に保存されます。
+このファイルおよび作成したイメージ定義ファイルをCMLに転送します。
+
+CMLでSSHサーバ(ポート1122番）を有効にしている場合は、次のコマンドで送り込めます。
+
+```bash
+make upload
+```
+
+もしCMLでSSHサーバを有効にしていない場合、面倒ですが手作業でアップロードします。
+
+CMLの22番ポートのscpは特別な扱いになっていて、転送先は必ず `dropfolder` という場所になります。
+
+```bash
+scp frr.tar.gz admin@192.168.122.212:
+scp image_definition.yaml admin@192.168.122.212:
+```
 
 <br>
 
 > [!NOTE]
 >
-> dropfolderの実体は `/var/local/virl2/dropfolder` です。
+> dropfolderの実体は `/var/local/virl2/dropfolder` です。このディレクトリから適宜移動してください。
 
 <br>
-
-この転送はびっくりするくらい高速です。
-
-```bash
-scp frr.tar.gz admin@192.168.122.212:
-```
 
 ここからはコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHで接続した方が快適です）。
 
@@ -454,19 +525,11 @@ sudo -s -E
 cd /var/lib/libvirt/images/node-definitions
 ```
 
-ノード定義ファイルを新規で作ります（後述するようにgithubからファイルをcurlで取得した方が楽です）。
+[frr/cml_node_definition.yaml](/frr/cml_node_definition.yaml) をcurlでダウンロードします。
 
-```bash
-vi frr-10-4.yaml
-```
-
-もしくは元になっているfrr.yamlをコピーします。
-
-```bash
-cp -a frr.yaml frr-10-4.yaml
-```
-
-[frr/cml_node_definition.yaml](/frr/cml_node_definition.yaml) の内容をコピペして保存します。
+> ```bash
+> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-4.yaml
+> ```
 
 ファイルのオーナーを変更します。
 
@@ -476,46 +539,13 @@ chown libvirt-qemu:virl2 frr-10-4.yaml
 
 <br>
 
-> [!NOTE]
->
-> githubにあるものをcurlで取ってきたほうが簡単です。
->
-> ```bash
-> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_node_definition.yaml --output frr-10-4.yaml
->
-> chown libvirt-qemu:virl2 frr-10-4.yaml
-> ```
+`make upload` を実行した場合は、所定の場所にイメージ定義がアップロードされています。
 
-<br>
+`systemctl restart virl2.target` でサービスを再起動してください。
 
-> [!NOTE]
->
-> CML2.9に同梱のFRR(Docker)のノード定義ファイルは以下のようにマウントしています。
-> これだと /etc/frr/frr.conf に保存されるFRRの設定がDockerの停止と共に消えてしまいます。
->
-> ```json
-> "mounts": [
->   "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
->   "type=bind,source=cfg/node.cfg,target=/config/node.cfg",
->   "type=bind,source=cfg/protocols,target=/config/protocols"
-> ],
-> ```
->
-> そこで、次のようにfrr.confを直接バインドするように変更しています。
->
-> ```json
-> "mounts": [
->   "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
->   "type=bind,source=cfg/frr.conf,target=/etc/frr/frr.conf",
->   "type=bind,source=cfg/protocols,target=/config/protocols"
-> ],
-> ```
+<br><br>
 
-<br>
-
-次にイメージ定義を作ります。
-
-イメージ定義が置かれている場所に移動します。
+frr.tar.gzとイメージ定義ファイルを手動でアップロードした場合、イメージ定義が置かれている場所に移動します。
 
 ```bash
 cd /var/lib/libvirt/images/virl-base-images
@@ -539,50 +569,12 @@ dropfolderからファイルを移動します。
 ```bash
 mv /var/local/virl2/dropfolder/frr.tar.gz .
 chown libvirt-qemu:virl2 frr.tar.gz
-```
 
-イメージ定義ファイルを作成します（後述のようにgithubにあるファイルをcurlで取ってきた方が楽です）。
-
-```bash
-vi frr-10-4.yaml
-```
-
-[frr/cml_image_definition.yaml](/frr/cml_image_definition.yaml) の内容をコピペします。
-
-内容はこのようになっています。
-
-```yaml
-#
-# Free Range Routing image definition
-# generated 2025-08-15
-# part of VIRL^2
-#
-
-id: frr-10-4
-label: Free Range Routing (frr) 10.4
-description: Free Range Routing (frr) 10.4 (Docker)
-node_definition_id: frr-10-4
-disk_image: frr.tar.gz
-read_only: true
-schema_version: 0.0.1
-sha256:
+mv /var/local/virl2/dropfolder/image_definition.yaml
+chown libvirt-qemu:virl2 image_definition.yaml
 ```
 
 <br>
-
-> [!NOTE]
->
-> イメージ定義ファイルもgithubから採取した方が簡単です。
->
-> ```bash
-> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/cml_image_definition.yaml --output frr-10-4.yaml
->
-> chown libvirt-qemu:virl2 frr-10-4.yaml
-> ```
-
-<br>
-
-sha256の部分をイメージをインスペクトしたときにメモしたものに置き換えます。
 
 virl2を再起動します。
 

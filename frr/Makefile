@@ -4,14 +4,11 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 TAG ?= frr:10.4
-
-IMAGE_DEFINITION_DIR = /var/lib/libvirt/images/virl-base-images/frr-10-4/
-SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
-
 CML_HOST = 192.168.122.212
-SCP_OPTS = -P 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-CONTAINER_NAME = frr-iida
-
+CML_UPLOAD_DIR = /var/tmp
+SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
+SSH_OPTS = -P 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+CONTAINER_NAME = frr-test
 
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
@@ -52,6 +49,5 @@ clean: ## Dockerイメージを削除する
 	@rm -f image_definition.yaml
 
 
-upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（オーナとグループは別途変更が必要）
-	@scp ${SCP_OPTS} frr.tar.gz admin@${CML_HOST}:${IMAGE_DEFINITION_DIR}
-	@scp ${SCP_OPTS} image_definition.yaml admin@${CML_HOST}:${IMAGE_DEFINITION_DIR}
+upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
+	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}

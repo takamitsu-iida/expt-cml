@@ -6,14 +6,20 @@ help:
 TAG ?= frr:10.4
 
 IMAGE_DEFINITION_DIR = /var/lib/libvirt/images/virl-base-images/frr-10-4/
+SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
 
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
 
 
 inspect: ## DockerイメージのIDをインスペクトする
-	# @docker inspect ${TAG} | grep -i sha256 | head -n 1 | awk '{print $$2}'
-	@docker inspect ${TAG} | grep -i sha256 | head -n 1 | awk -F: '{print $$2}' | tr -d '", '
+	@docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2
+
+
+update-sha256: ## image_definition.yamlを作成してsha256を更新する
+	@cp -f ${SOURCE_IMAGE_DEFINITION} image_definition.yaml
+	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
+	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml
 
 
 save: ## Dockerイメージを保存する

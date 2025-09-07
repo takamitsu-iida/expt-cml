@@ -7,7 +7,7 @@ TAG ?= frr:10.4
 CML_HOST = 192.168.122.212
 CML_UPLOAD_DIR = /var/tmp
 SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
-SSH_OPTS = -P 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = frr-test
 
 build: ## Dockerイメージを作成する

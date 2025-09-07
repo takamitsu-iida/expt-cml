@@ -18,7 +18,7 @@ build: ## Dockerイメージを作成する
 inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlのsha256を更新する
 	@cp -f ${SOURCE_IMAGE_DEFINITION} image_definition.yaml
 	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
-	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml \
+	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; \
 	echo $$SHA256
 
 

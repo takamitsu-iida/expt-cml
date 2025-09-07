@@ -34,6 +34,11 @@ stop: ## Dockerコンテナを停止する
 prune: ## Dockerの不要なイメージを削除する
 	@docker system prune -f --all
 
+
 clean: ## Dockerイメージを削除する
 	@docker rmi $$(docker images -q)
 	@rm -f frr.tar.gz
+
+
+make upload: ## frr.tar.gzをCMLにアップロードする
+	@scp frr.tar.gz admin:Cisco123@192.168.122.212:/var/tmp/ -p 1122

@@ -782,7 +782,7 @@ if __name__ == '__main__':
             'text_size': 12,
             'text_unit': 'pt',
             'thickness': 1,
-            'x1': 40.0,
+            'x1': -40.0,
             'y1': -240.0,
             'z_index': 5
         })

@@ -52,6 +52,6 @@ clean: ## Dockerイメージを削除する
 	@rm -f image_definition.yaml
 
 
-upload: ## frr.tar.gzをCMLのイメージ定義のディレクトリにアップロードする
+upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（オーナとグループは別途変更が必要）
 	@scp ${SCP_OPTS} frr.tar.gz admin@${CML_HOST}:${IMAGE_DEFINITION_DIR}
 	@scp ${SCP_OPTS} image_definition.yaml admin@${CML_HOST}:${IMAGE_DEFINITION_DIR}

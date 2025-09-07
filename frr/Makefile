@@ -10,6 +10,8 @@ SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
 
 CML_HOST = 192.168.122.212
 SCP_OPTS = -P 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+CONTAINER_NAME = frr-iida
+
 
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
@@ -29,15 +31,15 @@ save: ## Dockerイメージを保存する
 
 
 run: ## Dockerコンテナを起動する
-	@docker run -d --rm --init --privileged --name frr-iida ${TAG}
+	@docker run -d --rm --init --privileged --name ${CONTAINER_NAME} ${TAG}
 
 
 shell: ## Dockerコンテナにシェルで入る
-	@docker exec -it frr-iida bash
+	@docker exec -it ${CONTAINER_NAME} bash
 
 
 stop: ## Dockerコンテナを停止する
-	@docker stop frr-iida
+	@docker stop ${CONTAINER_NAME}
 
 
 prune: ## Dockerの不要なイメージを削除する
@@ -45,8 +47,9 @@ prune: ## Dockerの不要なイメージを削除する
 
 
 clean: ## Dockerイメージを削除する
-	@docker rmi $$(docker images -q)
+	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
 	@rm -f frr.tar.gz
+	@rm -f image_definition.yaml
 
 
 upload: ## frr.tar.gzをCMLのイメージ定義のディレクトリにアップロードする

@@ -13,7 +13,8 @@ build: ## Dockerイメージを作成する
 
 inspect: ## DockerイメージのIDをインスペクトする
 	# @docker inspect ${TAG} | grep -i sha256 | head -n 1 | awk '{print $$2}'
-    @docker inspect ${TAG} | grep -i sha256 | head -n 1 | awk -F: '{print $$2}' | tr -d '", '
+	@docker inspect ${TAG} | grep -i sha256 | head -n 1 | awk -F: '{print $$2}' | tr -d '", '
+
 
 save: ## Dockerイメージを保存する
 	@rm -f frr.tar.gz

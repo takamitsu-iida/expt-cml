@@ -330,7 +330,6 @@ Ubuntuを再起動したら再度ログインします。
 
 このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したので、それを利用してFRRのイメージを作っていきます。
 
-
 <br><br>
 
 ### 事前準備１．CMLでSSHサーバを有効にする
@@ -368,7 +367,7 @@ apt install -y make
 <br><br>
 
 Makefileは以下のようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じですが、
-いろいろ試行錯誤することになるので、makeコマンドを使ったほうが楽です。
+Dockerファイルを書き換えたり、FRRのコンパイルオプションを変えたり、いろいろ試行錯誤して何度も実行することになるので、makeコマンドを使ったほうが楽です。
 
 ```bash
 .DEFAULT_GOAL := help
@@ -377,14 +376,12 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 TAG ?= frr:10.4
-
-IMAGE_DEFINITION_DIR = /var/lib/libvirt/images/virl-base-images/frr-10-4/
-SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
-
 CML_HOST = 192.168.122.212
-SCP_OPTS = -P 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-CONTAINER_NAME = frr-iida
-
+CML_UPLOAD_DIR = /var/tmp
+SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
+SOURCE_NODE_DEFINITION = cml_node_definition.yaml
+SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+CONTAINER_NAME = frr-test
 
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
@@ -392,6 +389,7 @@ build: ## Dockerイメージを作成する
 
 inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlのsha256を更新する
 	@cp -f ${SOURCE_IMAGE_DEFINITION} image_definition.yaml
+	@cp -f ${SOURCE_NODE_DEFINITION} node_definition.yaml
 	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
 	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; \
 	echo $$SHA256
@@ -425,9 +423,8 @@ clean: ## Dockerイメージを削除する
 	@rm -f image_definition.yaml
 
 
-upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（オーナとグループは別途変更が必要）
-	@scp ${SCP_OPTS} frr.tar.gz admin@${CML_HOST}:${IMAGE_DEFINITION_DIR}
-	@scp ${SCP_OPTS} image_definition.yaml admin@${CML_HOST}:${IMAGE_DEFINITION_DIR}
+upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
+	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}
 ```
 
 <br><br><br>
@@ -510,7 +507,7 @@ scp node_definition.yaml admin@192.168.122.212:
 >
 > dropfolderの実体は `/var/local/virl2/dropfolder` です。このディレクトリから適宜移動してください。
 
-<br>
+<br><br><br>
 
 ここからはコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHで接続した方が快適です）。
 
@@ -526,7 +523,7 @@ sudo -s -E
 cd /var/lib/libvirt/images/node-definitions
 ```
 
-/var/tmpからファイルを移動します。
+/var/tmpからファイルを移動しつつ、名前を変更します。
 
 ```bash
 mv /var/tmp/node_definition.yaml frr-10-4.yaml
@@ -567,7 +564,7 @@ chown libvirt-qemu:virl2 frr-10-4
 cd frr-10-4
 ```
 
-ファイルを移動します。
+make uploadで転送したファイルをこの場所に移動します。
 
 ```bash
 mv /var/tmp/frr.tar.gz .

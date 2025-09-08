@@ -1,6 +1,8 @@
 #!/bin/bash
 
+# cfg/frr.conf is mounted directly to /etc/frr/frr.conf, see CML node definition file.
 CONFIG=/etc/frr/frr.conf
+
 BOOT=/config/boot.sh
 PROTOCOLS=/config/protocols
 
@@ -16,7 +18,6 @@ PROTOCOLS=/config/protocols
 # run snmpd in the background
 #
 if [ -x /usr/sbin/snmpd ]; then
-    # /usr/sbin/snmpd -Lsd
     /usr/sbin/snmpd -LS 5 d -Lf /dev/null
 fi
 
@@ -64,9 +65,6 @@ if [ ! -f /usr/lib/frr/frrinit.sh ]; then
     echo "/usr/lib/frr/frrinit.sh not found. Exiting."
     exit 1
 fi
-
-# change frr user shell to bash
-usermod -s /bin/bash frr
 
 # start frr
 /usr/lib/frr/frrinit.sh start

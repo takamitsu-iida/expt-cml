@@ -3,13 +3,13 @@
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-TAG ?= frr:10.4
+TAG ?= tig:latest
 CML_HOST = 192.168.122.212
 CML_UPLOAD_DIR = /var/tmp
 SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
 SOURCE_NODE_DEFINITION = cml_node_definition.yaml
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-CONTAINER_NAME = frr-test
+CONTAINER_NAME = tig-test
 
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
@@ -24,9 +24,9 @@ inspect: ## DockerイメージのIDをインスペクトして、image_definitio
 
 
 save: ## Dockerイメージを保存する
-	@rm -f frr.tar.gz
-	@docker save -o frr.tar ${TAG}
-	@gzip frr.tar
+	@rm -f tig.tar.gz
+	@docker save -o tig.tar ${TAG}
+	@gzip tig.tar
 
 
 run: ## Dockerコンテナを起動する
@@ -47,10 +47,10 @@ prune: ## Dockerの不要なイメージを削除する
 
 clean: ## Dockerイメージを削除する
 	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
-	@rm -f frr.tar.gz
+	@rm -f tig.tar.gz
 	@rm -f image_definition.yaml
 	@rm -f node_definition.yaml
 
 
-upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
-	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}
+upload: ## tig.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
+	@rsync -avz -e "ssh ${SSH_OPTS}" tig.tar.gz image_definition.yaml node_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}

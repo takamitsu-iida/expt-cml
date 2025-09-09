@@ -9,14 +9,18 @@ ARG BUCKET=my_bucket
 ARG ORG=my_org
 ARG TOKEN=DaW2vgcbGpAHJCFiEpYYF61dBfXD7AMk
 # TOKENは自動生成した適当な32桁の文字列 (head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)
-ARG GF_SECURITY_ADMIN_USER=admin
-ARG GF_SECURITY_ADMIN_PASSWORD=admin
+ARG ADMIN_USER=admin
+ARG ADMIN_PASSWORD=admin
 
 ENV BUCKET=${BUCKET}
 ENV ORG=${ORG}
 ENV TOKEN=${TOKEN}
-ENV GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
-ENV GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+
+ENV ADMIN_USER=${ADMIN_USER}
+ENV ADMIN_PASSWORD=${ADMIN_PASSWORD}
+
+ENV GF_SECURITY_ADMIN_USER=${ADMIN_USER}
+ENV GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 
 RUN <<EOF
@@ -121,7 +125,6 @@ EOF
 COPY cfg/influxdb.conf /etc/influxdb/influxdb.conf
 COPY cfg/telegraf.conf /etc/telegraf/telegraf.conf
 COPY cfg/grafana.ini /etc/grafana/grafana.ini
-
 COPY cfg/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 COPY start.sh /

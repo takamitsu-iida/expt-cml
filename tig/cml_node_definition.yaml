@@ -8,10 +8,6 @@ id: tig
 
 schema_version: 0.0.1
 
-configuration:
-  generator:
-    driver: null
-
 sim:
   linux_native:
     driver: ubuntu
@@ -68,6 +64,9 @@ ui:
   label_prefix: tig-
   visible: true
 
+configuration:
+  generator:
+    driver: null
   provisioning:
     volume_name: cfg
     media_type: raw

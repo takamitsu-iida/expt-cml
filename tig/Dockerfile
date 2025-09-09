@@ -114,9 +114,6 @@ apt clean
 rm -rf /var/lib/apt/lists/*
 rm -rf /var/lib/cache/*
 
-# Create mountpoint directory
-mkdir /config
-
 EOF
 
 # Expose ports

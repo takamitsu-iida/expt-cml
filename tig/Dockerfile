@@ -88,8 +88,16 @@ apt install -y --no-install-recommends telegraf
 
 
 # --- Install InfluxDB 2.x ---
-curl -fsSL https://repos.influxdata.com/influxdata-archiveteam.key | sudo gpg --dearmor -o /etc/apt/keyrings/influxdata-archive-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/influxdata-archive-keyring.gpg] https://repos.influxdata.com/ubuntu jammy stable" | sudo tee /etc/apt/sources.list.d/influxdata.list > /dev/null
+
+# Add the InfluxData key to verify downloads and add the repository
+curl --silent --location -O https://repos.influxdata.com/influxdata-archive.key
+gpg --show-keys --with-fingerprint --with-colons ./influxdata-archive.key 2>&1 | grep -q '^fpr:\+24C975CBA61A024EE1B631787C3D57159FC2F927:$' && cat influxdata-archive.key | gpg --dearmor | sudo tee /etc/apt/keyrings/influxdata-archive.gpg > /dev/null
+echo 'deb [signed-by=/etc/apt/keyrings/influxdata-archive.gpg] https://repos.influxdata.com/debian stable main' | sudo tee /etc/apt/sources.list.d/influxdata.list
+
+# Install influxdb
+apt update
+apt install -y influxdb2
+
 
 apt update
 apt install -y --no-install-recommends influxdb2

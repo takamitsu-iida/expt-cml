@@ -40,7 +40,8 @@ apt upgrade -y
 apt install -y --no-install-recommends \
     wget \
     curl \
-    gnupg \
+    gnupg2 \
+    software-properties-common \
     apt-transport-https \
     supervisor \
     ca-certificates
@@ -87,8 +88,8 @@ apt install -y --no-install-recommends telegraf
 
 
 # --- Install InfluxDB 2.x ---
-wget -qO- https://repos.influxdata.com/influxdb.key | gpg --dearmor | tee /usr/share/keyrings/influxdb-archive-keyring.gpg > /dev/null
-echo "deb [signed-by=/usr/share/keyrings/influxdb-archive-keyring.gpg] https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sources.list.d/influxdb.list
+curl -fsSL https://repos.influxdata.com/influxdata-archiveteam.key | sudo gpg --dearmor -o /etc/apt/keyrings/influxdata-archive-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/influxdata-archive-keyring.gpg] https://repos.influxdata.com/ubuntu jammy stable" | sudo tee /etc/apt/sources.list.d/influxdata.list > /dev/null
 
 apt update
 apt install -y --no-install-recommends influxdb2

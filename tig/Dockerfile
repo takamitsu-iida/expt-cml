@@ -1,5 +1,8 @@
 # ===== ベースステージ（updateと必要ライブラリのインストール） =====
-FROM ubuntu:24.04 AS base
+FROM ubuntu:22.04 AS base
+
+# 2025-09-09時点
+# influxData公式が22.04までしか対応していないので、22.04ベースで作成する
 
 ENV TZ=Asia/Tokyo
 ENV LANG=ja_JP.UTF-8
@@ -93,8 +96,8 @@ apt install -y --no-install-recommends influxdb2
 mkdir -p /var/lib/influxdb2
 chmod -R 755 /var/lib/influxdb2
 
-# 実際にはsupervisordでinfluxdを起動するので、/var/log/supervisor/influxdb-stdout.logにログが出力される
-mkdir -p /var/log/influxdb2
+# supervisordでinfluxdを起動するので、/var/log/supervisor/influxdb-stdout.logにログが出力される
+# mkdir -p /var/log/influxdb2
 
 # --- Install Grafana ---
 wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/grafana.gpg > /dev/null

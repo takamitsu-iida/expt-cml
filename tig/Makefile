@@ -4,6 +4,7 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 TAG ?= tig:latest
+
 CML_HOST = 192.168.122.212
 CML_UPLOAD_DIR = /var/tmp
 SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml

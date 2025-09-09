@@ -63,7 +63,6 @@ grep -q '^PermitEmptyPasswords yes' /etc/ssh/sshd_config || echo 'PermitEmptyPas
 
 
 # Clean up
-apt remove -y
 apt autoremove -y
 apt clean
 rm -rf /var/lib/apt/lists/*
@@ -108,7 +107,6 @@ chmod -R 755 /var/lib/grafana
 
 
 # --- Clean up ---
-apt remove -y
 apt autoremove -y
 apt clean
 rm -rf /var/lib/apt/lists/*

@@ -166,7 +166,7 @@ sed -i '/^zebra_options=/ s/"$/ -M snmp"/' /etc/frr/daemons
 mkdir /config
 
 # Clean up
-apt remove -y
+# apt remove -y
 apt autoremove -y
 apt clean
 cd /

@@ -75,6 +75,14 @@ FROM base AS builder
 
 RUN <<EOF
 
+# --- Install Telegraf ---
+wget -qO- https://repos.influxdata.com/telegraf.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/telegraf.gpg > /dev/null
+echo "deb https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sources.list.d/telegraf.list
+
+apt update
+apt install -y --no-install-recommends telegraf
+
+
 # --- Install InfluxDB 2.x ---
 wget -qO- https://repos.influxdata.com/influxdb.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/influxdb.gpg > /dev/null
 echo "deb https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sources.list.d/influxdb.list
@@ -82,18 +90,11 @@ echo "deb https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sourc
 apt update
 apt install -y --no-install-recommends influxdb2
 
-mkdir -p /var/lib/influxdb2 /var/log/influxdb2
-chown -R influxdb:influxdb /var/lib/influxdb2
+mkdir -p /var/lib/influxdb2
 chmod -R 755 /var/lib/influxdb2
 
-
-# --- Install Telegraf ---
-wget -qO- https://repos.influxdata.com/influxdb.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/influxdb.gpg > /dev/null
-echo "deb https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sources.list.d/telegraf.list
-
-apt update
-apt install -y --no-install-recommends telegraf
-
+# 実際にはsupervisordでinfluxdを起動するので、/var/log/supervisor/influxdb-stdout.logにログが出力される
+mkdir -p /var/log/influxdb2
 
 # --- Install Grafana ---
 wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/grafana.gpg > /dev/null

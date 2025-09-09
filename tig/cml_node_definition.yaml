@@ -78,6 +78,7 @@ configuration:
             "docker": {
               "image": "tig:latest",
               "mounts": [
+                "type=bind,source=cfg/boot.sh,target=/boot.sh",
                 "type=bind,source=cfg/telegraf.conf,target=/etc/telegraf/telegraf.conf",
                 "type=bind,source=cfg/influxdb.conf,target=/etc/influxdb/influxdb.conf",
                 "type=bind,source=cfg/grafana.ini,target=/etc/grafana/grafana.ini",
@@ -95,16 +96,19 @@ configuration:
               "extra_args": []
             },
             "shell": "/bin/bash",
-            "day0cmd": [ "/bin/bash", "/config/boot.sh" ],
+            "day0cmd": [ "/bin/bash", "/boot.sh" ],
             "busybox": true
           }
       - name: boot.sh
         editable: true
         content: |-
+          # eth0 --- bridge1
           ip address add dev eth0 192.168.0.110/24
           ip link set dev eth0 up
+          # eth1
           ip address add dev eth1 192.168.255.110/24
           ip link set dev eth1 up
+          ip route add default via 192.168.255.1 dev eth1
           #
           # keep the next line to indicate that the machine is ready
           echo "READY" >/dev/console

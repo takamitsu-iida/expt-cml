@@ -128,6 +128,7 @@ chmod -R 755 /var/lib/grafana
 # --- Clean up ---
 apt autoremove -y
 apt clean
+cd /
 rm -rf /var/lib/apt/lists/*
 rm -rf /var/lib/cache/*
 rm -rf ${WORKING_DIRECTORY}

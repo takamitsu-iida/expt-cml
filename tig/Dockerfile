@@ -1,8 +1,5 @@
 # ===== ベースステージ（updateと必要ライブラリのインストール） =====
-FROM ubuntu:22.04 AS base
-
-# 2025-09-09時点
-# influxData公式が22.04までしか対応していないので、22.04ベースで作成する
+FROM ubuntu:24.04 AS base
 
 ENV TZ=Asia/Tokyo
 ENV LANG=ja_JP.UTF-8
@@ -79,8 +76,6 @@ FROM base AS builder
 
 ENV WORKING_DIRECTORY=/var/tmp/build
 
-WORKDIR ${WORKING_DIRECTORY}
-
 RUN <<EOF
 
 # --- Install Telegraf ---
@@ -132,6 +127,7 @@ cd /
 rm -rf /var/lib/apt/lists/*
 rm -rf /var/lib/cache/*
 rm -rf ${WORKING_DIRECTORY}
+unset WORKING_DIRECTORY
 
 EOF
 

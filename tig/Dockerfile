@@ -5,18 +5,23 @@ ENV TZ=Asia/Tokyo
 ENV LANG=ja_JP.UTF-8
 
 # --build-arg で変更可能なデフォルト値
-ARG BUCKET=my_bucket
-ARG ORG=my_org
-ARG TOKEN=DaW2vgcbGpAHJCFiEpYYF61dBfXD7AMk
-# TOKENは自動生成した適当な32桁の文字列 (head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)
-ARG ADMIN_USER=admin
-ARG ADMIN_PASSWORD=admin
+ARG HOSTNAME=tig
+ENV HOSTNAME=${HOSTNAME}
 
+ARG BUCKET=my_bucket
 ENV BUCKET=${BUCKET}
+
+ARG ORG=my_org
 ENV ORG=${ORG}
+
+# TOKENは自動生成した適当な32桁の文字列 (head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)
+ARG TOKEN=DaW2vgcbGpAHJCFiEpYYF61dBfXD7AMk
 ENV TOKEN=${TOKEN}
 
+ARG ADMIN_USER=admin
 ENV ADMIN_USER=${ADMIN_USER}
+
+ARG ADMIN_PASSWORD=admin
 ENV ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 ENV GF_SECURITY_ADMIN_USER=${ADMIN_USER}
@@ -129,5 +134,4 @@ COPY cfg/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 COPY start.sh /
 
-# Startup command
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ENTRYPOINT [ "/start.sh" ]

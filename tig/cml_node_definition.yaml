@@ -5,9 +5,69 @@
 # CAP_AUDIT_WRITE is needed to run sshd in the container
 
 id: tig
+
+schema_version: 0.0.1
+
 configuration:
   generator:
     driver: null
+
+sim:
+  linux_native:
+    driver: ubuntu
+    libvirt_domain_driver: docker
+    cpus: 1
+    ram: 256
+    cpu_limit: 100
+
+inherited:
+  image:
+    ram: true
+    cpus: false
+    cpu_limit: false
+    data_volume: false
+    boot_disk_size: false
+  node:
+    ram: true
+    cpus: false
+    cpu_limit: false
+    data_volume: false
+    boot_disk_size: false
+
+general:
+  nature: server
+  description: Telegraf Influxdb Grafana (Docker)
+  read_only: true
+
+device:
+  interfaces:
+    physical:
+      - eth0
+      - eth1
+      - eth2
+      - eth3
+    has_loopback_zero: false
+    min_count: 1
+    default_count: 2
+    serial_ports: 2
+
+boot:
+  timeout: 30
+  completed:
+    - READY
+
+pyats:
+  os: linux
+
+ui:
+  description: |
+    Telegraf Influxdb Grafana (Docker)
+  group: Others
+  icon: server
+  label: TIG
+  label_prefix: tig-
+  visible: true
+
   provisioning:
     volume_name: cfg
     media_type: raw
@@ -42,7 +102,6 @@ configuration:
       - name: boot.sh
         editable: true
         content: |-
-          # Insert more commands here
           ip address add dev eth0 192.168.0.110/24
           ip link set dev eth0 up
           ip address add dev eth1 192.168.255.110/24
@@ -55,62 +114,123 @@ configuration:
         editable: true
         content: |
           # Configuration for telegraf agent
-          end
+
+          [global_tags]
+
+          [agent]
+            interval = "10s"
+            round_interval = true
+            collection_jitter = "0s"
+            flush_interval = "10s"
+            flush_jitter = "0s"
+            precision = ""
+            hostname = "$HOSTNAME"
+            omit_hostname = false
+
+          # Basic inputs for host metrics inside the container
+          [[inputs.cpu]]
+            percpu = false # コンテナ内のCPUメトリクスなので、パーCPUはあまり意味がない
+            totalcpu = true
+
+          [[inputs.mem]]
+
+          [[inputs.disk]]
+            mount_points = ["/"] # コンテナ内のディスク使用量なのでルートのみ
+            ignore_fs = ["tmpfs", "devtmpfs", "devfs"]
+
+          [[inputs.diskio]]
+
+          [[inputs.net]]
+
+          [[outputs.influxdb_v2]]
+            urls = ["http://127.0.0.1:8086"]
+            bucket = "$BUCKET"
+            organization = "$ORG"
+            token = "$TOKEN"
+
       - name: influxdb.conf
         editable: true
         content: |
-          exit 0
+          # influxdb.conf (basic example)
+          # Default is usually fine, but you can customize here
+
+          [http]
+            enabled = true
+            bind-address = "0.0.0.0:8086"
+            auth-enabled = true # 必要であれば認証を有効に
+
+      - name: grafana.ini
+        editable: true
+        content: |
+          [paths]
+          logs = /tmp/grafana
+
+          # Default UI theme ("dark" or "light" or "system")
+          default_theme = light
+
+          # [log]
+          # mode = console file
+          # level = debug
+
+          # [log.console]
+          # level = debug
+          # format = console
+
+          # # For "file" mode only
+          [log.file]
+          level = debug
+          format = text
+
       - name: supervisord.conf
         editable: true
         content: |
-          # pathd
-sim:
-  linux_native:
-    driver: ubuntu
-    libvirt_domain_driver: docker
-    cpus: 1
-    ram: 256
-    cpu_limit: 100
-inherited:
-  image:
-    ram: true
-    cpus: false
-    cpu_limit: false
-    data_volume: false
-    boot_disk_size: false
-  node:
-    ram: true
-    cpus: false
-    cpu_limit: false
-    data_volume: false
-    boot_disk_size: false
-general:
-  nature: server
-  description: Telegraf Influxdb Grafana (Docker)
-  read_only: true
-schema_version: 0.0.1
-device:
-  interfaces:
-    physical:
-      - eth0
-      - eth1
-      - eth2
-      - eth3
-    has_loopback_zero: false
-    min_count: 1
-    default_count: 2
-    serial_ports: 2
-boot:
-  timeout: 30
-  completed:
-    - READY
-pyats:
-  os: linux
-ui:
-  description: |
-    Telegraf Influxdb Grafana (Docker)
-  group: Others
-  icon: server
-  label: TIG
-  label_prefix: tig-
-  visible: true
+
+          [supervisord]
+          nodaemon=false ; デーモンとして実行する
+
+
+          [program:influxdb]
+          command=/usr/bin/influxd
+          autostart=true
+          autorestart=true
+          priority=10
+          stdout_logfile=/var/log/supervisor/influxdb-stdout.log
+          stderr_logfile=/var/log/supervisor/influxdb-stderr.log
+          stdout_logfile_maxbytes=1MB
+          stderr_logfile_maxbytes=1MB
+          startsecs=10 ; InfluxDBが完全に起動するまで待つ時間
+
+
+          ; InfluxDBが起動した後にデータベースとユーザーを作成するためのスクリプト
+          [program:influxdb_init]
+          command=/bin/bash -c "sleep 15 && influx setup --bucket $$BUCKET --org $$ORG --username $$ADMIN_USER --password $$ADMIN_PASSWORD --token $$TOKEN --force"
+          autostart=true
+          autorestart=false ; このスクリプトは一度だけ実行
+          startsecs=0
+          priority=20 ; InfluxDB本体より後に実行
+          depends_on=influxdb
+
+
+          [program:telegraf]
+          command=/usr/bin/telegraf --config /etc/telegraf/telegraf.conf --config-directory /etc/telegraf/telegraf.d
+          autostart=true
+          autorestart=true
+          priority=30 ; InfluxDBとDB初期化後に開始
+          stdout_logfile=/var/log/supervisor/telegraf-stdout.log
+          stderr_logfile=/var/log/supervisor/telegraf-stderr.log
+          stdout_logfile_maxbytes=1MB
+          stderr_logfile_maxbytes=1MB
+          startsecs=5
+
+
+          [program:grafana]
+          command=/usr/sbin/grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini --pidfile=/var/run/grafana-server.pid
+          environment=GF_SECURITY_ADMIN_USER="$GF_SECURITY_ADMIN",GF_SECURITY_ADMIN_PASSWORD="$GF_SECURITY_ADMIN_PASSWORD"
+          autostart=true
+          autorestart=true
+          priority=40 ; すべてのデータサービスが利用可能になった後に開始
+          stdout_logfile=/var/log/supervisor/grafana-stdout.log
+          stderr_logfile=/var/log/supervisor/grafana-stderr.log
+          stdout_logfile_maxbytes=1MB
+          stderr_logfile_maxbytes=1MB
+          startsecs=10

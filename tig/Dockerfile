@@ -129,6 +129,6 @@ COPY cfg/telegraf.conf /etc/telegraf/telegraf.conf
 COPY cfg/grafana.ini /etc/grafana/grafana.ini
 COPY cfg/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-COPY start.sh /
+COPY --chmod=0755 start.sh /
 
 ENTRYPOINT [ "/start.sh" ]

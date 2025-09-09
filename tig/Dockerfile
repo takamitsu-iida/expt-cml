@@ -77,6 +77,10 @@ EOF
 # ===== TIG ビルドステージ =====
 FROM base AS builder
 
+ENV WORKING_DIRECTORY=/var/tmp/build
+
+WORKDIR ${WORKING_DIRECTORY}
+
 RUN <<EOF
 
 # --- Install Telegraf ---
@@ -89,20 +93,26 @@ apt install -y --no-install-recommends telegraf
 
 # --- Install InfluxDB 2.x ---
 
-# Add the InfluxData key to verify downloads and add the repository
-curl --silent --location -O https://repos.influxdata.com/influxdata-archive.key
-gpg --show-keys --with-fingerprint --with-colons ./influxdata-archive.key 2>&1 | grep -q '^fpr:\+24C975CBA61A024EE1B631787C3D57159FC2F927:$' && cat influxdata-archive.key | gpg --dearmor | sudo tee /etc/apt/keyrings/influxdata-archive.gpg > /dev/null
-echo 'deb [signed-by=/etc/apt/keyrings/influxdata-archive.gpg] https://repos.influxdata.com/debian stable main' | sudo tee /etc/apt/sources.list.d/influxdata.list
+# インストール方法は公式ドキュメント参照
+# https://docs.influxdata.com/influxdb/v2/install/
+# influxDBとinflux CLIは別パッケージなので両方インストールする
+# systemdで起動するわけではないので、tar.gzをダウンロードして展開する
 
-# Install influxdb
-apt update
-apt install -y --no-install-recommends influxdb2
+# Use curl to download the amd64 binary.
+cd ${WORKING_DIRECTORY}
+curl --location -O https://download.influxdata.com/influxdb/releases/v2.7.12/influxdb2-2.7.12_linux_amd64.tar.gz
+tar xvzf ./influxdb2-2.7.12_linux_amd64.tar.gz
 
-mkdir -p /var/lib/influxdb2
-chmod -R 755 /var/lib/influxdb2
+cp ./influxdb2-2.7.12/usr/bin/influxd /usr/bin/
 
-# supervisordでinfluxdを起動するので、/var/log/supervisor/influxdb-stdout.logにログが出力される
-# mkdir -p /var/log/influxdb2
+# Install the influx CLI
+# https://docs.influxdata.com/influxdb/v2/tools/influx-cli/?t=Linux
+
+curl --location -O https://dl.influxdata.com/influxdb/releases/influxdb2-client-2.7.5-linux-amd64.tar.gz
+tar xvzf ./influxdb2-client-2.7.5-linux-amd64.tar.gz
+
+cp ./influx /usr/bin/
+
 
 # --- Install Grafana ---
 wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/grafana.gpg > /dev/null
@@ -120,6 +130,7 @@ apt autoremove -y
 apt clean
 rm -rf /var/lib/apt/lists/*
 rm -rf /var/lib/cache/*
+rm -rf ${WORKING_DIRECTORY}
 
 EOF
 

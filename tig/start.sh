@@ -22,7 +22,7 @@ fi
 #
 # run supervisord
 #
-/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+# /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
 
 echo "READY" >/dev/console
 

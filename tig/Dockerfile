@@ -96,10 +96,6 @@ echo 'deb [signed-by=/etc/apt/keyrings/influxdata-archive.gpg] https://repos.inf
 
 # Install influxdb
 apt update
-apt install -y influxdb2
-
-
-apt update
 apt install -y --no-install-recommends influxdb2
 
 mkdir -p /var/lib/influxdb2

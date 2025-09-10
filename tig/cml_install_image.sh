@@ -5,7 +5,7 @@ sudo -s -E
 NODE_DEF_ROOT=/var/lib/libvirt/images/node-definitions
 NODE_DEF_FILENAME=tig.yaml
 
-IMAGE_DEF_ROOT=/var/lib/virl2/images/node_definitions
+IMAGE_DEF_ROOT=/var/lib/libvirt/images/virl-base-images
 IMAGE_DEF_DIR=tig
 IMAGE_DEF_FILENAME=tig.yaml
 IMAGE_NAME=tig.tar.gz

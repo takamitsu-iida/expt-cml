@@ -35,9 +35,12 @@ done
 echo "InfluxDB started."
 
 
+SETUP_MARKER="# SETUP_DONE"
+INFLUX_CONF="/etc/influxdb/influxdb.conf"
+
 # 初期セットアップ済みか判定
-SETUP_MARKER="/var/lib/influxdb2/.setup"
-if [ ! -f "$SETUP_MARKER" ]; then
+if ! grep -q "$SETUP_MARKER" "$INFLUX_CONF"; then
+
     # 環境変数が設定されているか確認
     if  [ -z "$DOCKER_INFLUXDB_INIT_ORG" ] || \
         [ -z "$DOCKER_INFLUXDB_INIT_BUCKET" ] || \
@@ -56,7 +59,10 @@ if [ ! -f "$SETUP_MARKER" ]; then
             --token "$DOCKER_INFLUXDB_INIT_ADMIN_TOKEN" \
             --force
         echo "InfluxDB initial setup completed."
-        touch "$SETUP_MARKER"
+
+        # 判定用コメントを追加
+        echo "" >> "$INFLUX_CONF"
+        echo "$SETUP_MARKER" >> "$INFLUX_CONF"
     fi
 else
     echo "InfluxDB already initialized. Skipping setup."

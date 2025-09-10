@@ -94,7 +94,7 @@ cd ${WORKING_DIRECTORY}
 
 # --- Install Telegraf ---
 
-    # インストール方法は公式ドキュメント参照
+# インストール方法は公式ドキュメント参照
 # https://docs.influxdata.com/telegraf/v1/install/
 
 curl --silent --location -O https://repos.influxdata.com/influxdata-archive.key

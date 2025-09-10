@@ -76,6 +76,15 @@ systemctl restart virl2.target
 telegraf --config /etc/telegraf/telegraf.conf --test
 ```
 
+
+## Telegrafの再起動
+
+設定を変更したら再起動します。
+
+```bash
+supervisorctl restart telegraf
+```
+
 <br>
 
 ## InfluxDB動作確認

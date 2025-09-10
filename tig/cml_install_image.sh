@@ -1,7 +1,5 @@
 #!/bin/bash
 
-sudo -s -E
-
 NODE_DEF_ROOT=/var/lib/libvirt/images/node-definitions
 NODE_DEF_FILENAME=tig.yaml
 

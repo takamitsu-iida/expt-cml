@@ -119,7 +119,7 @@ tar xvzf ./influxdb2-2.7.12_linux_amd64.tar.gz
 
 cp ./influxdb2-2.7.12/usr/bin/influxd /usr/bin/
 
-mkdir -p /var/lib/influxdb2
+# mkdir -p /var/lib/influxdb2
 # chown -R influxdb:influxdb /var/lib/influxdb2
 # chmod -R 755 /var/lib/influxdb2
 

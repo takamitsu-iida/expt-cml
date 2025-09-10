@@ -10,6 +10,9 @@ ARG HOSTNAME=tig
 ARG ORG=my_org
 ARG BUCKET=my_bucket
 ARG TOKEN
+
+# InfluxDB と Grafana の管理者ユーザーとパスワード
+# パスワードは最低8文字
 ARG ADMIN_USER=admin
 ARG ADMIN_PASSWORD=password
 

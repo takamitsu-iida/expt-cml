@@ -9,6 +9,7 @@ CML_HOST = 192.168.122.212
 CML_UPLOAD_DIR = /var/tmp
 SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
 SOURCE_NODE_DEFINITION = cml_node_definition.yaml
+INSTALL_SCRIPT = cml_install_image.sh
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = tig-test
 
@@ -58,4 +59,4 @@ clean: ## Dockerイメージを削除する
 
 
 upload: ## tig.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
-	@rsync -avz -e "ssh ${SSH_OPTS}" tig.tar.gz image_definition.yaml node_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}
+	@rsync -avz -e "ssh ${SSH_OPTS}" tig.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}

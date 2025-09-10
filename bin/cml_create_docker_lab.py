@@ -64,7 +64,7 @@ packages:
   - ca-certificates
   - curl
   - gnupg
-
+  - make
 
 write_files:
   #

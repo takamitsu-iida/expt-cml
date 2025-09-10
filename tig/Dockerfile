@@ -51,7 +51,8 @@ apt install -y --no-install-recommends \
     software-properties-common \
     apt-transport-https \
     supervisor \
-    ca-certificates
+    ca-certificates \
+    gosu
 
 #
 # add sshd (should run in start.sh)

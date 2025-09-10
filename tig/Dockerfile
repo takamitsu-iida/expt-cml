@@ -78,6 +78,8 @@ ENV WORKING_DIRECTORY=/var/tmp/build
 
 RUN <<EOF
 
+cd ${WORKING_DIRECTORY}
+
 # --- Install Telegraf ---
 wget -qO- https://repos.influxdata.com/telegraf.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/telegraf.gpg > /dev/null
 echo "deb https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sources.list.d/telegraf.list

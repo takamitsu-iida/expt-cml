@@ -23,6 +23,46 @@ fi
 
 /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
 
+#
+# run influxdb initial setup
+#
+
+# InfluxDBの起動を待つ
+echo "Waiting for InfluxDB to start..."
+until curl -sI http://localhost:8086/ping 2>&1 | grep -q 'HTTP/1.1 204 No Content'; do
+    sleep 3
+done
+echo "InfluxDB started."
+
+
+# 初期セットアップ済みか判定
+SETUP_MARKER="/var/lib/influxdb2/.setup"
+if [ ! -f "$SETUP_MARKER" ]; then
+    # 環境変数が設定されているか確認
+    if  [ -z "$DOCKER_INFLUXDB_INIT_ORG" ] || \
+        [ -z "$DOCKER_INFLUXDB_INIT_BUCKET" ] || \
+        [ -z "$DOCKER_INFLUXDB_INIT_ADMIN_TOKEN" ] || \
+        [ -z "$DOCKER_INFLUXDB_INIT_USERNAME" ] || \
+        [ -z "$DOCKER_INFLUXDB_INIT_PASSWORD" ]; then
+        echo "One or more InfluxDB initial setup environment variables are not set."
+        echo "Skipping initial setup."
+    else
+        echo "Performing InfluxDB initial setup..."
+        influx setup \
+            --org "$DOCKER_INFLUXDB_INIT_ORG" \
+            --bucket "$DOCKER_INFLUXDB_INIT_BUCKET" \
+            --username "$DOCKER_INFLUXDB_INIT_USERNAME" \
+            --password "$DOCKER_INFLUXDB_INIT_PASSWORD" \
+            --token "$DOCKER_INFLUXDB_INIT_ADMIN_TOKEN" \
+            --force
+        echo "InfluxDB initial setup completed."
+        touch "$SETUP_MARKER"
+    fi
+else
+    echo "InfluxDB already initialized. Skipping setup."
+fi
+
+
 echo "READY" >/dev/console
 
 trap '' INT TSTP

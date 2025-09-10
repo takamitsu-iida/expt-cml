@@ -12,8 +12,12 @@ SOURCE_NODE_DEFINITION = cml_node_definition.yaml
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = tig-test
 
+# --build-argで渡す引数 (TOKENはランダムな32桁の文字列)
+BUILD_ARGS = --build-arg TOKEN=$$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)
+
+
 build: ## Dockerイメージを作成する
-	@docker build -t ${TAG} -f Dockerfile .
+	@docker build -t ${TAG} ${BUILD_ARGS} -f Dockerfile .
 
 
 inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlのsha256を更新する

@@ -173,6 +173,7 @@ cd /
 rm -rf /var/lib/apt/lists/*
 rm -rf /var/lib/cache/*
 rm -rf ${WORKING_DIRECTORY}
+unset WORKING_DIRECTORY
 
 EOF
 

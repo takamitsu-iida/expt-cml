@@ -78,8 +78,10 @@ ENV WORKING_DIRECTORY=/var/tmp/build
 
 RUN <<EOF
 
-# --- Install Telegraf ---
+mkdir -p ${WORKING_DIRECTORY}
 cd ${WORKING_DIRECTORY}
+
+# --- Install Telegraf ---
 wget -qO- https://repos.influxdata.com/telegraf.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/telegraf.gpg > /dev/null
 echo "deb https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sources.list.d/telegraf.list
 
@@ -95,7 +97,6 @@ apt install -y --no-install-recommends telegraf
 # systemdで起動するわけではないので、tar.gzをダウンロードして展開する
 
 # Use curl to download the amd64 binary.
-cd ${WORKING_DIRECTORY}
 curl --location -O https://download.influxdata.com/influxdb/releases/v2.7.12/influxdb2-2.7.12_linux_amd64.tar.gz
 tar xvzf ./influxdb2-2.7.12_linux_amd64.tar.gz
 
@@ -104,7 +105,6 @@ cp ./influxdb2-2.7.12/usr/bin/influxd /usr/bin/
 # Install the influx CLI
 # https://docs.influxdata.com/influxdb/v2/tools/influx-cli/?t=Linux
 
-cd ${WORKING_DIRECTORY}
 curl --location -O https://dl.influxdata.com/influxdb/releases/influxdb2-client-2.7.5-linux-amd64.tar.gz
 tar xvzf ./influxdb2-client-2.7.5-linux-amd64.tar.gz
 
@@ -112,7 +112,6 @@ cp ./influx /usr/bin/
 
 
 # --- Install Grafana ---
-cd ${WORKING_DIRECTORY}
 wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/grafana.gpg > /dev/null
 echo "deb https://apt.grafana.com stable main" | tee /etc/apt/sources.list.d/grafana.list
 

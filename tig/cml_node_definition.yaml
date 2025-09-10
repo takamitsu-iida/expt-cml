@@ -165,10 +165,10 @@ configuration:
           [[inputs.net]]
 
           [[outputs.influxdb_v2]]
-            urls = ["http://127.0.0.1:8086"]
-            bucket = "$BUCKET"
-            organization = "$ORG"
-            token = "$TOKEN"
+            urls = ["http://localhost:8086"]
+            bucket = "$DOCKER_INFLUXDB_INIT_BUCKET"
+            organization = "$DOCKER_INFLUXDB_INIT_ORG"
+            token = "$DOCKER_INFLUXDB_INIT_ADMIN_TOKEN"
 
       - name: influxdb.conf
         editable: true

@@ -106,9 +106,9 @@ configuration:
                 "BUCKET=my_bucket",
                 "ORG=my_org",
                 "ADMIN_USER=admin",
-                "ADMIN_PASSWORD=admin",
+                "ADMIN_PASSWORD=password",
                 "GF_SECURITY_ADMIN=admin",
-                "GF_SECURITY_ADMIN_PASSWORD=admin"
+                "GF_SECURITY_ADMIN_PASSWORD=password"
               ],
               "misc_args": [],
               "run_args": [],
@@ -185,7 +185,7 @@ configuration:
         editable: true
         content: |
           [paths]
-          logs = /tmp/grafana
+          logs = /var/log/grafana
 
           # Default UI theme ("dark" or "light" or "system")
           default_theme = light
@@ -206,9 +206,11 @@ configuration:
       - name: supervisord.conf
         editable: true
         content: |
-
           [supervisord]
           nodaemon=false ; デーモンとして実行する
+          user=root ; コンテナなのでrootユーザーで実行する
+          logfile=/var/log/supervisor/supervisord.log
+          pidfile=/var/run/supervisord.pid
 
 
           [program:influxdb]
@@ -223,21 +225,11 @@ configuration:
           startsecs=10 ; InfluxDBが完全に起動するまで待つ時間
 
 
-          ; InfluxDBが起動した後にデータベースとユーザーを作成するためのスクリプト
-          [program:influxdb_init]
-          command=/bin/bash -c "sleep 15 && influx setup --bucket $$BUCKET --org $$ORG --username $$ADMIN_USER --password $$ADMIN_PASSWORD --token $$TOKEN --force"
-          autostart=true
-          autorestart=false ; このスクリプトは一度だけ実行
-          startsecs=0
-          priority=20 ; InfluxDB本体より後に実行
-          depends_on=influxdb
-
-
           [program:telegraf]
           command=/usr/bin/telegraf --config /etc/telegraf/telegraf.conf --config-directory /etc/telegraf/telegraf.d
           autostart=true
           autorestart=true
-          priority=30 ; InfluxDBとDB初期化後に開始
+          priority=20 ; InfluxDBが利用可能になった後に開始
           stdout_logfile=/var/log/supervisor/telegraf-stdout.log
           stderr_logfile=/var/log/supervisor/telegraf-stderr.log
           stdout_logfile_maxbytes=1MB
@@ -247,10 +239,9 @@ configuration:
 
           [program:grafana]
           command=/usr/sbin/grafana-server --homepath=/usr/share/grafana --config=/etc/grafana/grafana.ini --pidfile=/var/run/grafana-server.pid
-          environment=GF_SECURITY_ADMIN_USER="$GF_SECURITY_ADMIN",GF_SECURITY_ADMIN_PASSWORD="$GF_SECURITY_ADMIN_PASSWORD"
           autostart=true
           autorestart=true
-          priority=40 ; すべてのデータサービスが利用可能になった後に開始
+          priority=30 ; すべてのデータサービスが利用可能になった後に開始
           stdout_logfile=/var/log/supervisor/grafana-stdout.log
           stderr_logfile=/var/log/supervisor/grafana-stderr.log
           stdout_logfile_maxbytes=1MB

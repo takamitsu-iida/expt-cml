@@ -11,7 +11,7 @@ ARG ORG=my_org
 ARG BUCKET=my_bucket
 ARG TOKEN
 ARG ADMIN_USER=admin
-ARG ADMIN_PASSWORD=admin
+ARG ADMIN_PASSWORD=password
 
 # InfluxDB 環境変数
 # start.shで初期化するときに使用する

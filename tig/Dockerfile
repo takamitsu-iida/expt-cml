@@ -92,8 +92,8 @@ mkdir -p ${WORKING_DIRECTORY}
 cd ${WORKING_DIRECTORY}
 
 # --- Install Telegraf ---
-wget -qO- https://repos.influxdata.com/telegraf.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/telegraf.gpg > /dev/null
-echo "deb https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sources.list.d/telegraf.list
+wget -qO- https://repos.influxdata.com/influxdb.key | gpg --dearmor | tee /usr/share/keyrings/influxdb-archive-keyring.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/influxdb-archive-keyring.gpg] https://repos.influxdata.com/ubuntu jammy stable" | tee /etc/apt/sources.list.d/influxdata.list
 
 apt update
 apt install -y --no-install-recommends telegraf

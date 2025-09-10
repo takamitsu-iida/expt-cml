@@ -15,5 +15,5 @@ chown libvirt-qemu:virl2 ${NODE_DEF_ROOT}/${NODE_DEF_FILENAME}
 
 mkdir -p ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}
 mv /var/tmp/image_definition.yaml ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}/${IMAGE_DEF_FILENAME}
-mv /var/tmp/${IMAGE_NAME} ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}
+mv /var/tmp/${IMAGE_NAME} ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}/${IMAGE_NAME}
 chown -R libvirt-qemu:virl2 ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}

@@ -1,5 +1,10 @@
 # TIG
 
+## Telegraf動作確認
+
+```bash
+telegraf --config /etc/telegraf/telegraf.conf --test
+```
 
 ## 動作確認
 

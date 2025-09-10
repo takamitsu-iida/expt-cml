@@ -30,3 +30,6 @@ else
 fi
 
 chown -R libvirt-qemu:virl2 ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}
+
+# スクリプト自身を削除
+rm -- "$0"

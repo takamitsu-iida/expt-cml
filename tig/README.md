@@ -11,5 +11,5 @@ from(bucket: "my_bucket")
   |> range(start: -5m)
   |> filter(fn: (r) => r._measurement == "cpu")
   |> limit(n:5)
-' --org my_org --token $TOKEN --host http://localhost:8086
+' --org $DOCKER_INFLUXDB_INIT_ORG --token $DOCKER_INFLUXDB_INIT_ADMIN_TOKEN --host http://localhost:8086
 ```

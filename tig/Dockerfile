@@ -50,9 +50,11 @@ apt install -y --no-install-recommends \
     gnupg2 \
     software-properties-common \
     apt-transport-https \
-    supervisor \
     ca-certificates \
-    gosu
+    gosu \
+    supervisor \
+    snmp \
+    snmp-mibs-downloader
 
 #
 # add sshd (should run in start.sh)

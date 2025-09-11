@@ -102,6 +102,30 @@ from(bucket: "my_bucket")
 
 <br>
 
+受信 ifHCInOctets
+
+```influx
+from(bucket: "my_bucket")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCInOctets")
+  |> filter(fn: (r) => r["hostname"] == "対象装置のホスト名")
+  |> group(columns: ["ifDescr"])
+  |> derivative(unit: 1s, nonNegative: true)
+```
+
+送信 ifHCOutOctets
+
+```influx
+from(bucket: "my_bucket")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCOutOctets")
+  |> filter(fn: (r) => r["hostname"] == "対象装置のホスト名")
+  |> group(columns: ["ifDescr"])
+  |> derivative(unit: 1s, nonNegative: true)
+```
+
+<br>
+
 ## InfluxDBブラウザ
 
 Windows母艦から、

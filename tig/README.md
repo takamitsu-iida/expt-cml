@@ -124,6 +124,12 @@ from(bucket: "my_bucket")
   |> derivative(unit: 1s, nonNegative: true)
 ```
 
+```influx
+from(bucket: "my_bucket")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "interface" and r.ifDescr == "GigabitEthernet0/1")
+```
+
 <br>
 
 ## InfluxDBブラウザ

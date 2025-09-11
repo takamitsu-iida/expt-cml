@@ -2,7 +2,7 @@ id: tig
 label: TIG
 description: Telegraf Influxdb Grafana
 node_definition_id: tig
-disk_image: tig.tar.gz
+disk_image: tig.tar
 read_only: true
 schema_version: 0.0.1
 sha256:

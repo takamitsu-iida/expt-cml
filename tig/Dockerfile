@@ -155,6 +155,9 @@ rm -rf /var/lib/cache/*
 rm -rf ${WORKING_DIRECTORY}
 unset WORKING_DIRECTORY
 
+cd /root
+git clone https://github.com/upa/deadman.git
+
 EOF
 
 # Expose ports

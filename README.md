@@ -20,6 +20,8 @@ FRRをインストールしたUbuntuでOpenFabricの検証は　[こちら](/REA
 
 <br>
 
-CMLで動作するFRRのdockerイメージの作り方は　[こちら](/README.openfabric_docker.md)
+CMLで動作するFRRのdockerイメージの作り方は　[こちら](/README.create_custom_docker.md)
 
 <br>
+
+FRR(Docker)でのOpenFabricの検証は　[こちら](/README.openfabric_docker.md)

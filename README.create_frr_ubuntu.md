@@ -66,7 +66,7 @@ cat ${COPY_DST}.yaml
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh | bash -s
 ```
 
-もしくはシェルスクリプトをダウンロードして、編集してから実行します。curlでダウンロードするにはこうします。
+もしくはシェルスクリプトをgithubからダウンロードして、適宜編集してから実行します。curlでダウンロードするにはこうします。
 
 ```bash
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh --output copy_image_definition.sh

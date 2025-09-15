@@ -10,7 +10,7 @@ CMLに登録されているUbuntuのイメージはRead Onlyなので、変更�
 
 <br>
 
-[作り方の解説はこちら](/README.create_custom_image.md)
+[作り方の解説はこちら](/README.create_custom_ubuntu.md)
 
 <br>
 

@@ -34,7 +34,31 @@ UBUNTU_PASSWORD = "cisco"
 # SSH_PUBLIC_KEY = "YOUR_SSH_PUBLIC_KEY_HERE"
 SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
 
-# protocolsファイルの内容
+# boot.shの設定
+BOOT_SH_TEXT = """\
+cp /root/deadman/deadman.conf /root/deadman/deadman.conf.bak
+cat - << 'EOS' > /root/deadman/deadman.conf
+P1      192.168.255.1
+P2      192.168.255.2
+PE11    192.168.255.11
+PE12    192.168.255.12
+PE13    192.168.255.13
+PE14    192.168.255.14
+---
+P1      2001:db8:ffff::1
+P2      2001:db8:ffff::2
+PE11    2001:db8:ffff::11
+PE12    2001:db8:ffff::12
+PE13    2001:db8:ffff::13
+PE14    2001:db8:ffff::14
+EOS
+
+exit 0
+"""
+
+
+
+# protocolsファイルの内容、BGPとISISだけ有効にします
 PROTOCOLS_TEXT = """\
 bgpd
 # ospfd
@@ -264,7 +288,7 @@ runcmd:
     chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/config
 
   # Disable systemd-networkd-wait-online.service to speed up boot time
-  - systemctl stop     systemd-networkd-wait-online.service
+  - systemctl stop    systemd-networkd-wait-online.service
   - systemctl disable systemd-networkd-wait-online.service
   - systemctl mask    systemd-networkd-wait-online.service
   - netplan apply
@@ -465,6 +489,9 @@ if __name__ == '__main__':
                 {
                     'name': 'protocols',
                     'content': PROTOCOLS_TEXT
+                },
+                {   'name': 'boot.sh',
+                    'content': BOOT_SH_TEXT
                 }
             ]
 
@@ -515,6 +542,9 @@ if __name__ == '__main__':
                 {
                     'name': 'protocols',
                     'content': PROTOCOLS_TEXT
+                },
+                {   'name': 'boot.sh',
+                    'content': BOOT_SH_TEXT
                 }
             ]
 

@@ -69,5 +69,5 @@ clean: ## Dockerイメージを削除する
 	@rm -f node_definition.yaml
 
 
-upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
+upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする
 	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}

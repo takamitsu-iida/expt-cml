@@ -385,12 +385,12 @@ sudo qemu-img commit node0.img
 
 <br>
 
-## コックピットのターミナルでUbuntuのイメージをコピーするシェルスクリプトを実行する
+- コックピットのターミナルでUbuntuのイメージをコピーするシェルスクリプトを実行する
 
-## bin/cml_create_custom_ubuntu.py を実行してラボを作る
+- bin/cml_create_custom_ubuntu.py を実行してラボを作る
 
-## ラボの中のUbuntuをいじる
+- ラボの中のUbuntuをいじる
 
-## `/var/lib/cloud` ディレクトリを丸ごと消去する
+- `/var/lib/cloud` ディレクトリを丸ごと消去する
 
-## コックピットのターミナルでqemu-img commit node0.imgを実行する（実行場所はラボを作ったときに表示される）
+- コックピットのターミナルでqemu-img commit node0.imgを実行する（実行場所はラボを作ったときに表示される）

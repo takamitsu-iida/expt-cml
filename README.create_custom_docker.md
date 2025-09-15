@@ -183,13 +183,21 @@ CMLのSSHサーバはポート1122で待ち受けています。
 
 ### 事前準備２．SSHの公開鍵を送り込んでおく
 
-まだ作っていない場合は、SSHの鍵を作ります。
+SSHの鍵があるか、確認します。
+
+`~/.ssh/id_rsa` があれば作成済みです。
+
+```bash
+ls -al ~/.ssh
+```
+
+まだ作っていない場合は、SSHの鍵を新規で作成します。
 
 ```bash
 ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
 ```
 
-この公開鍵を送り込んでおきます。
+次に公開鍵をCMLに送り込みます。
 
 ```bash
 ssh-copy-id -p 1122 admin@192.168.122.212
@@ -207,20 +215,28 @@ apt install -y make
 
 <br><br>
 
-Makefileは以下のようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じですが、
+[Makefile](/frr/Makefile)は以下のようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じですが、
 Dockerファイルを書き換えたり、FRRのコンパイルオプションを変えたり、いろいろ試行錯誤して何度も実行することになるので、makeコマンドを使ったほうが楽です。
 
-```bash
+```Makefile
 .DEFAULT_GOAL := help
 .PHONY: help
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 TAG ?= frr:10.4
+
+# CMLのIPアドレス
 CML_HOST = 192.168.122.212
 CML_UPLOAD_DIR = /var/tmp
+
+####################################################
+# 以下、変更不要
+####################################################
+
 SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
 SOURCE_NODE_DEFINITION = cml_node_definition.yaml
+INSTALL_SCRIPT = cml_install_image.sh
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = frr-test
 
@@ -262,10 +278,11 @@ clean: ## Dockerイメージを削除する
 	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
 	@rm -f frr.tar.gz
 	@rm -f image_definition.yaml
+	@rm -f node_definition.yaml
 
 
-upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
-	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}
+upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする
+	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}
 ```
 
 <br><br><br>

@@ -60,8 +60,12 @@ package_reboot_if_required: true
 
 # packages
 packages:
+  - curl
   - git
-  - ansible
+  - zip
+  - unzip
+  # - ansible
+
 
 #
 # ansible-pull
@@ -109,6 +113,12 @@ runcmd:
     StrictHostKeyChecking no
     UserKnownHostsFile=/dev/null
     EOS
+
+  # Create SSH keys
+  - ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ USERNAME }}/.ssh/id_rsa
+  - chown {{ USERNAME }}:{{ USERNAME }} /home/{{ USERNAME }}/.ssh/id_rsa*
+  - chmod 600 /home/{{ USERNAME }}/.ssh/id_rsa*
+  - chmod 700 /home/{{ USERNAME }}/.ssh
 
   # Disable systemd-networkd-wait-online.service to speed up boot time
   - systemctl stop     systemd-networkd-wait-online.service

@@ -4,7 +4,7 @@ CMLのインストール方法は　[こちら](/README.install_cml.md)
 
 <br>
 
-virl2-clientを使ったラボの作り方は　[こちら](/README.create_lab.md)
+Python virl2-clientを使ったラボの作り方は　[こちら](/README.create_lab.md)
 
 <br>
 

@@ -231,26 +231,47 @@ write_files:
                 via: 192.168.254.1
 
 runcmd:
+
+  # Resize terminal window
   - |
     cat - << 'EOS' >> /etc/bash.bashrc
     rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf '\e7\e[r\e[999;999H\e[6n\e8'); IFS='[;' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi
     rsz
     EOS
 
-  - systemctl disable systemd-networkd-wait-online.service
-  - systemctl mask    systemd-networkd-wait-online.service
-  - netplan apply
-
+  # Disable SSH client warnings
   - |
-    mkdir -p /home/{{ UBUNTU_USERNAME }}/.ssh
+    cat << 'EOS' > /etc/ssh/ssh_config.d/99_lab_env.conf
+    KexAlgorithms +diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+    Ciphers +aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc,aes128-ctr,aes192-ctr,aes256-ctr
+    StrictHostKeyChecking no
+    UserKnownHostsFile=/dev/null
+    EOS
+
+  # Create SSH keys
+  - ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa
+  - chown -R {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh
+  - chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
+  - chmod 700 /home/{{ UBUNTU_USERNAME }}/.ssh
+
+  # Login as root for 192.168.255.*
+  - |
     cat <<'EOS' >> /home/{{ UBUNTU_USERNAME }}/.ssh/config
     Host 192.168.255.*
-      StrictHostKeyChecking no
-      UserKnownHostsFile=/dev/null
       User root
     EOS
     chown {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh/config
     chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/config
+
+  # Disable systemd-networkd-wait-online.service to speed up boot time
+  - systemctl stop     systemd-networkd-wait-online.service
+  - systemctl disable systemd-networkd-wait-online.service
+  - systemctl mask    systemd-networkd-wait-online.service
+  - netplan apply
+
+  # Disable AppArmor
+  - systemctl stop apparmor.service
+  - systemctl disable apparmor.service
 
 """
 

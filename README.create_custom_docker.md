@@ -89,7 +89,7 @@ reboot
 
 CML上にラボを作成してUbuntuと外部接続を用意します。
 
-そのくらい簡単なラボは手作業で作ってもよいのですが、[このスクリプト](/bin/cml_create_custom_docker.py)を実行すれば自動で作成できます。
+そのくらい簡単なラボは手作業で作ってもよいのですが、[bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を実行すれば自動で作成できます。
 
 ```bash
 bin/cml_create_custom_docker.py
@@ -98,10 +98,11 @@ bin/cml_create_custom_docker.py
 このスクリプトを再度実行すると同じ名前のものは消えてしまいますので、
 間違って消さないようにラボの名前を適当に変えておきます。
 
+<br>
 
 ## Dockerエンジンをインストール
 
-`bin/cml_create_custom_docker.py` を使った場合はDockerエンジンがインストールされた状態で起動してきますので、この作業は不要です。
+`bin/cml_create_custom_docker.py` を使ってラボを作成した場合はDockerエンジンがインストールされた状態で起動してきますので、この作業は不要です。
 
 手作業でUbuntuを作成した場合は、以下の手順でDockerエンジンをインストールします。
 
@@ -191,7 +192,7 @@ SSHの鍵があるか、確認します。
 ls -al ~/.ssh
 ```
 
-まだ作っていない場合は、SSHの鍵を新規で作成します。
+まだSSHの鍵を作っていない場合は新規で作成します。
 
 ```bash
 ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
@@ -208,6 +209,10 @@ ssh-copy-id -p 1122 admin@192.168.122.212
 ### 事前準備３．makeコマンドをインストールする
 
 Makefileの変数部分を適当に書き換えてから、makeコマンドを実行した方が簡単です。
+
+`bin/cml_create_custom_docker.py` でラボを作成した場合、makeコマンドはインストールされた状態で立ち上がります。
+
+手動でラボを作った場合、makeコマンドは標準で入っていませんのでインストールします。
 
 ```bash
 apt install -y make
@@ -349,9 +354,7 @@ CMLでSSHサーバ(ポート1122番）を有効にしている場合、次のコ
 make upload
 ```
 
-もしCMLでSSHサーバを有効にしていない場合、面倒ですが手作業でアップロードします。
-
-CMLの22番ポートのscpは特別な扱いになっていて、転送先は必ず `dropfolder` という場所になります。
+もしCMLでSSHサーバを有効にしていない場合、面倒ですが手作業で3個のファイルをアップロードします。
 
 ```bash
 scp frr.tar.gz admin@192.168.122.212:
@@ -362,6 +365,8 @@ scp node_definition.yaml admin@192.168.122.212:
 <br>
 
 > [!NOTE]
+>
+> scpの転送先は指定できません。dropfolderという特別な場所に保存されます。
 >
 > dropfolderの実体は `/var/local/virl2/dropfolder` です。このディレクトリから適宜移動してください。
 

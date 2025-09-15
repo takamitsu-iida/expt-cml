@@ -8,7 +8,7 @@ virl2-clientを使ったラボの作り方は　[こちら](/README.create_lab.m
 
 <br>
 
-カスタムイメージの作り方は　[こちら](/README.create_custom_image.md)
+Ubuntuのカスタムイメージの作り方は　[こちら](/README.create_custom_ubuntu.md)
 
 <br>
 

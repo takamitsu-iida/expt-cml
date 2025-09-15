@@ -162,6 +162,10 @@ sed -i '/^zebra_options=/ s/"$/ -M snmp"/' /etc/frr/daemons
 # https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/frr/start.sh
 #
 
+# install deadman
+cd /root
+git clone https://github.com/upa/deadman.git
+
 # Create mountpoint directory
 mkdir /config
 

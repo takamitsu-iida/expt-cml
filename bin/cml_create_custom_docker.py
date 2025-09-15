@@ -132,6 +132,11 @@ runcmd:
     # install docker engine
     apt install -y --no-install-recommends docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
+  # clone expt-cml repository
+  - |
+    cd /home/{{ USERNAME }}
+    git clone https://github.com/takamitsu-iida/expt-cml.git
+    chown -R {{ USERNAME }}:{{ USERNAME }} expt-cml
 
 """
 

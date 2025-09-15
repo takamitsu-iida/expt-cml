@@ -12,7 +12,7 @@ Ubuntuのカスタムイメージの作り方は　[こちら](/README.create_cu
 
 <br>
 
-FRRをインストールしたUbuntuの作り方は　[こちら](/README.create_frr_image.md)
+FRRをインストールしたUbuntuの作り方は　[こちら](/README.create_frr_ubuntu.md)
 
 <br>
 

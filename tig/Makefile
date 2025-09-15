@@ -5,7 +5,6 @@ help:
 
 TAG ?= tig:latest
 
-#
 # 【事前準備】
 # CMLのadminユーザに対して公開鍵認証を設定しておく
 #

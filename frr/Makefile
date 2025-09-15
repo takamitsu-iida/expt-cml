@@ -4,8 +4,24 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 TAG ?= frr:10.4
+
+# 【事前準備】
+# CMLのadminユーザに対して公開鍵認証を設定しておく
+#
+# 鍵を作っていない場合
+# ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
+#
+# 公開鍵をCMLに登録
+# ssh-copy-id -p 1122 admin@192.168.122.212
+
+# CMLのIPアドレス
 CML_HOST = 192.168.122.212
 CML_UPLOAD_DIR = /var/tmp
+
+####################################################
+# 以下、変更不要
+####################################################
+
 SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
 SOURCE_NODE_DEFINITION = cml_node_definition.yaml
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
@@ -53,4 +69,4 @@ clean: ## Dockerイメージを削除する
 
 
 upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする（ssh-copy-id -p 1122 admin@192.168.122.212で公開鍵認証）
-	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml admin@${CML_HOST}:${CML_UPLOAD_DIR}
+	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}

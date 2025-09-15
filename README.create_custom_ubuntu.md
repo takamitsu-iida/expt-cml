@@ -1,9 +1,9 @@
-# カスタムイメージを作成する
+# Ubuntuのカスタムイメージを作成する
 
 CMLに含まれるUbuntuのイメージはRead Onlyになっていますので、どれだけ変更しても元のイメージが変わることはありません。
 そしてクローンできるのは元のイメージの方です。
 
-かなり手間はかかりますが、お好きなアプリをインストールしたUbuntuイメージを作成してCMLに登録することもできます。
+多少手間はかかりますが、好きなアプリをインストールしたUbuntuイメージを作成して、CMLに登録することもできます。
 
 <br>
 
@@ -15,7 +15,7 @@ CMLに含まれるUbuntuのイメージはRead Onlyになっていますので�
 
 <br>
 
-全て手作業で実施する前提で手順を書いていきます。
+まずは全てを手作業で実施する前提で手順を書いていきます（自動化した手順は後述します）。
 
 <br>
 
@@ -38,6 +38,10 @@ The Cockpit service runs independently of the CML2 platform,
 and allows recovery in the event of a system issue.
 It is available at https://192.168.122.212:9090 (opens in a new Tab/Window).
 ```
+
+<br>
+
+もしくはCMLでOpenSSHを有効にしているなら、好きなターミナルでsshします。こちらの方がおすすめです。
 
 <br>
 
@@ -273,7 +277,7 @@ curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamits
 
 適当なラボを作り、インターネットに出ていける外部接続とUbuntuを作成します。
 
-UbuntuのSETTINGSタブの `Image Definition` のドロップダウンから、上記で作成したラベルのものを選んでから起動します。
+UbuntuのSETTINGSタブの `Image Definition` のドロップダウンから、**上記で作成したラベルのものを選んでから起動**します。
 
 起動したらアップデート、FRRのインストール、などなどを実行して好みのUbuntuに仕上げます。
 
@@ -349,7 +353,7 @@ cd /var/local/virl2/images/0a17e568-c034-4f16-bb1b-9b463b8c25d4/d0396938-e30b-4d
 sudo qemu-img commit node0.img
 ```
 
-Ubuntuを好きなだけイジったら `/var/lib/cloud` ディレクトリを丸ごと消去して、次に起動したときにcloud-initが走るようにします（忘れがち）。
+このUbuntuを好きなだけイジったら `/var/lib/cloud` ディレクトリを丸ごと消去して、次に起動したときにcloud-initが走るようにします（忘れがち）。
 
 ```bash
 sudo rm -rf /var/lib/cloud

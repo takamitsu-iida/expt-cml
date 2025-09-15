@@ -331,6 +331,21 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub -p 1122 192.168.122.212ssh-copy-id -i ~/.ssh/id
 
 <br>
 
+さらに `~/.ssh/config` を編集しておきます。
+
+このような設定にしておけば、`ssh cml` でログインできます。
+
+```text
+Host cml
+  HostName 192.168.122.212
+  Port 1122
+  User iida
+  UserKnownHostsFile=/dev/null
+  StrictHostKeyChecking no
+```
+
+<br>
+
 ### IPv6中継
 
 /etc/sysctl.confのパラメータを書き換えます。

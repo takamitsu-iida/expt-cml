@@ -59,8 +59,11 @@ package_reboot_if_required: true
 
 # packages
 packages:
+  - curl
   - git
   - ansible
+  - zip
+  - unzip
 
 #
 # ansible-pull
@@ -93,15 +96,32 @@ write_files:
 
 runcmd:
 
+  # Resize terminal window
   - |
     cat - << 'EOS' >> /etc/bash.bashrc
     rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf '\e7\e[r\e[999;999H\e[6n\e8'); IFS='[;' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi
     rsz
     EOS
 
+  # Disable SSH client warnings
+  - |
+    cat << 'EOS' > /etc/ssh/ssh_config.d/99_lab_env.conf
+    KexAlgorithms +diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+    Ciphers +aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc,aes128-ctr,aes192-ctr,aes256-ctr
+    StrictHostKeyChecking no
+    UserKnownHostsFile=/dev/null
+    EOS
+
+  # Disable systemd-networkd-wait-online.service to speed up boot time
+  - systemctl stop     systemd-networkd-wait-online.service
   - systemctl disable systemd-networkd-wait-online.service
   - systemctl mask    systemd-networkd-wait-online.service
   - netplan apply
+
+  # Disable AppArmor
+  - systemctl stop apparmor.service
+  - systemctl disable apparmor.service
+
 """
 
 ###########################################################

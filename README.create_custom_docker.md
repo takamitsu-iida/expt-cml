@@ -4,6 +4,8 @@ CML2.9はDockerをサポートしています。
 
 もちろん自分で作成したDockerイメージをCMLに登録して動作させることもできます。
 
+ここではFRRをインストールしたDockerイメージを作成してCMLに登録してみます。
+
 <br><br>
 
 ## CML2.9のFRR(Docker)について
@@ -13,10 +15,10 @@ CML2.9に同梱のFRR(Docker)は次のような特徴を持っています。
 - Alpineをベースにしています
 - FRRのバージョンは10.2です
 - IPv6のルーティングはできません（CMLのノード定義ファイルの不備です）
-- FRRの設定は永続されません（ノードを停止するとwriteしたfrr.confも消えます）
+- FRRの設定は永続されません
 
 FRRの中でhostnameコマンドで名前を付けても、それは現在接続しているvtyshにしか反映されません。
-writeしてもhostname設定は保存されません（マニュアルにそう書いてあります）。
+writeしてもhostname設定は保存されません（FRRのマニュアルにそう書いてあります）。
 
 CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコマンドが入っていたら、
 それを取り出して、Dockerのホスト名に反映させています(start.shを見ればわかります)
@@ -27,14 +29,13 @@ CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコ�
 
 - Ubuntu24をベースにDockerイメージを作成します
 - サイズは大きくなってしまいますが、一度Dockerイメージを登録すれば、以降のノード起動は高速かつ軽量です
-- FRRの設定(frr.conf)を永続できるようにします（writeしておけばノードを停止しても、次回起動時に継続されます）
+- FRRの設定(frr.conf)を永続できるようにします
 - IPv6中継できるようにします（sysctl net.ipv6.conf.all.forwarding=1を設定します）
-- FRR stable 10.4 をコンパイルします
+- FRR stable 10.4 をコンパイルして作成します
 - dockerイメージのタグ名はfrr:10.4とします
 - CMLのノード定義名はfrr-10-4とします
 - SNMPを有効にします
-- FRRバージョン8以降はvtyshからシェルコマンドを呼び出せません
-- 対策としてSSHで外部から乗り込めるようにします(アカウントはroot)
+- FRRバージョン8以降はvtyshからシェルコマンドを呼び出せませんので、対策としてSSHで外部から乗り込めるようにします(アカウントはroot)
 
 <br>
 
@@ -102,7 +103,7 @@ bin/cml_create_custom_docker.py
 
 ## Dockerエンジンをインストール
 
-`bin/cml_create_custom_docker.py` を使ってラボを作成した場合はDockerエンジンがインストールされた状態で起動してきますので、この作業は不要です。
+`bin/cml_create_custom_docker.py` を使ってラボを作成した場合、UbuntuにDockerエンジンがインストールされた状態で起動してきますので、この作業は不要です。
 
 手作業でUbuntuを作成した場合は、以下の手順でDockerエンジンをインストールします。
 
@@ -168,23 +169,21 @@ sudo reboot
 
 ## FRRのDockerイメージをビルドします
 
-Ubuntuを再起動したら再度ログインします。
-
-このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したので、それを利用してFRRのイメージを作っていきます。
+このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したので、それら利用してFRRのイメージを作っていきます。
 
 <br><br>
 
 ### 事前準備１．CMLでSSHサーバを有効にする
 
-有効にしていない場合のみ、コックピットで有効にしてください。ラジオボタンを有効にするだけです。
+OpenSSHを有効にしていない場合のみ、コックピットで有効にしてください。ラジオボタンを有効にするだけです。
 
-CMLのSSHサーバはポート1122で待ち受けています。
+CMLのSSHサーバはポート1122で待ち受けています（ポート22はコンソールサーバになっています）。
 
 <br>
 
 ### 事前準備２．SSHの公開鍵を送り込んでおく
 
-SSHの鍵があるか、確認します。
+SSHの鍵が作成済みか、確認します。
 
 `~/.ssh/id_rsa` があれば作成済みです。
 
@@ -203,6 +202,8 @@ ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
 ```bash
 ssh-copy-id -p 1122 admin@192.168.122.212
 ```
+
+これでパスワードなしでCMLにログインできるようになります。
 
 <br>
 
@@ -433,7 +434,7 @@ chown libvirt-qemu:virl2 frr-10-4.yaml
 
 > [!NOTE]
 >
-> 手作業でやる方法を書きましたが、make uploadすると `/var/tmp/cml_install_image.sh` というファイルがCMLに転送されますので、これを実行するだけでノード定義、イメージ定義、ともに正しい場所に配置されます。
+> 上記は手作業でやる方法を書きましたが、make uploadすると `/var/tmp/cml_install_image.sh` というファイルがCMLに転送されますので、これを実行するだけでノード定義、イメージ定義、ともに正しい場所に配置されます。
 
 <br>
 

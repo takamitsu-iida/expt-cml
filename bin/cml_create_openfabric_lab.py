@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-###########################################################
-
 #
-# 作成するラボの情報
+# OpenFabricを検証するためのラボを作成するスクリプトです
+# FRRをインストールしたUbuntuノードを使って、3階層のOpenFabricネットワークを作成します
 #
 
-# ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
+# ラボの名前（既存で同じタイトルのラボがあれば削除してから作成します）
 LAB_NAME = "FRR OpenFabric"
 
 # このラボで使うシリアルポートの開始番号
@@ -16,6 +15,7 @@ SERIAL_PORT = 7000
 NODE_DEFINITION = "ubuntu"
 
 # イメージ定義
+# 独自にカスタマイズしたUbuntuを利用します
 IMAGE_DEFINITION = "ubuntu-24-04-20250503-frr"
 
 # ノードにつけるタグ
@@ -37,12 +37,12 @@ UBUNTU_SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39S
 
 # ubuntuに設定するcloud-init.yamlのJinja2テンプレート
 UBUNTU_CONFIG = """#cloud-config
-hostname: {{ HOSTNAME }}
+hostname: {{ UBUNTU_HOSTNAME }}
 manage_etc_hosts: True
 system_info:
   default_user:
-    name: {{ USERNAME }}
-password: {{ PASSWORD }}
+    name: {{ UBUNTU_USERNAME }}
+password: {{ UBUNTU_PASSWORD }}
 chpasswd: { expire: False }
 ssh_pwauth: True
 ssh_authorized_keys:
@@ -319,9 +319,9 @@ if __name__ == '__main__':
 
         # templateに渡すコンテキストオブジェクトを作成する
         lab_context = {
-            "HOSTNAME": "",
-            "USERNAME": UBUNTU_USERNAME,
-            "PASSWORD": UBUNTU_PASSWORD,
+            "UBUNTU_HOSTNAME": "",
+            "UBUNTU_USERNAME": UBUNTU_USERNAME,
+            "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
             "SSH_PUBLIC_KEY": UBUNTU_SSH_PUBLIC_KEY,
             "ROUTER_ID": "",
             "FRR_CONF": ""

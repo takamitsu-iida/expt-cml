@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
-
-###########################################################
-
 #
-# 作成するラボの情報
+# virl2_clientを使ってラボを作成するスクリプトです
+# Ubuntuノードを一つ作成し、NATで外部接続できるラボを作成します
 #
 
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
@@ -34,12 +32,12 @@ SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvc
 
 # Ubuntuノードに設定するcloud-initのJinja2テンプレート
 UBUNTU_CONFIG = """#cloud-config
-hostname: {{ HOSTNAME }}
+hostname: {{ UBUNTU_HOSTNAME }}
 manage_etc_hosts: True
 system_info:
   default_user:
-    name: {{ USERNAME }}
-password: {{ PASSWORD }}
+    name: {{ UBUNTU_USERNAME }}
+password: {{ UBUNTU_PASSWORD }}
 chpasswd: { expire: False }
 ssh_pwauth: True
 ssh_authorized_keys:
@@ -115,10 +113,10 @@ runcmd:
     EOS
 
   # Create SSH keys
-  - ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ USERNAME }}/.ssh/id_rsa
-  - chown {{ USERNAME }}:{{ USERNAME }} /home/{{ USERNAME }}/.ssh/id_rsa*
-  - chmod 600 /home/{{ USERNAME }}/.ssh/id_rsa*
-  - chmod 700 /home/{{ USERNAME }}/.ssh
+  - ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa
+  - chown {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
+  - chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
+  - chmod 700 /home/{{ UBUNTU_USERNAME }}/.ssh
 
   # Disable systemd-networkd-wait-online.service to speed up boot time
   - systemctl stop     systemd-networkd-wait-online.service
@@ -287,9 +285,9 @@ if __name__ == '__main__':
 
         # templateに渡すコンテキストオブジェクト
         context = {
-            "HOSTNAME": UBUNTU_HOSTNAME,
-            "USERNAME": UBUNTU_USERNAME,
-            "PASSWORD": UBUNTU_PASSWORD,
+            "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
+            "UBUNTU_USERNAME": UBUNTU_USERNAME,
+            "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
             "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY
         }
 

@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-
 ###########################################################
 
 #
-# 作成するラボの情報
+# Dockerイメージを作成するためのCMLラボを作成するスクリプトです
 #
 
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
@@ -28,18 +27,18 @@ UBUNTU_USERNAME = "cisco"
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うパスワード
 UBUNTU_PASSWORD = "cisco"
 
-# id_rsa.pubの中身をそのまま貼り付けます
+# 自分の公開鍵でこのUbuntuにログインできるようにid_rsa.pubの中身をそのまま貼り付けます
 # SSH_PUBLIC_KEY = "YOUR_SSH_PUBLIC_KEY_HERE"
 SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
 
 # Ubuntuノードに設定するcloud-initのJinja2テンプレート
 UBUNTU_CONFIG = """#cloud-config
-hostname: {{ HOSTNAME }}
+hostname: {{ UBUNTU_HOSTNAME }}
 manage_etc_hosts: True
 system_info:
   default_user:
-    name: {{ USERNAME }}
-password: {{ PASSWORD }}
+    name: {{ UBUNTU_USERNAME }}
+password: {{ UBUNTU_PASSWORD }}
 chpasswd: { expire: False }
 ssh_pwauth: True
 ssh_authorized_keys:
@@ -106,10 +105,10 @@ runcmd:
     EOS
 
   # Create SSH keys
-  - ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ USERNAME }}/.ssh/id_rsa
-  - chown {{ USERNAME }}:{{ USERNAME }} /home/{{ USERNAME }}/.ssh/id_rsa*
-  - chmod 600 /home/{{ USERNAME }}/.ssh/id_rsa*
-  - chmod 700 /home/{{ USERNAME }}/.ssh
+  - ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa
+  - chown {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
+  - chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
+  - chmod 700 /home/{{ UBUNTU_USERNAME }}/.ssh
 
   # Disable systemd-networkd-wait-online.service to speed up boot time
   - systemctl stop     systemd-networkd-wait-online.service
@@ -140,9 +139,9 @@ runcmd:
 
   # clone expt-cml repository
   - |
-    cd /home/{{ USERNAME }}
+    cd /home/{{ UBUNTU_USERNAME }}
     git clone https://github.com/takamitsu-iida/expt-cml.git
-    chown -R {{ USERNAME }}:{{ USERNAME }} expt-cml
+    chown -R {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} expt-cml
 
 """
 
@@ -301,9 +300,9 @@ if __name__ == '__main__':
 
         # templateに渡すコンテキストオブジェクト
         context = {
-            "HOSTNAME": UBUNTU_HOSTNAME,
-            "USERNAME": UBUNTU_USERNAME,
-            "PASSWORD": UBUNTU_PASSWORD,
+            "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
+            "UBUNTU_USERNAME": UBUNTU_USERNAME,
+            "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
             "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY
         }
 

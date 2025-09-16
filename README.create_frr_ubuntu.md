@@ -1,6 +1,6 @@
 # FRRをインストールしたUbuntuを作成する
 
-CMLではUbuntuのイメージが提供されていますので、これをベースとしてカスタマイズして、CMLに登録します。
+CMLではUbuntuのイメージが提供されていますので、これをベースにカスタマイズして、CMLに登録します。
 
 <br>
 
@@ -10,11 +10,25 @@ CMLに登録されているUbuntuのイメージはRead Onlyなので、変更�
 
 <br>
 
-[作り方の解説はこちら](/README.create_custom_ubuntu.md)
+> [!NOTE]
+>
+> 作り方の解説は[こちら](/README.create_custom_ubuntu.md)
 
 <br>
 
-コックピットのターミナルに流し込むスクリプトを作ります。
+CMLのコックピットのターミナルで実行するシェルスクリプトを作ります。
+
+ゼロから作るのは大変なので、シェルスクリプトをgithubからダウンロードして、適宜編集します。
+
+curlでダウンロードするにはこうします。
+
+```bash
+curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh --output copy_image_definition.sh
+```
+
+内容はこのようになっています。
+
+`COPY_DST`や`IMAGE_DEF_LABEL`など、適宜書き換えます。
 
 ```bash
 #!/bin/bash
@@ -59,20 +73,17 @@ systemctl restart virl2.target
 cat ${COPY_DST}.yaml
 ```
 
-自分の場合はgithubにある[このスクリプト](/bin/copy_image_definition_frr.sh)を（書き換えることなくそのまま）実行すればよいので、
-以下をコックピットのターミナルにコピペします。
+`sudo -s -E`で特権ユーザのシェルを取ってからこのシェルスクリプトを実行します。
 
-```bash
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh | bash -s
-```
+<br>
 
-もしくはシェルスクリプトをgithubからダウンロードして、適宜編集してから実行します。curlでダウンロードするにはこうします。
-
-```bash
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh --output copy_image_definition.sh
-```
-
-`sudo -s -E`で特権ユーザのシェルを取ってからシェルを実行します。
+> [!NOTE]
+>
+> 自分の場合はgithubにある[スクリプト](/bin/copy_image_definition_frr.sh)を（書き換えることなくそのまま）実行すればよいので、以下をコックピットのターミナルでコピペします。
+>
+> ```bash
+> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh | bash -s
+> ```
 
 <br><br>
 
@@ -342,15 +353,4 @@ cat log/cml_create_frr_ubuntu.log
 
 これでFRRがインストールされたイメージ定義が完成です！
 
-<br>
-
-> [!NOTE]
->
-> CMLのラボでUbuntuを作成したときに　`Image Definition`　のドロップダウンから自分で作成したイメージを選びましょう。
-> Automaticのままだと既定のUbuntuイメージが立ち上がってしまいます
-
-<br>
-
-> [!NOTE]
->
-> FRRのvtyshには `sudo -s -E` でroot特権を獲得してから入ります。
+ラボでUbuntuを作成したときに　`Image Definition`　のドロップダウンから自分で作成したイメージを選びましょう（Automaticのままだと既定のUbuntuイメージが立ち上がってしまいます）。

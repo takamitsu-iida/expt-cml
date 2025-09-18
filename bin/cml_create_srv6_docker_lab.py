@@ -104,6 +104,7 @@ exit
 router bgp 65000
  bgp router-id 192.168.255.{{ ROUTER_NUMBER }}
  no bgp ebgp-requires-policy
+ no bgp default ipv4-unicast
  {% if ROUTER_NUMBER in [1, 2] %}
  bgp cluster-id 0.0.0.1
  neighbor P peer-group
@@ -122,7 +123,6 @@ router bgp 65000
  {% else %}
  neighbor P peer-group
  neighbor P remote-as internal
- neighbor P update-source fd00:1:{{ ROUTER_NUMBER }}::
  neighbor fd00:1:1:: peer-group P
  neighbor fd00:1:2:: peer-group P
  {% endif %}
@@ -132,13 +132,31 @@ router bgp 65000
  exit
  !
  address-family ipv4 vpn
+  {% if ROUTER_NUMBER in [1, 2] %}
   neighbor P activate
   neighbor P soft-reconfiguration inbound
- exit-address-family
+  neighbor PE activate
+  neighbor PE soft-reconfiguration inbound
+  neighbor PE route-reflector-client
+  {% else %}
+  neighbor P activate
+  neighbor P soft-reconfiguration inbound
+  neighbor P next-hop-self
+  {% endif %}
+  exit-address-family
  !
- address-family ipv6 unicast
+ address-family ipv6 vpn
+  {% if ROUTER_NUMBER in [1, 2] %}
   neighbor P activate
   neighbor P soft-reconfiguration inbound
+  neighbor PE activate
+  neighbor PE soft-reconfiguration inbound
+  neighbor PE route-reflector-client
+  {% else %}
+  neighbor P activate
+  neighbor P soft-reconfiguration inbound
+  neighbor P next-hop-self
+  {% endif %}
  exit-address-family
 exit
 {% if ROUTER_NUMBER in [11, 12, 13, 14] %}
@@ -147,6 +165,7 @@ router bgp 65000 vrf CE
  !
  address-family ipv4 unicast
   network 10.0.{{ ROUTER_NUMBER }}.0/24
+  sid vpn export auto
  exit-address-family
 exit
 {% endif %}

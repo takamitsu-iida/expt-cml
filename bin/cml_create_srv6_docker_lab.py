@@ -52,10 +52,12 @@ PE13    2001:db8:ffff::13
 PE14    2001:db8:ffff::14
 EOS
 
+{% if ROUTER_NUMBER in [11, 12, 13, 14] %}
 # create vrf for CE router
 ip link add CE type vrf table 1001
 ip link set dev CE up
 ip link set dev eth2 master CE
+{% endif %}
 
 exit 0
 """
@@ -164,7 +166,11 @@ exit
 router bgp 65000 vrf CE
  !
  address-family ipv4 unicast
-  network 10.0.{{ ROUTER_NUMBER }}.0/24
+  redistribute connected
+  rd vpn export 65000:101
+  rt vpn both 65000:101
+  export vpn
+  import vpn
   sid vpn export auto
  exit-address-family
 exit
@@ -509,6 +515,7 @@ if __name__ == '__main__':
         y_grid_width = 160
 
         # Jinja2のTemplateをインスタンス化する
+        boot_template = Template(BOOT_SH_TEXT)
         config_template = Template(FRR_CONF_TEMPLATE)
         pe_interface_template = Template(PE_INTERFACE_TEMPLATE)
         p_interface_template = Template(P_INTERFACE_TEMPLATE)
@@ -550,6 +557,7 @@ if __name__ == '__main__':
             template_context["ROUTER_NUMBER"] = router_number
             template_context["INTERFACES"] = p_interface_template.render(template_context)
             config_text = config_template.render(template_context)
+            boot_text = boot_template.render(template_context)
 
             # FRRに設定するファイル一式
             frr_configurations = [
@@ -562,7 +570,7 @@ if __name__ == '__main__':
                     'content': PROTOCOLS_TEXT
                 },
                 {   'name': 'boot.sh',
-                    'content': BOOT_SH_TEXT
+                    'content': boot_text
                 }
             ]
 

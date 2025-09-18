@@ -168,7 +168,8 @@ router bgp 65000 vrf CE
  address-family ipv4 unicast
   redistribute connected
   rd vpn export 65000:101
-  rt vpn both 65000:101
+  rt vpn import 65000:101
+  rt vpn export 65000:101
   export vpn
   import vpn
   sid vpn export auto

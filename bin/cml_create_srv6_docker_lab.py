@@ -52,6 +52,11 @@ PE13    2001:db8:ffff::13
 PE14    2001:db8:ffff::14
 EOS
 
+# create vrf for CE router
+ip link add CE type vrf table 1001
+ip link set dev CE up
+ip link set dev eth2 master CE
+
 exit 0
 """
 
@@ -95,6 +100,56 @@ interface lo
  ipv6 address fd00:1:{{ ROUTER_NUMBER }}::/128
  ipv6 router isis 1
 exit
+!
+router bgp 65000
+ bgp router-id 192.168.255.{{ ROUTER_NUMBER }}
+ no bgp ebgp-requires-policy
+ {% if ROUTER_NUMBER in [1, 2] %}
+ bgp cluster-id 0.0.0.1
+ neighbor P peer-group
+ neighbor P remote-as internal
+ neighbor PE peer-group
+ neighbor PE remote-as internal
+ {% if ROUTER_NUMBER == 1 %}
+ neighbor fd00:1:2:: peer-group P
+ {% else %}
+ neighbor fd00:1:1:: peer-group P
+ {% endif %}
+ neighbor fd00:1:11:: peer-group PE
+ neighbor fd00:1:12:: peer-group PE
+ neighbor fd00:1:13:: peer-group PE
+ neighbor fd00:1:14:: peer-group PE
+ {% else %}
+ neighbor P peer-group
+ neighbor P remote-as internal
+ neighbor P update-source fd00:1:{{ ROUTER_NUMBER }}::
+ neighbor fd00:1:1:: peer-group P
+ neighbor fd00:1:2:: peer-group P
+ {% endif %}
+ !
+ segment-routing srv6
+  locator MAIN
+ exit
+ !
+ address-family ipv4 vpn
+  neighbor P activate
+  neighbor P soft-reconfiguration inbound
+ exit-address-family
+ !
+ address-family ipv6 unicast
+  neighbor P activate
+  neighbor P soft-reconfiguration inbound
+ exit-address-family
+exit
+{% if ROUTER_NUMBER in [11, 12, 13, 14] %}
+!
+router bgp 65000 vrf CE
+ !
+ address-family ipv4 unicast
+  network 10.0.{{ ROUTER_NUMBER }}.0/24
+ exit-address-family
+exit
+{% endif %}
 !
 router isis 1
  is-type level-1

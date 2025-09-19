@@ -2,7 +2,13 @@
 
 FRR(Docker)を使ってSRv6のL3VPNを検証します。
 
+<br>
+
+## 事前準備
+
 [README.create_custom_docker.md](/README.create_custom_docker.md) に従ってFRRをインストールしたDockerイメージを作成してCMLに登録します。
+
+<br>
 
 > [!NOTE]
 >
@@ -13,7 +19,11 @@ FRR(Docker)を使ってSRv6のL3VPNを検証します。
 
 ## ラボ構成
 
-スクリプト [cml_create_srv6_docker_lab.py](bin/cml_create_srv6_docker_lab.py) を使ってCML内にラボを自動生成します。
+スクリプト [cml_create_srv6_docker_lab.py](bin/cml_create_srv6_docker_lab.py) を使ってラボを自動生成します。
+
+Pルータ、PEルータはDockerコンテナで、シリアルコンソール経由でvtyshに接続できます。
+
+また、コンテナ内でsshdを有効にしてありますので、Ubuntuを踏み台にして乗り込むこともできます。
 
 <br>
 
@@ -23,9 +33,11 @@ FRR(Docker)を使ってSRv6のL3VPNを検証します。
 
 ## Linuxの設定
 
-FRRでVRFを作ることはできません。
+FRR(Docker)でVRFを作ることはできません。
 
-FRR(Docker)の設定ファイルboot.shにて以下を実行しています。
+FRR(Docker)の設定ファイルboot.shにて以下を実行してCEというvrfを作成します。
+
+PEルータのeth2はvrfに向けています。
 
 ```bash
 # create vrf for CE router
@@ -34,19 +46,21 @@ ip link set dev CE up
 ip link set dev eth2 master CE
 ```
 
-コンテナ起動時に以下のsysctlを設定しています。
+<br><br>
+
+SRv6を動かすためにコンテナ起動時に以下のsysctlを設定しています（[ノード定義ファイル](/frr/cml_node_definition.yaml)を参照）。
 
 ```bash
---sysctl net.ipv4.conf.all.rp_filter=0
---sysctl net.ipv4.conf.default.rp_filter=0
---sysctl net.ipv6.conf.all.keep_addr_on_down=1
---sysctl net.ipv6.conf.all.forwarding=1
---sysctl net.ipv6.route.skip_notify_on_dev_down=1
---sysctl net.ipv6.seg6_flowlabel=1
---sysctl net.ipv6.conf.all.seg6_enabled=1
---sysctl net.ipv6.conf.default.seg6_enabled=1
---sysctl net.ipv6.conf.all.seg6_require_hmac=0
---sysctl net.vrf.strict_mode=1
+net.ipv4.conf.all.rp_filter=0
+net.ipv4.conf.default.rp_filter=0
+net.ipv6.conf.all.keep_addr_on_down=1
+net.ipv6.conf.all.forwarding=1
+net.ipv6.route.skip_notify_on_dev_down=1
+net.ipv6.seg6_flowlabel=1
+net.ipv6.conf.all.seg6_enabled=1
+net.ipv6.conf.default.seg6_enabled=1
+net.ipv6.conf.all.seg6_require_hmac=0
+net.vrf.strict_mode=1
 ```
 
 <br>
@@ -54,6 +68,15 @@ ip link set dev eth2 master CE
 ## ルータの設定
 
 スクリプト内で自動生成しています。
+
+ループバックのIPv6アドレスはノードSIDと同じものを割り当てます。
+
+IPv6アドレスは複数持てますので、管理用アドレスとノードSID、両方を設定します。
+
+たとえばロケータがfd00:1:1::/48の場合、ループバックにはfd00:1:1::/128を設定します。
+これでノードSIDにpingが通るようになり、トンネルの端点のアドレスとしても使えるようになります。
+
+<br>
 
 PE11の設定
 
@@ -283,11 +306,13 @@ exit
 end
 ```
 
+その他のルータはアドレスやロケータが異なるだけです。
+
 <br>
 
 ## 疎通確認
 
-CE101からpingします。
+CE101から他のCEルータにpingします。
 
 ```text
 CE101# ping ip 10.0.12.102
@@ -328,19 +353,102 @@ CE101#
 
 ## パケットキャプチャ
 
-カプセル化するときの設定で、以下を設定した場合の
-CE101からCE103へのping通信の[パケットキャプチャ](/assets/srv6-from-ce101-to-ce103-red.pcap)
+`encap-behavior H_Encaps_Red` を設定した場合のCE101からCE103へのping通信の[パケットキャプチャ](/assets/srv6-from-ce101-to-ce103-red.pcap)
 
 IPv6ヘッダにSRはありません。
 
-```text
-  encap-behavior H_Encaps_Red
-```
+<br>
 
-設定しなかった場合（デフォルト動作）の
-CE101からCE103へのping通信の[パケットキャプチャ](/assets/srv6-from-ce101-to-ce103.pcap)
+`encap-behavior H_Encaps_Red` を設定しなかった場合（デフォルト動作）のCE101からCE103へのping通信の[パケットキャプチャ](/assets/srv6-from-ce101-to-ce103.pcap)
 
 IPv6ヘッダにSRが登場します。
+
+<br>
+
+<br>
+
+## SIDを確認
+
+`show segment-routing srv6 sid`
+
+P11で実行した場合
+
+```text
+PE11# show segment-routing srv6 sid
+ SID               Behavior    Context             Daemon/Instance    Locator    AllocationType
+ ----------------------------  ------------------  -----------------  ---------  ----------------
+ fd00:1:11::       uN          -                   isis(0)            MAIN       dynamic
+ fd00:1:11:e000::  uDT4        VRF 'CE'            bgp(0)             MAIN       dynamic
+ fd00:1:11:e001::  uA          Interface 'eth0'    isis(0)            MAIN       dynamic
+ fd00:1:11:e002::  uA          Interface 'eth1'    isis(0)            MAIN       dynamic
+```
+
+<br>
+
+## VRF経路を確認
+
+`show ip route vrf <VRF NAME>`
+
+PE11で実行した場合
+
+```text
+PE11# show ip route vrf CE
+Codes: K - kernel route, C - connected, L - local, S - static,
+       R - RIP, O - OSPF, I - IS-IS, B - BGP, E - EIGRP, N - NHRP,
+       T - Table, v - VNC, V - VNC-Direct, A - Babel, F - PBR,
+       f - OpenFabric, t - Table-Direct,
+       > - selected route, * - FIB route, q - queued, r - rejected, b - backup
+       t - trapped, o - offload failure
+
+IPv4 unicast VRF CE:
+C>* 10.0.11.0/24 is directly connected, eth2, weight 1, 01:38:41
+L>* 10.0.11.1/32 is directly connected, eth2, weight 1, 01:38:41
+B>  10.0.12.0/24 [200/0] via 192.168.255.12 (vrf default) (recursive), label 917504, seg6 fd00:1:12:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:07
+  *                        via 192.168.255.1, eth0 (vrf default) onlink, label 917504, seg6 fd00:1:12:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:07
+  *                        via 192.168.255.2, eth1 (vrf default) onlink, label 917504, seg6 fd00:1:12:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:07
+                         via 192.168.255.12 (vrf default) (recursive), label 917504, seg6 fd00:1:12:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:07
+                           via 192.168.255.1, eth0 (vrf default) onlink, label 917504, seg6 fd00:1:12:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:07
+                           via 192.168.255.2, eth1 (vrf default) onlink, label 917504, seg6 fd00:1:12:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:07
+B>  10.0.13.0/24 [200/0] via 192.168.255.13 (vrf default) (recursive), label 917504, seg6 fd00:1:13:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:03
+  *                        via 192.168.255.1, eth0 (vrf default) onlink, label 917504, seg6 fd00:1:13:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:03
+  *                        via 192.168.255.2, eth1 (vrf default) onlink, label 917504, seg6 fd00:1:13:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:03
+                         via 192.168.255.13 (vrf default) (recursive), label 917504, seg6 fd00:1:13:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:03
+                           via 192.168.255.1, eth0 (vrf default) onlink, label 917504, seg6 fd00:1:13:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:03
+                           via 192.168.255.2, eth1 (vrf default) onlink, label 917504, seg6 fd00:1:13:e000::, encap behavior H.Encaps.Red, weight 1, 01:38:03
+B>  10.0.14.0/24 [200/0] via 192.168.255.14 (vrf default) (recursive), label 917504, seg6 fd00:1:14:e000::, encap behavior H.Encaps.Red, weight 1, 01:37:59
+  *                        via 192.168.255.1, eth0 (vrf default) onlink, label 917504, seg6 fd00:1:14:e000::, encap behavior H.Encaps.Red, weight 1, 01:37:59
+  *                        via 192.168.255.2, eth1 (vrf default) onlink, label 917504, seg6 fd00:1:14:e000::, encap behavior H.Encaps.Red, weight 1, 01:37:59
+                         via 192.168.255.14 (vrf default) (recursive), label 917504, seg6 fd00:1:14:e000::, encap behavior H.Encaps.Red, weight 1, 01:37:59
+                           via 192.168.255.1, eth0 (vrf default) onlink, label 917504, seg6 fd00:1:14:e000::, encap behavior H.Encaps.Red, weight 1, 01:37:59
+                           via 192.168.255.2, eth1 (vrf default) onlink, label 917504, seg6 fd00:1:14:e000::, encap behavior H.Encaps.Red, weight 1, 01:37:59
+PE11#
+```
+
+<br><br>
+
+## Traffic Steering into SRv6
+
+スタティックルートで通る場所を設定できるけど、万能なものではなさそう。
+
+PE11にて、
+
+```text
+ip route 192.168.255.13 255.255.255.255 lo segments fd00:1:1::
+```
+
+とすると、P1のuN（fd00:1:1::）を経由したSRv6パケットで送信されます。
+
+さらに、このように書けば、PE11→P1→PE12という順路をたどります。
+
+```text
+ip route 192.168.255.13/32 lo segments fd00:1:1::/fd00:1:12::
+```
+
+でも、これは動きません。
+
+```text
+ip route 192.168.255.13/32 lo segments fd00:1:1::/fd00:1:12:: encap-behavior H_Encaps_Red
+```
 
 <br><br><br><br><br><br><br><br>
 
@@ -528,212 +636,3 @@ uSIDの場合、宛先IPv6アドレスの中にSIDの情報を詰め込みます
 宛先アドレスの形式はあくまでIPv6のままですので、途中にSRv6を理解しないルータがいても大丈夫です。宛先をみて中継するだけです。
 
 通常SRv6ドメインのエッジルータ（PEルータ）では何かしらのサービスを実行しますので、uDTやuDXなど、PEルータ自身が決めた動作を行います。
-
-
-<br><br><br>
-
-# FRRの設定
-
-PEルータにVRFを作成して、エンド・エンドでIPv4通信できるようにします。
-
-<br>
-
-## VRF作成
-
-FRRはVRFを作成しません。Linuxで作成します。
-
-FRR(Docker)を起動するときに作成することにします。
-
-
-
-
-
-
-
-
-
-<br>
-
-ループバックのIPv6アドレスはロケータのノードSIDと同じものを割り当てます。
-
-IPv6アドレスは複数持てますので、管理用アドレスとノードSID、両方を設定します。
-
-たとえばロケータがfd00:1::/48の場合、ループバックにはfd00:1::/128を設定する。
-これでノードSIDにpingが通るようになり、トンネルの端点のアドレスとしても使えるようになる。
-
-<br>
-
-
-
-## ロケータ定義
-
-```text
-!
-segment-routing
- srv6
-  locators
-   locator MAIN
-    prefix fd00:1:1::/48
-    format usid-f3216
-   exit
-   !
-  exit
-  !
- exit
- !
-exit
-!
-```
-
-MAINというのは、このロケータにつけた名称です。ロケータは複数持てます。
-
-<br>
-
-## ロケータをISISで配信
-
-ロケータはIPv6のプレフィクスと同等ですので、ルーティングプロトコルで配信しておけば、SRv6に関心のないルータにもルーティングテーブルに反映されます。
-
-FRRのISISの設定では、redistributeではなく、segment-routing srv6で設定します。
-
-```text
-!
-router isis 1
- is-type level-1
- net 49.0001.0000.0000.0001.00
- segment-routing srv6
-  locator MAIN
- exit
-exit
-!
-```
-
-これで/48の経路が配信されます。
-
-<br>
-
-## SIDを確認
-
-ロケータを作成すると、そのルータの中には最低限のSIDが作られます。
-
-`show segment-routing srv6 sid`
-
-```text
-P1# show segment-routing srv6 sid
- SID              Behavior    Context             Daemon/Instance    Locator    AllocationType
- ---------------------------  ------------------  -----------------  ---------  ----------------
- fd00:1:1::       uN          -                   isis(0)            MAIN       dynamic
- fd00:1:1:e000::  uA          Interface 'eth0'    isis(0)            MAIN       dynamic
- fd00:1:1:e001::  uA          Interface 'eth1'    isis(0)            MAIN       dynamic
- fd00:1:1:e002::  uA          Interface 'eth2'    isis(0)            MAIN       dynamic
- fd00:1:1:e003::  uA          Interface 'eth3'    isis(0)            MAIN       dynamic
-```
-
-先頭32ビットの fd00:1 はSRv6を形成するドメインで共通のプレフィクスです。
-
-このルータのノード部16ビットは 1 としています。
-
-その結果、ロケータはfd00:1:1::/48となります。
-
-SID fd00:1:1:: はロケータと同じです。uN(Endpoint)です。ルーティングテーブルを見て中継します。
-
-SID fd00:1:1:e000:: はuAで、eth0に中継します。
-
-SID fd00:1:1:e001:: はuAで、eth1に中継します。
-
-SID fd00:1:1:e002:: はuAで、eth2に中継します。
-
-SID fd00:1:1:e003:: はuAで、eth3に中継します。
-
-全ルータにロケータを設定して、ISISで配信したとしても、これら個々のSIDがISISで配信されることはありません。
-ISISではあくまで/48の経路情報が流れてくるだけです。
-
-<br><br>
-
-## Traffic Steering into SRv6
-
-
-CE101からCE102への最短経路は `CE101---PE11---P1---PE13---CE102` です。
-
-これをPE11で曲げてみます。
-
-スタティックルートを書きます。
-
-指定しているのはSIDではないループバックアドレスになっているところが気になりますが、こうしないと動きませんでした。
-
-```text
-ip route 10.0.102.0/24 lo segments 2001:db8:ffff::1/2001:db8:ffff::12/2001:db8:ffff::2/2001:db8:ffff::13
-```
-
-これで `CE101---PE11---P1---PE12---P2---PE13---CE102` という順路になります。
-
-
-
-> [!NOTE]
->
-> なぜSIDを指定すると動かないんだろう？？？
->
-> ループバックのアドレスをSIDの中から採番すればいい？？？
-
-
-
-
-
-
-
-## Static
-
-- uN (Shift and forward)
-- uA (Shift and L3 cross-connect)
-- uDT4 (Decapsulation and IPv4 table lookup)
-- uDT6 (Decapsulation and IPv6 table lookup)
-- uDT46 (Decapsulation and IP table lookup)
-
-```text
-!
-segment-routing
-    static-sids
-      sid fd00:aaaa:1::/48 locator MAIN behavior uN
-      sid fd00:aaaa:1:ff10::/64 locator MAIN behavior uDT4 vrf Vrf10
-      sid fd00:aaaa:1:ff20::/64 locator MAIN behavior uDT6 vrf Vrf20
-      sid fd00:aaaa:1:ff30::/64 locator MAIN behavior uDT46 vrf Vrf30
-      sid fd00:aaaa:1:ff40::/64 locator MAIN behavior uA interface eth1
-```
-
-
-## BGP L3VPN
-
-```text
-router bgp 65001
-  bgp router-id 192.168.255.1
-  no bgp ebgp-requires-policy
-  neighbor 2001:db8:ffff::2 remote-as 65001
-  neighbor 2001:db8:ffff::2 capability extended-nexthop
-  ...
-  address-family ipv4 vpn
-    neighbor 2001:db8:ffff::2 activate
-    exit-address-family
-  !
-  address-family ipv6 vpn
-    neighbor 2001:db8:ffff::2 activate
-    exit-address-family
-  !
-!
-router bgp 65001 vrf vrff10
-  bgp router-id 192.168.255.1
-  no bgp ebgp-requires-policy
-  sid vpn per-vrf export auto
-  !
-  address-family ipv4 unicast
-    nexthop vpn export 2001:db8:ffff::1
-    rd vpn-export 2:10
-    rt vpn-both 99:99
-    import vpn
-    export vpn
-    redistribution connected
-  exit-address-family
-  !
-  address-family ipv6 unicast
-   ...
-
-
-```

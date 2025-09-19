@@ -105,27 +105,21 @@ exit
 !
 router bgp 65000
  bgp router-id 192.168.255.{{ ROUTER_NUMBER }}
+ bgp log-neighbor-changes
  no bgp ebgp-requires-policy
  no bgp default ipv4-unicast
-{% if ROUTER_NUMBER == 1 %}
+{% if ROUTER_NUMBER in [1, 2] %}
  bgp cluster-id 0.0.0.1
  neighbor P peer-group
  neighbor P remote-as internal
  neighbor PE peer-group
  neighbor PE remote-as internal
+{% if ROUTER_NUMBER == 1 %}
  neighbor fd00:1:2:: peer-group P
- neighbor fd00:1:11:: peer-group PE
- neighbor fd00:1:12:: peer-group PE
- neighbor fd00:1:13:: peer-group PE
- neighbor fd00:1:14:: peer-group PE
 {% endif %}
 {% if ROUTER_NUMBER == 2 %}
- bgp cluster-id 0.0.0.1
- neighbor P peer-group
- neighbor P remote-as internal
- neighbor PE peer-group
- neighbor PE remote-as internal
  neighbor fd00:1:1:: peer-group P
+{% endif %}
  neighbor fd00:1:11:: peer-group PE
  neighbor fd00:1:12:: peer-group PE
  neighbor fd00:1:13:: peer-group PE
@@ -140,6 +134,7 @@ router bgp 65000
  !
  segment-routing srv6
   locator MAIN
+  encap-behavior H_Encaps_Red
  exit
  !
  address-family ipv4 vpn
@@ -149,7 +144,6 @@ router bgp 65000
   neighbor PE route-reflector-client
   {% else %}
   neighbor P activate
-  neighbor P next-hop-self
   {% endif %}
   exit-address-family
  !
@@ -160,14 +154,16 @@ router bgp 65000
   neighbor PE route-reflector-client
   {% else %}
   neighbor P activate
-  neighbor P next-hop-self
   {% endif %}
  exit-address-family
 exit
 {% if ROUTER_NUMBER in [11, 12, 13, 14] %}
 !
 router bgp 65000 vrf CE
+ bgp router-id 192.168.255.{{ ROUTER_NUMBER }}
+ bgp log-neighbor-changes
  no bgp ebgp-requires-policy
+ no bgp default ipv4-unicast
  !
  address-family ipv4 unicast
   redistribute connected
@@ -176,7 +172,7 @@ router bgp 65000 vrf CE
   rt vpn both 65000:101
   export vpn
   import vpn
- exit-address-family
+  exit-address-family
 exit
 {% endif %}
 !
@@ -934,8 +930,8 @@ if __name__ == '__main__':
             'text_size': 12,
             'text_unit': 'pt',
             'thickness': 1,
-            'x1': -40.0,
-            'y1': -240.0,
+            'x1': -80.0,
+            'y1': -200.0,
             'z_index': 5
         })
 
@@ -954,6 +950,130 @@ if __name__ == '__main__':
             'x1': 200.0,
             'y1': -240.0,
             'z_index': 5
+        })
+
+        text_content = '10.0.11.0/24'
+        lab.create_annotation('text', **{
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': -360.0,
+            'y1': 40.0,
+            'z_index': 6
+        })
+
+        text_content = '10.0.12.0/24'
+        lab.create_annotation('text', **{
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': -360.0,
+            'y1': 200.0,
+            'z_index': 6
+        })
+
+        text_content = '10.0.13.0/24'
+        lab.create_annotation('text', **{
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': 240.0,
+            'y1': 40.0,
+            'z_index': 6
+        })
+
+        text_content = '10.0.14.0/24'
+        lab.create_annotation('text', **{
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': 240.0,
+            'y1': 200.0,
+            'z_index': 6
+        })
+
+        lab.create_annotation('rectangle', **{
+            'border_color': '#80808000',
+            'border_radius': 0,
+            'border_style': '',
+            'color': '#DBEAEC',
+            'rotation': 0,
+            'thickness': 1,
+            'x1': -480.0,
+            'y1': -40.0,
+            'x2': 160.0,
+            'y2': 80.0,
+            'z_index': 7
+        })
+
+        lab.create_annotation('rectangle', **{
+            'border_color': '#80808000',
+            'border_radius': 0,
+            'border_style': '',
+            'color': '#DBEAEC',
+            'rotation': 0,
+            'thickness': 1,
+            'x1': -480.0,
+            'y1': 120.0,
+            'x2': 160.0,
+            'y2': 80.0,
+            'z_index': 7
+        })
+
+        lab.create_annotation('rectangle', **{
+            'border_color': '#80808000',
+            'border_radius': 0,
+            'border_style': '',
+            'color': '#DBEAEC',
+            'rotation': 0,
+            'thickness': 1,
+            'x1': 320.0,
+            'y1': -40.0,
+            'x2': 160.0,
+            'y2': 80.0,
+            'z_index': 7
+        })
+
+        lab.create_annotation('rectangle', **{
+            'border_color': '#80808000',
+            'border_radius': 0,
+            'border_style': '',
+            'color': '#DBEAEC',
+            'rotation': 0,
+            'thickness': 1,
+            'x1': 320.0,
+            'y1': 120.0,
+            'x2': 160.0,
+            'y2': 80.0,
+            'z_index': 7
         })
 
         # start the lab

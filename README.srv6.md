@@ -1,6 +1,348 @@
 # SRv6
 
+FRR(Docker)を使ってSRv6のL3VPNを検証します。
+
+[README.create_custom_docker.md](/README.create_custom_docker.md) に従ってFRRをインストールしたDockerイメージを作成してCMLに登録します。
+
+> [!NOTE]
+>
+> CML2.9に同梱されているFRR(Docker)ではSRv6を動かすことはできません。
+> FRRをコンパイルして作成してください。
+
 <br>
+
+## ラボ構成
+
+スクリプト [cml_create_srv6_docker_lab.py](bin/cml_create_srv6_docker_lab.py) を使ってCML内にラボを自動生成します。
+
+<br>
+
+![ラボ構成](/assets/srv6_docker_lab.png)
+
+<br>
+
+## Linuxの設定
+
+FRRでVRFを作ることはできません。
+
+FRR(Docker)の設定ファイルboot.shにて以下を実行しています。
+
+```bash
+# create vrf for CE router
+ip link add CE type vrf table 1001
+ip link set dev CE up
+ip link set dev eth2 master CE
+```
+
+コンテナ起動時に以下のsysctlを設定しています。
+
+```bash
+--sysctl net.ipv4.conf.all.rp_filter=0
+--sysctl net.ipv4.conf.default.rp_filter=0
+--sysctl net.ipv6.conf.all.keep_addr_on_down=1
+--sysctl net.ipv6.conf.all.forwarding=1
+--sysctl net.ipv6.route.skip_notify_on_dev_down=1
+--sysctl net.ipv6.seg6_flowlabel=1
+--sysctl net.ipv6.conf.all.seg6_enabled=1
+--sysctl net.ipv6.conf.default.seg6_enabled=1
+--sysctl net.ipv6.conf.all.seg6_require_hmac=0
+--sysctl net.vrf.strict_mode=1
+```
+
+<br>
+
+## ルータの設定
+
+スクリプト内で自動生成しています。
+
+PE11の設定
+
+```text
+!
+frr version 10.4.120250905
+frr defaults traditional
+hostname PE11
+log syslog informational
+service integrated-vtysh-config
+!
+ip router-id 192.168.255.11
+!
+vrf CE
+exit-vrf
+!
+interface eth0
+ ip address 192.168.255.11 peer 192.168.255.1/32
+ ip router isis 1
+ ipv6 router isis 1
+ isis network point-to-point
+exit
+!
+interface eth1
+ ip address 192.168.255.11 peer 192.168.255.2/32
+ ip router isis 1
+ ipv6 router isis 1
+ isis network point-to-point
+exit
+!
+interface eth2
+ description TO CE ROUTER
+ ip address 10.0.11.1/24
+exit
+!
+interface lo
+ ip address 192.168.255.11/32
+ ip router isis 1
+ ipv6 address 2001:db8:ffff::11/128
+ ipv6 address fd00:1:11::/128
+ ipv6 router isis 1
+exit
+!
+router bgp 65000
+ bgp router-id 192.168.255.11
+ bgp log-neighbor-changes
+ no bgp ebgp-requires-policy
+ no bgp default ipv4-unicast
+ neighbor P peer-group
+ neighbor P remote-as internal
+ neighbor fd00:1:1:: peer-group P
+ neighbor fd00:1:2:: peer-group P
+ !
+ segment-routing srv6
+  locator MAIN
+ exit
+ !
+ address-family ipv4 vpn
+  neighbor P activate
+ exit-address-family
+ !
+ address-family ipv6 vpn
+  neighbor P activate
+ exit-address-family
+exit
+!
+router bgp 65000 vrf CE
+ bgp router-id 192.168.255.11
+ bgp log-neighbor-changes
+ no bgp ebgp-requires-policy
+ no bgp default ipv4-unicast
+ !
+ address-family ipv4 unicast
+  redistribute connected
+  sid vpn export auto
+  rd vpn export 65000:101
+  rt vpn both 65000:101
+  export vpn
+  import vpn
+ exit-address-family
+exit
+!
+router isis 1
+ is-type level-1
+ net 49.0001.0000.0000.0011.00
+ segment-routing srv6
+  locator MAIN
+ exit
+exit
+!
+segment-routing
+ srv6
+  encapsulation
+   source-address fd00:1:11::
+  exit
+  locators
+   locator MAIN
+    prefix fd00:1:11::/48
+    behavior usid
+    format usid-f3216
+   exit
+   !
+  exit
+  !
+ exit
+ !
+exit
+!
+end
+```
+
+<br><br>
+
+P1ルータの設定
+
+```text
+!
+frr version 10.4.120250905
+frr defaults traditional
+hostname P1
+log syslog informational
+service integrated-vtysh-config
+!
+ip router-id 192.168.255.1
+!
+interface eth0
+ ip address 192.168.255.1 peer 192.168.255.11/32
+ ip router isis 1
+ ipv6 router isis 1
+ isis network point-to-point
+exit
+!
+interface eth1
+ ip address 192.168.255.1 peer 192.168.255.12/32
+ ip router isis 1
+ ipv6 router isis 1
+ isis network point-to-point
+exit
+!
+interface eth2
+ ip address 192.168.255.1 peer 192.168.255.13/32
+ ip router isis 1
+ ipv6 router isis 1
+ isis network point-to-point
+exit
+!
+interface eth3
+ ip address 192.168.255.1 peer 192.168.255.14/32
+ ip router isis 1
+ ipv6 router isis 1
+ isis network point-to-point
+exit
+!
+interface eth4
+ description MANAGEMENT
+ ip address 192.168.254.1/24
+ ip router isis 1
+exit
+!
+interface lo
+ ip address 192.168.255.1/32
+ ip router isis 1
+ ipv6 address 2001:db8:ffff::1/128
+ ipv6 address fd00:1:1::/128
+ ipv6 router isis 1
+exit
+!
+router bgp 65000
+ bgp router-id 192.168.255.1
+ bgp log-neighbor-changes
+ no bgp ebgp-requires-policy
+ no bgp default ipv4-unicast
+ bgp cluster-id 0.0.0.1
+ neighbor P peer-group
+ neighbor P remote-as internal
+ neighbor PE peer-group
+ neighbor PE remote-as internal
+ neighbor fd00:1:2:: peer-group P
+ neighbor fd00:1:11:: peer-group PE
+ neighbor fd00:1:12:: peer-group PE
+ neighbor fd00:1:13:: peer-group PE
+ neighbor fd00:1:14:: peer-group PE
+ !
+ segment-routing srv6
+  locator MAIN
+ exit
+ !
+ address-family ipv4 vpn
+  neighbor P activate
+  neighbor PE activate
+  neighbor PE route-reflector-client
+ exit-address-family
+ !
+ address-family ipv6 vpn
+  neighbor P activate
+  neighbor PE activate
+  neighbor PE route-reflector-client
+ exit-address-family
+exit
+!
+router isis 1
+ is-type level-1
+ net 49.0001.0000.0000.0001.00
+ segment-routing srv6
+  locator MAIN
+ exit
+exit
+!
+segment-routing
+ srv6
+  encapsulation
+   source-address fd00:1:1::
+  exit
+  locators
+   locator MAIN
+    prefix fd00:1:1::/48
+    behavior usid
+    format usid-f3216
+   exit
+   !
+  exit
+  !
+ exit
+ !
+exit
+!
+end
+```
+
+<br>
+
+## 疎通確認
+
+CE101からpingします。
+
+```text
+CE101# ping ip 10.0.12.102
+  <cr>
+CE101# ping ip 10.0.12.102
+PING 10.0.12.102 (10.0.12.102): 56 data bytes
+64 bytes from 10.0.12.102: seq=0 ttl=63 time=0.304 ms
+64 bytes from 10.0.12.102: seq=1 ttl=63 time=1.376 ms
+64 bytes from 10.0.12.102: seq=2 ttl=63 time=2.343 ms
+^C
+--- 10.0.12.102 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+
+round-trip min/avg/max = 0.304/1.341/2.343 ms
+CE101# ping ip 10.0.13.103
+PING 10.0.13.103 (10.0.13.103): 56 data bytes
+64 bytes from 10.0.13.103: seq=0 ttl=63 time=0.638 ms
+64 bytes from 10.0.13.103: seq=1 ttl=63 time=2.256 ms
+64 bytes from 10.0.13.103: seq=2 ttl=63 time=1.996 ms
+^C
+--- 10.0.13.103 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max = 0.638/1.630/2.256 ms
+
+CE101# ping ip 10.0.14.104
+PING 10.0.14.104 (10.0.14.104): 56 data bytes
+64 bytes from 10.0.14.104: seq=0 ttl=63 time=0.617 ms
+64 bytes from 10.0.14.104: seq=1 ttl=63 time=2.233 ms
+64 bytes from 10.0.14.104: seq=2 ttl=63 time=2.149 ms
+^C
+--- 10.0.14.104 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max = 0.617/1.666/2.233 ms
+CE101#
+```
+
+<br>
+
+## パケットキャプチャ
+
+カプセル化するときの設定で、以下を設定した場合の
+CE101からCE103へのping通信の[パケットキャプチャ](/assets/srv6-from-ce101-to-ce103-red.pcap)
+
+IPv6ヘッダにSRはありません。
+
+```text
+  encap-behavior H_Encaps_Red
+```
+
+設定しなかった場合（デフォルト動作）の
+CE101からCE103へのping通信の[パケットキャプチャ](/assets/srv6-from-ce101-to-ce103.pcap)
+
+IPv6ヘッダにSRが登場します。
+
+<br><br><br><br><br><br><br><br>
 
 ## SIDの構造
 

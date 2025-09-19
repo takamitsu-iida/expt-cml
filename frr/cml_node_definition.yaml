@@ -59,7 +59,8 @@ configuration:
                 "--sysctl", "net.ipv6.seg6_flowlabel=1",
                 "--sysctl", "net.ipv6.conf.all.seg6_enabled=1",
                 "--sysctl", "net.ipv6.conf.default.seg6_enabled=1",
-                "--sysctl", "net.ipv6.conf.all.seg6_require_hmac=0"
+                "--sysctl", "net.ipv6.conf.all.seg6_require_hmac=0",
+                "--sysctl", "net.vrf.strict_mode=1"
               ],
               "extra_args": []
             },

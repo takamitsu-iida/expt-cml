@@ -107,27 +107,36 @@ router bgp 65000
  bgp router-id 192.168.255.{{ ROUTER_NUMBER }}
  no bgp ebgp-requires-policy
  no bgp default ipv4-unicast
- {% if ROUTER_NUMBER in [1, 2] %}
+{% if ROUTER_NUMBER == 1 %}
  bgp cluster-id 0.0.0.1
  neighbor P peer-group
  neighbor P remote-as internal
  neighbor PE peer-group
  neighbor PE remote-as internal
- {% if ROUTER_NUMBER == 1 %}
  neighbor fd00:1:2:: peer-group P
- {% else %}
- neighbor fd00:1:1:: peer-group P
- {% endif %}
  neighbor fd00:1:11:: peer-group PE
  neighbor fd00:1:12:: peer-group PE
  neighbor fd00:1:13:: peer-group PE
  neighbor fd00:1:14:: peer-group PE
- {% else %}
+{% endif %}
+{% if ROUTER_NUMBER == 2 %}
+ bgp cluster-id 0.0.0.1
+ neighbor P peer-group
+ neighbor P remote-as internal
+ neighbor PE peer-group
+ neighbor PE remote-as internal
+ neighbor fd00:1:1:: peer-group P
+ neighbor fd00:1:11:: peer-group PE
+ neighbor fd00:1:12:: peer-group PE
+ neighbor fd00:1:13:: peer-group PE
+ neighbor fd00:1:14:: peer-group PE
+{% endif %}
+{% if ROUTER_NUMBER in [11, 12, 13, 14] %}
  neighbor P peer-group
  neighbor P remote-as internal
  neighbor fd00:1:1:: peer-group P
  neighbor fd00:1:2:: peer-group P
- {% endif %}
+{% endif %}
  !
  segment-routing srv6
   locator MAIN
@@ -136,13 +145,10 @@ router bgp 65000
  address-family ipv4 vpn
   {% if ROUTER_NUMBER in [1, 2] %}
   neighbor P activate
-  neighbor P soft-reconfiguration inbound
   neighbor PE activate
-  neighbor PE soft-reconfiguration inbound
   neighbor PE route-reflector-client
   {% else %}
   neighbor P activate
-  neighbor P soft-reconfiguration inbound
   neighbor P next-hop-self
   {% endif %}
   exit-address-family
@@ -150,13 +156,10 @@ router bgp 65000
  address-family ipv6 vpn
   {% if ROUTER_NUMBER in [1, 2] %}
   neighbor P activate
-  neighbor P soft-reconfiguration inbound
   neighbor PE activate
-  neighbor PE soft-reconfiguration inbound
   neighbor PE route-reflector-client
   {% else %}
   neighbor P activate
-  neighbor P soft-reconfiguration inbound
   neighbor P next-hop-self
   {% endif %}
  exit-address-family
@@ -164,15 +167,15 @@ exit
 {% if ROUTER_NUMBER in [11, 12, 13, 14] %}
 !
 router bgp 65000 vrf CE
+ no bgp ebgp-requires-policy
  !
  address-family ipv4 unicast
   redistribute connected
+  sid vpn export auto
   rd vpn export 65000:101
-  rt vpn import 65000:101
-  rt vpn export 65000:101
+  rt vpn both 65000:101
   export vpn
   import vpn
-  sid vpn export auto
  exit-address-family
 exit
 {% endif %}
@@ -272,6 +275,8 @@ exit
 CE_CONFIG_TEMPLATE = """\
 hostname {{ HOSTNAME }}
 !
+ip route 0.0.0.0/0 {{ GW_ADDR }}
+!
 interface eth0
  ip address {{ PE_CE_ADDR }}
 exit
@@ -295,15 +300,22 @@ ssh_authorized_keys:
 timezone: Asia/Tokyo
 locale: ja_JP.utf8
 
-# run apt-get update
-# default false
+# run apt update (default false)
 # package_update: true
 
-# default false
+# run apt upgrade (default false)
 # package_upgrade: true
 
 # reboot if required
 # package_reboot_if_required: true
+
+hosts:
+  - 192.168.255.1 P1
+  - 192.168.255.2 P2
+  - 192.168.255.11 PE1
+  - 192.168.255.12 PE2
+  - 192.168.255.13 PE3
+  - 192.168.255.14 PE4
 
 write_files:
   #
@@ -680,6 +692,7 @@ if __name__ == '__main__':
             'name': 'frr.conf',
             'content': ce_config_template.render({
                 "HOSTNAME": "CE101",
+                "GW_ADDR": "10.0.11.1",
                 "PE_CE_ADDR": "10.0.11.101/24"
             })
         }]
@@ -701,6 +714,7 @@ if __name__ == '__main__':
             'name': 'frr.conf',
             'content': ce_config_template.render({
                 "HOSTNAME": "CE102",
+                "GW_ADDR": "10.0.12.1",
                 "PE_CE_ADDR": "10.0.12.102/24"
             })
         }]
@@ -722,6 +736,7 @@ if __name__ == '__main__':
             'name': 'frr.conf',
             'content': ce_config_template.render({
                 "HOSTNAME": "CE103",
+                "GW_ADDR": "10.0.13.1",
                 "PE_CE_ADDR": "10.0.13.103/24"
             })
         }]
@@ -741,6 +756,7 @@ if __name__ == '__main__':
             'name': 'frr.conf',
             'content': ce_config_template.render({
                 "HOSTNAME": "CE104",
+                "GW_ADDR": "10.0.14.1",
                 "PE_CE_ADDR": "10.0.14.104/24"
             })
         }]
@@ -748,8 +764,9 @@ if __name__ == '__main__':
         pe14_eth2 = pe14.get_interface_by_label("eth2")
         lab.create_link(ce104_eth0, pe14_eth2, wait=True)
 
-
+        #
         # アノテーションを作成する
+        #
         text_content = 'FRR SRv6 uSID'
         lab.create_annotation('text', **{
             'border_color': '#00000000',
@@ -801,7 +818,9 @@ if __name__ == '__main__':
             'z_index': 2
         })
 
+        #
         # 外部接続用のブリッジを作成する
+        #
         ext_conn_node = lab.create_node("bridge1", "external_connector", x_grid_width, -y_grid_width, wait=True)
 
         # デフォルトはNATとして動作するので、これを"bridge1"に変更する
@@ -812,7 +831,9 @@ if __name__ == '__main__':
         # インタフェースを一つ作る
         ext_conn_port = ext_conn_node.create_interface(0, wait=True)
 
-        # ubuntuノードを作成する
+        #
+        # 踏み台用のubuntuノードを作成する
+        #
         ubuntu_node = lab.create_node("ubuntu", "ubuntu", 0, -y_grid_width, wait=True)
         ubuntu_node.image_definition = UBUNTU_IMAGE_DEFINITION
         # ubuntuノードに設定するcloud-initの内容を作成する

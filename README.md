@@ -36,6 +36,12 @@
 
 <br>
 
-## FRR(Docker)でOpenFabricを検証は
+## FRR(Docker)でOpenFabricを検証
 
 [README.openfabric_docker.md](/README.openfabric_docker.md)
+
+<br>
+
+## FRR(Docker)でSRv6 L3VPNを検証
+
+[README.srv6.md](/README.srv6.md)

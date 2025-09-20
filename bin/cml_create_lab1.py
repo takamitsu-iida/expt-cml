@@ -96,6 +96,13 @@ write_files:
 
 runcmd:
 
+  # add /etc/hosts
+  - |
+    cat - << 'EOS' >> /etc/hosts
+    #
+    {{ CML_ADDRESS }} cml
+    EOS
+
   # Resize terminal window
   - |
     cat - << 'EOS' >> /etc/bash.bashrc
@@ -285,6 +292,7 @@ if __name__ == '__main__':
 
         # templateに渡すコンテキストオブジェクト
         context = {
+            "CML_ADDRESS": CML_ADDRESS,
             "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
             "UBUNTU_USERNAME": UBUNTU_USERNAME,
             "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
@@ -295,7 +303,16 @@ if __name__ == '__main__':
         config_text = template.render(context)
 
         # ノードのconfigにcloud-init.yamlのテキストを設定する
-        ubuntu_node.configuration = config_text
+        ubuntu_node.configuration = [
+            {
+                'name': 'user-data',
+                'content': config_text
+            },
+            {
+                'name': 'network-config',
+                'content': '#network-config'
+            }
+        ]
 
         # タグを設定する
         # "serial:6000"

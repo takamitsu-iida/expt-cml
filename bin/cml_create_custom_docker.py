@@ -88,6 +88,13 @@ write_files:
 
 runcmd:
 
+  # add /etc/hosts
+  - |
+    cat - << 'EOS' >> /etc/hosts
+    #
+    {{ CML_ADDRESS }} cml
+    EOS
+
   # Resize terminal window
   - |
     cat - << 'EOS' >> /etc/bash.bashrc
@@ -106,9 +113,19 @@ runcmd:
 
   # Create SSH keys
   - ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa
-  - chown {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
-  - chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
+  - chown -R {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh
+  - chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa
   - chmod 700 /home/{{ UBUNTU_USERNAME }}/.ssh
+
+  # SSH config
+  - |
+    cat << 'EOS' > /home/{{ UBUNTU_USERNAME }}/.ssh/config
+    Host cml
+        Port 1122
+        User admin
+    EOS
+  - chown {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh/config
+  - chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/config
 
   # Disable systemd-networkd-wait-online.service to speed up boot time
   - systemctl stop     systemd-networkd-wait-online.service
@@ -137,11 +154,11 @@ runcmd:
     # install docker engine
     apt install -y --no-install-recommends docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-  # clone expt-cml repository
-  - |
-    cd /home/{{ UBUNTU_USERNAME }}
-    git clone https://github.com/takamitsu-iida/expt-cml.git
-    chown -R {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} expt-cml
+    # clone expt-cml repository
+    #  - |
+    #    cd /home/{{ UBUNTU_USERNAME }}
+    #    git clone https://github.com/takamitsu-iida/expt-cml.git
+    #    chown -R {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} expt-cml
 
 """
 
@@ -287,9 +304,10 @@ if __name__ == '__main__':
 
         # 初期状態はインタフェースが存在しないので、追加する
         # Ubuntuのslot番号の範囲は0-7
-        # slot番号はインタフェース名ではない
-        # ens2-ens9が作られる
-        for i in range(8):
+        # slot番号はインタフェース名ではなく、実際にはens2-ens9が作られる
+        #
+        # 外部接続用にインタフェースを一つだけ作成する
+        for i in range(1):
             ubuntu_node.create_interface(i, wait=True)
 
         # NATとubuntuを接続する
@@ -300,6 +318,7 @@ if __name__ == '__main__':
 
         # templateに渡すコンテキストオブジェクト
         context = {
+            "CML_ADDRESS": CML_ADDRESS,
             "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
             "UBUNTU_USERNAME": UBUNTU_USERNAME,
             "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
@@ -310,7 +329,16 @@ if __name__ == '__main__':
         config_text = template.render(context)
 
         # ノードのconfigにcloud-init.yamlのテキストを設定する
-        ubuntu_node.configuration = config_text
+        ubuntu_node.configuration = [
+            {
+                'name': 'user-data',
+                'content': config_text
+            },
+            {
+                'name': 'network-config',
+                'content': '#network-config'
+            }
+        ]
 
         # タグを設定する
         # "serial:6000"

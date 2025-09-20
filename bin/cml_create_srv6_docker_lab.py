@@ -305,13 +305,6 @@ locale: ja_JP.utf8
 # reboot if required
 # package_reboot_if_required: true
 
-hosts:
-  - 192.168.255.1 P1
-  - 192.168.255.2 P2
-  - 192.168.255.11 PE1
-  - 192.168.255.12 PE2
-  - 192.168.255.13 PE3
-  - 192.168.255.14 PE4
 
 write_files:
   #
@@ -341,6 +334,19 @@ write_files:
                 via: 192.168.254.1
 
 runcmd:
+
+  # add /etc/hosts
+  - |
+    cat - << 'EOS' >> /etc/hosts
+    #
+    {{ CML_ADDRESS }} cml
+    192.168.255.1 P1
+    192.168.255.2 P2
+    192.168.255.11 PE1
+    192.168.255.12 PE2
+    192.168.255.13 PE3
+    192.168.255.14 PE4
+    EOS
 
   # Resize terminal window
   - |
@@ -833,12 +839,23 @@ if __name__ == '__main__':
         ubuntu_node = lab.create_node("ubuntu", "ubuntu", 0, -y_grid_width, wait=True)
         ubuntu_node.image_definition = UBUNTU_IMAGE_DEFINITION
         # ubuntuノードに設定するcloud-initの内容を作成する
-        ubuntu_node.configuration = Template(UBUNTU_CONFIG_TEMPLATE).render({
+        ubuntu_user_data = Template(UBUNTU_CONFIG_TEMPLATE).render({
             "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
             "UBUNTU_USERNAME": UBUNTU_USERNAME,
             "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
             "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY
         })
+        ubuntu_node.configuration = [
+            {
+                'name': 'user-data',
+                'content': ubuntu_user_data
+            },
+            {
+                'name': 'network-config',
+                'content': '#network-config'
+            }
+        ]
+
         # pattyのタグを設定
         ubuntu_node.add_tag(tag=f"serial:{SERIAL_PORT + 200}")
 

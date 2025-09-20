@@ -54,7 +54,8 @@ apt install -y --no-install-recommends \
     gosu \
     supervisor \
     snmp \
-    snmp-mibs-downloader
+    snmp-mibs-downloader \
+    git
 
 #
 # add sshd (should run in start.sh)

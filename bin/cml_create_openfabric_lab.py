@@ -399,9 +399,19 @@ if __name__ == '__main__':
             lab_context["HOSTNAME"] = node_name
             lab_context["ROUTER_ID"] = router_number
             lab_context["FRR_CONF"] = frr_config
+            config_text = template.render(lab_context)
 
-            # ノードに設定する
-            node.configuration = template.render(lab_context)
+            # ノードのconfigにcloud-init.yamlのテキストを設定する
+            node.configuration = [
+                {
+                    'name': 'user-data',
+                    'content': config_text
+                },
+                {
+                    'name': 'network-config',
+                    'content': '#network-config'
+                }
+            ]
 
             # リストに追加する
             t2_nodes.append(node)

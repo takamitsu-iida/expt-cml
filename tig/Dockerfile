@@ -57,6 +57,11 @@ apt install -y --no-install-recommends \
     snmp-mibs-downloader \
     git
 
+# Install utilities
+apt install -y --no-install-recommends vim
+apt install -y --no-install-recommends nload
+apt install -y --no-install-recommends ethtool
+
 #
 # Install snmpd (should run in start.sh)
 #

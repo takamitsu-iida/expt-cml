@@ -3,6 +3,13 @@
 hostname ${HOSTNAME}
 
 #
+# run snmpd in the background
+#
+if [ -x /usr/sbin/snmpd ]; then
+    /usr/sbin/snmpd -LS 5 d -Lf /dev/null
+fi
+
+#
 # run sshd in the background
 #
 

@@ -9,22 +9,47 @@ import argparse
 from subprocess import DEVNULL, PIPE
 from shutil import which
 
-TITLE_PROGNAME = "Dead Man"
-TITLE_VERSION = "[ver 22.02.10]"
+TITLE_PROGNAME: str = "Int Man"
+TITLE_VERSION: str = "[2025.09.24]"
 
-PING_INTERVAL = 0.05
-RTT_SCALE = 10
+PING_INTERVAL: float = 0.05
+RTT_SCALE: int = 10
 
-DEFAULT_COLOR = 1
-UP_COLOR = 2
-DOWN_COLOR = 3
+DEFAULT_COLOR: int = 1
+UP_COLOR:      int = 2
+DOWN_COLOR:    int = 3
 
+# ヘッダ表示（タイトル）
+HEADER_TITLE: str = f"{TITLE_PROGNAME} {TITLE_VERSION}"
 
-class Separator:
-    pass
+# ヘッダ表示（情報）
+HEADER_INFO:  str = f"   RTT Scale {RTT_SCALE}ms. Keys: (r)efresh"
 
+# ヘッダ表示（列名）
+#                     0         1         2         3         4         5         6         7
+#                     01234567890123456789012345678901234567890123456789012345678901234567890
+HEADER_COLS:  str = f"   HOSTNAME        ADDRESS               LOSS  RTT  AVG  SNT  RESULT"
 
-SEPARATOR = Separator()
+# ホスト名の表示開始位置
+HOSTNAME_START: int = 3
+
+# アドレスの表示開始位置
+ADDRESS_START: int = 19
+
+# 各種値の表示開始位置
+VALUES_START: int = 41
+
+# 実行結果の表示開始位置
+RESULT_START: int = 62
+
+# セパレータ行のキャラクタ
+SEPARATOR = "-"
+
+# 最大ホスト名長（超える部分は切り詰め）
+MAX_HOSTNAME_LENGTH = ADDRESS_START - HOSTNAME_START - 1
+
+# 最大アドレス長（超える部分は切り詰め）
+MAX_ADDRESS_LENGTH = VALUES_START - ADDRESS_START - 1
 
 
 class PingResult:
@@ -134,7 +159,7 @@ class Ping:
 def whichipversion(addr: str) -> int | bool:
     try:
         family = socket.getaddrinfo(addr, None)[0][0]
-    except:
+    except Exception:
         return False
     if family == socket.AF_INET:
         return 4
@@ -154,14 +179,13 @@ def pingcmd(ipv: int) -> list[str] | None:
     return None
 
 
-def parse_config(filename: str) -> list[PingTarget | Separator]:
+def parse_config(filename: str) -> list[PingTarget | str]:
     targets = []
     with open(filename) as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            # セパレータ行（例: ---）はSeparatorとして扱う
             if re.fullmatch(r'-+', line):
                 targets.append(SEPARATOR)
             else:
@@ -171,38 +195,38 @@ def parse_config(filename: str) -> list[PingTarget | Separator]:
     return targets
 
 
-def draw_screen(stdscr: curses.window, targets: list[PingTarget | Separator], arrow_idx: int | None = None) -> None:
+def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_idx: int | None = None) -> None:
     stdscr.clear()
     _y, x = stdscr.getmaxyx()
-    stdscr.addstr(0, 0, TITLE_PROGNAME, curses.A_BOLD)
-    stdscr.addstr(1, 0, f"   RTT Scale {RTT_SCALE}ms. Keys: (r)efresh")
-    stdscr.addstr(2, 0, "   HOSTNAME        ADDRESS               LOSS  RTT  AVG  SNT  RESULT")
+    stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
+    stdscr.addstr(1, 0, f"{HEADER_INFO}")
+    stdscr.addstr(2, 0, f"{HEADER_COLS}")
 
-    # ホスト名などの表示開始位置を矢印の右（例: 3列目）に変更
-    host_start = 3
-
-    # 画面の幅から表示できる結果の数を計算
-    result_start = 62
-    max_result_len = max(0, x - result_start - 1)
+    # 履歴表示の最大幅を計算
+    max_result_len = max(0, x - RESULT_START - 1)
 
     for i, t in enumerate(targets, 3):
         if t == SEPARATOR:
-            # セパレータ行の表示
-            stdscr.addstr(i, host_start, "-" * (x - host_start))
+            # セパレータ表示
+            stdscr.addstr(i, HOSTNAME_START, SEPARATOR * (x - HOSTNAME_START))
             continue
 
         # 矢印表示
         if arrow_idx is not None and i == arrow_idx:
             stdscr.addstr(i, 0, " > ", curses.A_BOLD)
 
+        # ホスト名とアドレスの切り詰め
+        name_disp = t.name[:MAX_HOSTNAME_LENGTH]
+        addr_disp = t.addr[:MAX_ADDRESS_LENGTH]
+
+        # 各ターゲットの情報表示
         values_str = f"{int(t.lossrate):3d}% {int(t.rtt):4d} {int(t.avg):4d} {t.snt:4d}  "
-        stdscr.addstr(i, host_start, f"{t.name:15} {t.addr:20} {values_str}", curses.color_pair(UP_COLOR if t.state else DOWN_COLOR))
+        stdscr.addstr(i, HOSTNAME_START, f"{name_disp:15} {addr_disp:20} {values_str}", curses.color_pair(UP_COLOR if t.state else DOWN_COLOR))
 
+        # 履歴表示
         for n, c in enumerate(t.result[:max_result_len]):
-            stdscr.addstr(i, result_start + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
+            stdscr.addstr(i, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
 
-    # カーソルが邪魔なので左上に移動
-    stdscr.move(0, 0)
     stdscr.refresh()
 
 
@@ -226,6 +250,15 @@ async def main(stdscr: curses.window, configfile: str) -> None:
 
 
 def run_curses(stdscr: curses.window, configfile: str) -> None:
+    try:
+        targets = parse_config(configfile)
+    except Exception as e:
+        stdscr.clear()
+        stdscr.addstr(0, 0, f"Error: ターゲットの読み込みに失敗しました\n{e}", curses.A_BOLD | curses.color_pair(DOWN_COLOR))
+        stdscr.refresh()
+        stdscr.getch()
+        return
+
     try:
         asyncio.run(main(stdscr, configfile))
     except KeyboardInterrupt:

@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
-# original software is "pingman".
-# Copyright Interop Tokyo ShowNet NOC team
-#
-# upa@haeena.net
 
-
-import re
-import os
-import sys
-import time
-import socket
 import curses
+import socket
+import re
+import sys
+import asyncio
+from subprocess import DEVNULL, PIPE, getoutput
+from shutil import which
 
+import os
+import time
 import datetime
 import signal
 import argparse
-import asyncio
-
-from subprocess import DEVNULL, PIPE, getoutput, getstatusoutput
 import _thread
-from shutil import which
 
 
 TITLE_PROGNAME = "Dead Man"
@@ -35,25 +28,12 @@ try:
 except:
     TITLE_HOSTINFO = "From: %s" % hostname
 
-GLOBAL_STEP = 0
-
-def increment_global_step():
-    global GLOBAL_STEP
-    GLOBAL_STEP += 1
-
-def get_title_hostinfo(with_wheel = False):
-    if not with_wheel:
-        return TITLE_HOSTINFO
-    else:
-        global GLOBAL_STEP
-        return TITLE_HOSTINFO + " " + ["|", "/", "-", "\\"][GLOBAL_STEP % 4]
-
-
-
 ARROW = " > "
-REAR  = "   "
+
 PING_INTERVAL = 0.05
 PING_ALLTARGET_INTERVAL = 1
+RTT_SCALE = 10
+
 MAX_HOSTNAME_LENGTH = 20
 MAX_ADDRESS_LENGTH = 40
 RESULT_STR_LENGTH = 10
@@ -62,21 +42,13 @@ DEFAULT_COLOR = 1
 UP_COLOR = 2
 DOWN_COLOR = 3
 
-RTT_SCALE = 10
-
-SSH_CONNECT_TIMEOUT = 3
-
 OSNAME = getoutput("uname -s")
-
 
 PING_SUCCESS      = 0
 PING_FAILED       = -1
-PING_SSH_TIMEOUT  = -2
-PING_SSH_FAILED   = -3
 
 LOGDIR = ""
-BLINK_ARROW = False
-# ToDo: cleanup arguments handling
+
 
 class PingResult:
 
@@ -90,12 +62,13 @@ class PingResult:
 
 class PingTarget:
 
-    def __init__(self, name, address, osname, relay = None, source = None, tcp = None):
-
+    def __init__(self, name, addr):
         self.name = name
-        self.addr = address
-        self.relay = relay
-        self.source = source
+        self.addr = addr
+
+        self.ping = Ping(self.addr)
+        self.result = []
+
         self.state = False
         self.loss = 0
         self.lossrate = 0.0
@@ -104,18 +77,11 @@ class PingTarget:
         self.avg = 0 # average of all RTT
         self.snt = 0 # number of sent ping
         self.ttl = 0 # last ttl
-        self.result = []
-        self.ping = Ping(self.addr, osname, relay = relay, source = source,
-                         tcp = tcp)
 
         return
 
     def __str__(self):
         s = [self.name, self.addr]
-        if self.relay:
-            s.append(str(self.relay))
-        if self.source:
-            s.append(self.source)
         return ':'.join(s)
 
     def __eq__(self, other):
@@ -152,14 +118,6 @@ class PingTarget:
 
     def get_result_char(self, res):
 
-        if res.errcode == PING_SSH_TIMEOUT:
-            # ssh timeout
-            return "t"
-
-        if res.errcode == PING_SSH_FAILED:
-            # ssh failed
-            return "s"
-
         if res.errcode == PING_FAILED:
             # ping timeout
             return "X"
@@ -195,97 +153,39 @@ SEPARATOR = Separator()
 
 class Ping:
 
-    def __init__(self, addr, osname, timeout = 1.0, relay = None, source = None, tcp = None):
-
+    def __init__(self, addr, timeout=1.0):
         self.addr = addr
-        self.osname = osname
-        self.relay = relay
-        self.source = source
         self.timeout = timeout
-        self.tcp = tcp
 
         self.ipversion = whichipversion(self.addr)
         if not self.ipversion:
             raise RuntimeError("invalid IP address '%s'" % self.addr)
-
-        self.pingcmd = pingcmd(osname, self.ipversion)
-
-        return
+        self.pingcmd = pingcmd(self.ipversion)
 
 
     async def async_send(self):
-        ## tcp-ping
-        if self.tcp:
-            return self.sendHPing()
 
         # Build 'ping' command arguments
         cmd = []
-
-        # Relay configuration
-        if self.relay and "via" in self.relay:
-            if self.relay["via"] == "snmp":
-                ## SNMP
-                return self.sendSnmpPing()
-
-            if self.relay["via"] == "netns":
-                ## ping via Network Namespace
-                cmd += ["ip", "netns", "exec", self.relay["relay"]]
-
-            if self.relay["via"] == "vrf":
-                ## ping via VRF
-                cmd += ["ip", "vrf", "exec", self.relay["relay"]]
-
-            if self.relay["via"] == "routeros_api":
-                ## ping via RouterOS REST API
-                return self.sendRouterOSPing()
-
-        elif self.relay:
-            ## SSH
-            cmd += ["ssh", "-o",
-                    "ConnectTimeout={}".format(SSH_CONNECT_TIMEOUT),
-                    "-o", "StrictHostKeyChecking=no"]
-
-            if "key" in self.relay:
-                cmd += ["-i", self.relay["key"]]
-
-            if "user" in self.relay:
-                cmd += ["-l", self.relay["user"]]
-
-            if "relay" not in self.relay:
-                raise RuntimeError("'relay' is not specified for %s" %
-                                   self.addr)
-
-            cmd += [self.relay["relay"]]
-
         cmd += self.pingcmd
-
-        # specifying source interface
-        if self.source:
-            if self.osname == "Linux":
-                cmd += ["-I", self.source]
-            elif self.osname == "Darwin":
-                cmd += ["-S", self.source]
-            else:
-                raise RuntimeError("'source' not supported on %s" %
-                                   self.osname)
-
         cmd += [self.addr]
 
         env = dict(os.environ)
         env["LC_ALL"] = "C"
-        proc = await asyncio.create_subprocess_exec(*cmd, stderr = DEVNULL, stdout = PIPE, env = env)
+        proc = await asyncio.create_subprocess_exec(*cmd, stdout=PIPE, stderr=DEVNULL, env=env)
 
         try:
-            await asyncio.wait_for(proc.wait(), timeout = self.timeout)
+            await asyncio.wait_for(proc.wait(), timeout=self.timeout)
         except asyncio.TimeoutError:
             pass
         try:
             proc.terminate()
         except ProcessLookupError:
             pass
+
         await proc.wait()
 
-        (out, err) = await proc.communicate()
+        (out, _err) = await proc.communicate()
         result = out.decode("utf-8")
 
         rttm = re.search(r'time=(\d+\.\d+)', result)
@@ -308,156 +208,13 @@ class Ping:
                 res.ttl = -1
 
         if not rttm:
-            res.sucess = False
+            res.success = False
             if "ping" in result:
                 res.errcode = PING_FAILED
             if "No route to host" in result:
                 res.errcode = PING_FAILED
-            if "Operation timed out" in result:
-                res.errcode = PING_SSH_TIMEOUT
-            if not "PING" in result:
-                res.errcode = PING_SSH_FAILED
 
             res.errcode = PING_FAILED
-
-        return res
-
-    def sendHPing(self):
-        tcp_opts = {}
-        for opt in self.tcp.split(","):
-            tmp = opt.split(":")
-            tcp_opts[tmp[0]] = tmp[1]
-
-        pingcmd = "hping3 -S %s -p %s -c 1" % (self.addr, tcp_opts["dstport"])
-        st, result = getstatusoutput(pingcmd)
-
-        res = PingResult()
-        if st != 0:
-            res.sucess = False
-            res.errcode = PING_FAILED
-            return res
-
-        rttm = re.search(r'round-trip min/avg/max = (\d+)', result)
-        if rttm:
-            res.success = True
-            res.errcode = PING_SUCCESS
-            res.rtt = float(rttm.group(1))
-            res.ttl = -1
-        if not rttm:
-            res.sucess = False
-            res.errcode = PING_FAILED
-
-        return res
-
-    def sendSnmpPing(self):
-        if "community" not in self.relay:
-            raise RuntimeError("'community' is not specified for %s" %
-                               self.addr)
-        community = self.relay["community"]
-        community = community.replace("\\", "\\\\")
-        community = community.replace("'", "\\'")
-        snmpcmd = "snmpping -Cc1 -v 2c -c \'%s\' " % community
-        if "relay" not in self.relay:
-            raise RuntimeError("'relay' is not specified for %s" % self.addr)
-
-        snmpcmd += " %s " % self.relay["relay"]
-
-        pingcmd = snmpcmd + " %s" % self.addr
-
-        result = getoutput(pingcmd)
-
-        rttm = re.search(r'rtt min/avg/max/stddev = (\d+)', result)
-
-        res = PingResult()
-
-        if rttm:
-            res.success = True
-            res.errcode = PING_SUCCESS
-            res.rtt = float(rttm.group(1))
-            res.ttl = -1
-
-        if not rttm:
-            res.sucess = False
-            res.errcode = PING_FAILED
-
-        return res
-
-    def sendRouterOSPing(self):
-        res = PingResult()
-
-        try:
-            import requests
-            import urllib3
-            urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
-        except ModuleNotFoundError:
-            res.success = False
-            res.errcode = PING_FAILED
-
-            return res
-
-        if "username" not in self.relay or "password" not in self.relay:
-            raise RuntimeError("'username' and 'password' is required for %s" %
-                               self.addr)
-
-        username = self.relay["username"]
-        password = self.relay["password"]
-        if "relay" not in self.relay:
-            raise RuntimeError("'relay' is not specified for %s" % self.addr)
-
-        if "method" in self.relay:
-            method = self.relay["method"]
-        else:
-            method = "https"
-
-        if "verify" in self.relay:
-            verify = self.relay["verify"].lower() == "true"
-        else:
-            verify = True
-
-        url = "%s://%s/rest/ping" % (method, self.relay["relay"])
-        payload = {
-                "address": self.addr,
-                "count": 1
-        }
-
-        try:
-            resp = requests.post(url, auth=(username, password), json=payload, verify=verify)
-            resp.raise_for_status()
-        except Exception as e:
-            res.success = False
-            res.errcode = PING_FAILED
-
-            return res
-
-        ping_details = resp.json()
-
-        if int(ping_details[0]["packet-loss"]) > 0:
-            res.success = False
-            res.errcode = PING_FAILED
-
-            return res
-
-        pt = re.search(r"((\d+)ms)?(\d+)us", ping_details[0]["min-rtt"])
-
-        res.success = True
-        res.errcode = PING_SUCCESS
-
-        if pt:
-            if pt.group(2):
-                ms = float(pt.group(2))
-            else:
-                ms = 0.0
-
-            if pt.group(3):
-                us = float(pt.group(3))
-            else:
-                us = 0.0
-
-            res.rtt = float(ms + us / 1000.0)
-            res.ttl = int(ping_details[0]["ttl"])
-        else:
-            res.rtt = 0
-            res.ttl = -1
 
         return res
 
@@ -554,20 +311,19 @@ class CursesCtrl():
             pass
 
 
-    def print_title(self, with_wheel = False):
+    def print_title(self):
 
         # Print Program name on center of top line
         spacelen = int((self.x - len(TITLE_PROGNAME)) / 2)
         self.waddstr(0, spacelen, TITLE_PROGNAME, curses.A_BOLD)
 
         # Print hostname and version number
-        hostinfo = get_title_hostinfo(with_wheel = with_wheel)
+        hostinfo = TITLE_HOSTINFO
         self.waddstr(1, self.start_hostname, hostinfo, curses.A_BOLD)
 
         spacelen = self.x - (len(ARROW) + len(TITLE_VERSION))
         self.waddstr(1, spacelen, TITLE_VERSION, curses.A_BOLD)
-        self.waddstr(2, len(ARROW),
-                     "RTT Scale %dms. Keys: (r)efresh" % RTT_SCALE)
+        self.waddstr(2, len(ARROW), "RTT Scale %dms. Keys: (r)efresh" % RTT_SCALE)
         self.stdscr.move(0, 0)
         self.stdscr.refresh()
         return
@@ -587,14 +343,11 @@ class CursesCtrl():
         values_str = " LOSS  RTT  AVG  SNT  RESULT"
 
         # Print reference hostname and address
-        self.waddstr(TITLE_VERTIC_LENGTH, len(ARROW),
-                     hostname_str, curses.A_BOLD)
-        self.waddstr(TITLE_VERTIC_LENGTH, self.start_address,
-                     address_str, curses.A_BOLD)
+        self.waddstr(TITLE_VERTIC_LENGTH, len(ARROW), hostname_str, curses.A_BOLD)
+        self.waddstr(TITLE_VERTIC_LENGTH, self.start_address, address_str, curses.A_BOLD)
 
         # Print references of values
-        self.waddstr(TITLE_VERTIC_LENGTH, self.ref_start,
-                     values_str, curses.A_BOLD)
+        self.waddstr(TITLE_VERTIC_LENGTH, self.ref_start, values_str, curses.A_BOLD)
 
         self.stdscr.move(0, 0)
         self.stdscr.refresh()
@@ -620,19 +373,12 @@ class CursesCtrl():
         linenum = number + TITLE_VERTIC_LENGTH
 
         # Print values
-        values_str = " %3d%% %4d %4d %4d  " % (int(target.lossrate),
-                                               target.rtt,
-                                               target.avg,
-                                               target.snt)
+        values_str = " %3d%% %4d %4d %4d  " % (int(target.lossrate), target.rtt, target.avg, target.snt)
 
         # Print ping line
-        self.waddstr(linenum, self.start_hostname,
-                     target.name[0:self.length_hostname], line_color)
-        self.waddstr(linenum, self.start_address,
-                     target.addr[0:self.length_address], line_color)
-
+        self.waddstr(linenum, self.start_hostname, target.name[0:self.length_hostname], line_color)
+        self.waddstr(linenum, self.start_address, target.addr[0:self.length_address], line_color)
         self.waddstr(linenum, self.ref_start, values_str, line_color)
-
 
         for n in range(len(target.result)):
             if not target.result[n] in ("X", "t", "s"):
@@ -646,9 +392,8 @@ class CursesCtrl():
             self.waddstr(linenum, self.res_start + n, target.result[n], color)
 
         y, x = self.stdscr.getmaxyx()
-        self.waddstr(linenum, x - len(REAR), REAR)
 
-        if LOGDIR in sys.argv:
+        if LOGDIR:
             filepath = LOGDIR + "/" + target.name
             if os.path.isdir(LOGDIR) == False:
                 os.makedirs(LOGDIR)
@@ -699,24 +444,22 @@ class Deadman:
 
         signal.signal(signal.SIGWINCH, self.refresh_window)
         signal.signal(signal.SIGHUP, self.updatetargets)
-        signal.siginterrupt(signal.SIGHUP, False)
 
         self.curs.print_title()
 
         return
 
+
     def addtargets(self):
         newtargets = []
         self.targetlist = self.gettargetlist(self.configfile)
 
-        for name, addr, relay, source, tcp in self.targetlist:
-            osname = relay.get('os', OSNAME)
+        for name, addr in self.targetlist:
 
             if re.fullmatch(r'-+', name):
                 pt = SEPARATOR
             else:
-                pt = PingTarget(name, addr, osname,
-                                relay = relay, source = source, tcp = tcp)
+                pt = PingTarget(name, addr)
             idx = -1
             if pt in self.targets:
                 idx = self.targets.index(pt)
@@ -726,6 +469,8 @@ class Deadman:
 
         self.targets = newtargets
         self.curs.update_info(self.targets)
+
+
 
     def main(self):
 
@@ -762,63 +507,6 @@ class Deadman:
             self.curs.erase_arrow(idx)
             self.curs.erase_pingtarget(idx + 1)
 
-    async def async_ping_targets(self):
-        await asyncio.gather(*[x.async_send() for x in self.targets if x != SEPARATOR])
-
-    def async_main(self):
-
-        #n = len(self.targets)
-        #executor = concurrent.futures.ThreadPoolExecutor(max_workers = n)
-        #loop = asyncio.get_event_loop()
-        #loop.set_default_executor(executor)
-
-        _thread.start_new_thread(self.curs.key_thread, tuple(self.targets))
-
-        # print blank line
-        for idx, target in enumerate(self.targets, 1):
-            if target == SEPARATOR:
-                self.curs.print_separator(idx)
-            else:
-                self.curs.print_pingtarget(target, idx)
-
-        # main loop
-        while True:
-            self.curs.update_info(self.targets)
-
-            increment_global_step()
-            self.curs.erase_title()
-            self.curs.print_title(with_wheel = True)
-
-            self.curs.erase_reference()
-            self.curs.print_reference()
-
-            if BLINK_ARROW:
-                for idx, target in enumerate(self.targets, 1):
-                    if target == SEPARATOR:
-                        continue
-
-                    self.curs.print_arrow(idx)
-
-            start = time.time()
-            asyncio.run(self.async_ping_targets())
-
-            elapsed = time.time() - start
-            if elapsed < 1.0:
-                time.sleep(1 - elapsed)
-
-            for idx, target in enumerate(self.targets, 1):
-                if target == SEPARATOR:
-                    continue
-
-                self.curs.erase_pingtarget(idx)
-                self.curs.print_pingtarget(target, idx)
-                if BLINK_ARROW:
-                    self.curs.erase_arrow(idx)
-
-            increment_global_step()
-            self.curs.erase_title()
-            self.curs.print_title(with_wheel = True)
-            time.sleep(PING_ALLTARGET_INTERVAL)
 
 
     def refresh_window(self, signum, frame):
@@ -838,6 +526,7 @@ class Deadman:
         self.addtargets()
         self.curs.refresh()
 
+
     def gettargetlist(self, configfile):
 
         targetlist = []
@@ -856,21 +545,8 @@ class Deadman:
             ss = line.split(' ')
             name = ss.pop(0)
             addr = ss.pop(0) if ss else None
-            source = None
-            tcp = None
-            relay = {}
-            for s in ss:
-                key, value = s.split("=")
-                if key in ("os", "relay", "via", "community",
-                           "netns", "user", "key", "method",
-                           "username", "password", "verify"):
-                    relay[key] = value
-                elif key == "source":
-                    source = value
-                elif key == "tcp":
-                    tcp = value
 
-            targetlist.append([name, addr, relay, source, tcp])
+            targetlist.append([name, addr])
 
         configfile.close()
 
@@ -895,7 +571,8 @@ def whichipversion(addr):
     return False
 
 
-def pingcmd(osname, ipv):
+
+def pingcmd(ipv):
 
     """
     XXX: add new osname (uname -s) to support new OS.
@@ -903,19 +580,19 @@ def pingcmd(osname, ipv):
     Timeout is controlled by asyncio.wait_for.
     As a result, there is no difference :0 I need cleanup.
     """
-    if (osname == "Linux" or
-        osname == "Darwin" or
-        osname == "FreeBSD"):
-        if ipv == 4: return ["ping", "-c", "1"]
-        if ipv == 6:
-            if which('ping6'): return ["ping6", "-c", "1"]
-            else: return ["ping", "-c", "1"]
+    if ipv == 4:
+        return ["ping", "-c", "1"]
+    if ipv == 6:
+        if which('ping6'):
+            return ["ping6", "-c", "1"]
+        else:
+            return ["ping", "-c", "1"]
 
     return None
 
 
 
-def main(stdscr, configfile, async_mode):
+def main(stdscr, configfile):
 
     curses.start_color()
     curses.use_default_colors()
@@ -928,10 +605,7 @@ def main(stdscr, configfile, async_mode):
     """
 
     deadman = Deadman(stdscr, configfile)
-    if async_mode:
-        deadman.async_main()
-    else:
-        deadman.main()
+    deadman.main()
 
     return
 
@@ -939,24 +613,23 @@ def main(stdscr, configfile, async_mode):
 
 if __name__ == '__main__':
 
-    if not pingcmd(OSNAME, 4):
+    if not pingcmd(4):
         print("%s is not supported" % OSNAME)
         sys.exit(0)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--scale", type = int, default = 10, help = "scale of ping RTT bar gap, default 10 (ms)")
-    parser.add_argument("-a", "--async-mode", action = "store_true", help = "send ping asynchronously")
-    parser.add_argument("-b", "--blink-arrow", action = "store_true", help = "blink arrow in async mode")
     parser.add_argument("-l", "--logging", default = None, dest = "logdir", help = "directory for log files")
     parser.add_argument("configfile", type = argparse.FileType("r"), help = "config file for deadman")
 
     args = parser.parse_args()
+
     RTT_SCALE = args.scale
-    BLINK_ARROW = args.blink_arrow
+
     LOGDIR = args.logdir
 
-    try:
-        curses.wrapper(main, args.configfile, args.async_mode)
 
+    try:
+        curses.wrapper(main, args.configfile)
     except KeyboardInterrupt:
         sys.exit(0)

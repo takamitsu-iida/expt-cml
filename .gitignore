@@ -1,6 +1,8 @@
 # githubのpythonテンプレート
 # https://github.com/github/gitignore
 
+deadman.conf
+
 *.tgz
 cisco*.sh
 

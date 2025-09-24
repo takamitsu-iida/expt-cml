@@ -99,6 +99,7 @@ class PingTarget:
         self.ttl = 0
         self.result = []
 
+
     async def update(self):
         res = await self.ping.async_send()
         self.snt += 1
@@ -118,6 +119,7 @@ class PingTarget:
         # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
         while len(self.result) > 100:
             self.result.pop()
+
 
     def get_result_char(self, res: PingResult) -> str:
         if not res.success:
@@ -221,6 +223,18 @@ def init_cml() -> ClientLibrary:
             print(interface, interface.readpackets, interface.writepackets)
 
 
+async def get_interface_packets(interface):
+    # interface.readpackets の取得を非同期化
+    return await asyncio.to_thread(lambda: interface.readpackets)
+
+async def main():
+    # ... lab, node の作成・起動処理 ...
+    tasks = []
+    for node in lab.nodes():
+        for interface in node.interfaces():
+            tasks.append(get_interface_packets(interface))
+    results = await asyncio.gather(*tasks)
+    print(results)
 
 
 

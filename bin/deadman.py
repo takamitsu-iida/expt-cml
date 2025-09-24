@@ -2,7 +2,7 @@
 
 #
 # Yet Another Deadman
-# Deadman(https://github.com/upa/deadman)をシンプルに再実装ものです
+# Deadman(https://github.com/upa/deadman)をシンプルに再実装したものです
 # 余分な機能を削除し、基本的な機能に焦点を当てています
 #
 
@@ -136,6 +136,7 @@ class Ping:
         if not self.ipversion:
             raise RuntimeError("invalid IP address '%s'" % self.addr)
         self.pingcmd = pingcmd(self.ipversion)
+
 
     async def async_send(self) -> PingResult:
         cmd = self.pingcmd + [self.addr]

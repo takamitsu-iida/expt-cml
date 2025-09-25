@@ -16,7 +16,17 @@ try:
     #
     # sudo apt update
     # sudo apt install libncurses5-dev libncursesw5-dev
-    # and then, install Python again if necessary
+    #
+    # これで動かなければPythonの再インストールが必要です。
+    #
+    # pyenvでPythonをインストールする場合、モジュール不足でエラーが大量にでるかもしれません。
+    # おおむね次のようなモジュールを入れておけばPythonのインストールは大丈夫だと思います。
+    # sudo apt update
+    # sudo apt install -y make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev
+    #
+    # cd ~/.pyenv
+    # git pull
+    # pyenv install 3.13.7
     #
     import curses
 except ModuleNotFoundError:
@@ -25,7 +35,7 @@ except ModuleNotFoundError:
     logging.error("For example:")
     logging.error("  sudo apt update")
     logging.error("  sudo apt install libncurses5-dev libncursesw5-dev")
-    logging.error("  and then, install Python again if necessary")
+    logging.error("  and then, install Python again")
     sys.exit(-1)
 
 

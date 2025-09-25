@@ -9,21 +9,24 @@ import logging
 import sys
 import time
 
-
-
 try:
     # WindowsのWVSでUbuntuを実行している場合はcursesは動作しないかもしれません
-    #
     # dpkg -l | grep ncurses
+    # でncursesがインストールされているか確認して、もし入っていなければ以下を実行してください
     #
     # sudo apt update
     # sudo apt install libncurses5-dev libncursesw5-dev
+    # and then, install Python again if necessary
+    #
     import curses
 except ModuleNotFoundError:
     logging.error("curses not found")
+    logging.error("Please install the required packages.")
+    logging.error("For example:")
+    logging.error("  sudo apt update")
+    logging.error("  sudo apt install libncurses5-dev libncursesw5-dev")
+    logging.error("  and then, install Python again if necessary")
     sys.exit(-1)
-
-
 
 
 #

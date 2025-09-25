@@ -219,27 +219,27 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
     # 履歴表示の最大幅を計算
     max_result_len = max(0, x - RESULT_START - 1)
 
-    for i, t in enumerate(targets, 3):
-        if t == SEPARATOR:
+    for index, target in enumerate(targets, start=3):
+        if target == SEPARATOR:
             # セパレータ表示
-            stdscr.addstr(i, HOSTNAME_START, SEPARATOR * (x - HOSTNAME_START))
+            stdscr.addstr(index, HOSTNAME_START, SEPARATOR * (x - HOSTNAME_START))
             continue
 
         # 矢印表示
-        if arrow_idx is not None and i == arrow_idx:
-            stdscr.addstr(i, 0, " > ", curses.A_BOLD)
+        if arrow_idx is not None and index == arrow_idx:
+            stdscr.addstr(index, 0, " > ", curses.A_BOLD)
 
         # ホスト名とアドレスの切り詰め
-        name_disp = t.name[:MAX_HOSTNAME_LENGTH]
-        addr_disp = t.addr[:MAX_ADDRESS_LENGTH]
+        name_disp = target.name[:MAX_HOSTNAME_LENGTH]
+        addr_disp = target.addr[:MAX_ADDRESS_LENGTH]
 
         # 各ターゲットの情報表示
-        values_str = f"{int(t.lossrate):3d}% {int(t.rtt):4d} {int(t.avg):4d} {t.snt:4d}  "
-        stdscr.addstr(i, HOSTNAME_START, f"{name_disp:15} {addr_disp:20} {values_str}", curses.color_pair(UP_COLOR if t.state else DOWN_COLOR))
+        values_str = f"{int(target.lossrate):3d}% {int(target.rtt):4d} {int(target.avg):4d} {target.snt:4d}  "
+        stdscr.addstr(index, HOSTNAME_START, f"{name_disp:15} {addr_disp:20} {values_str}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
 
         # 履歴表示
-        for n, c in enumerate(t.result[:max_result_len]):
-            stdscr.addstr(i, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
+        for n, c in enumerate(target.result[:max_result_len]):
+            stdscr.addstr(index, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
 
     stdscr.refresh()
 
@@ -253,13 +253,12 @@ async def main(stdscr: curses.window, targets: list[PingTarget]) -> None:
     curses.curs_set(0)  # カーソルを非表示にする
 
     while True:
-        for idx, t in enumerate(targets):
-            draw_screen(stdscr, targets, arrow_idx=idx+3)
-            if t != SEPARATOR:
-                await t.update()
-            await asyncio.sleep(PING_INTERVAL)
-        draw_screen(stdscr, targets)
-        await asyncio.sleep(PING_INTERVAL)
+        for index, target in enumerate(targets):
+            draw_screen(stdscr, targets, arrow_idx=index+3)
+            if target != SEPARATOR:
+                await target.update()
+                await asyncio.sleep(PING_INTERVAL)
+
 
 
 def run_curses(stdscr: curses.window, configfile: str) -> None:

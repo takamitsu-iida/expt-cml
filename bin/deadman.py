@@ -30,7 +30,7 @@ except ModuleNotFoundError:
 TITLE_PROGNAME: str = "Yet Another Deadman"
 TITLE_VERSION: str = "[2025.09.24]"
 
-PING_INTERVAL: float = 0.05
+PING_INTERVAL: float = 0.1
 
 RTT_SCALE: int = 10
 
@@ -262,11 +262,11 @@ async def main(stdscr: curses.window, targets: list[PingTarget]) -> None:
 
     while True:
         for index, target in enumerate(targets):
-            draw_screen(stdscr, targets, arrow_idx=index+3)
             if target != SEPARATOR:
                 await target.update()
+                draw_screen(stdscr, targets, arrow_idx=index+3)
                 await asyncio.sleep(PING_INTERVAL)
-
+        await asyncio.sleep(1)
 
 
 def run_curses(stdscr: curses.window, configfile: str) -> None:

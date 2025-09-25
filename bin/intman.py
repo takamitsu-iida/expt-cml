@@ -152,6 +152,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int
 
 
 def main(stdscr: curses.window, client: ClientLibrary) -> None:
+
     curses.start_color()
     curses.use_default_colors()
     curses.init_pair(DEFAULT_COLOR, -1, -1)
@@ -159,16 +160,6 @@ def main(stdscr: curses.window, client: ClientLibrary) -> None:
     curses.init_pair(DOWN_COLOR, curses.COLOR_RED, -1)
     curses.curs_set(0)  # カーソルを非表示にする
 
-    lab = client.find_labs_by_title(LAB_NAME)
-    if not lab:
-        stdscr.addstr(0, 0, f"Error: ラボ '{LAB_NAME}' が見つかりません", curses.A_BOLD | curses.color_pair(DOWN_COLOR))
-        stdscr.refresh()
-        stdscr.getch()
-        return
-
-    lab = lab[0]
-
-    targets = [NodeTarget(node) for node in lab.nodes()]
 
     while True:
         for index, target in enumerate(targets):
@@ -180,7 +171,6 @@ def main(stdscr: curses.window, client: ClientLibrary) -> None:
 def run_curses(stdscr: curses.window, client: ClientLibrary) -> None:
 
     try:
-        # asyncio.run(main(stdscr, client))
         main(stdscr, client)
     except KeyboardInterrupt:
         pass
@@ -203,4 +193,34 @@ if __name__ == "__main__":
     # 接続を待機する
     client.is_system_ready(wait=True)
 
-    curses.wrapper(lambda stdscr: run_curses(stdscr, client))
+    lab = client.find_labs_by_title(LAB_NAME)
+
+    if not lab:
+        logging.error(f"Error: ラボ '{LAB_NAME}' が見つかりません")
+        sys.exit(-1)
+
+    lab = lab[0]
+
+    targets = [NodeTarget(node) for node in lab.nodes()]
+
+    if not targets:
+        logging.error(f"Error: ノードがありません")
+        sys.exit(-1)
+
+    print(targets)
+
+    while True:
+        for target in targets:
+            print(target.node.label)
+            for intf in target.node.interfaces():
+                if intf.label.startswith('Loop'):
+                    continue
+                print(intf.label, intf.readpackets, intf.readbytes)
+        print("")
+        time.sleep(1.0)
+
+
+
+
+
+    # curses.wrapper(lambda stdscr: run_curses(stdscr, client))

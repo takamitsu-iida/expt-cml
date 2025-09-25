@@ -3,12 +3,24 @@
 #
 # 標準ライブラリのインポート
 #
+import argparse
+# import asyncio
 import logging
 import sys
-import curses
-# import asyncio
 import time
-import argparse
+
+
+
+try:
+    # WindowsのWVSでUbuntuを実行している場合はcursesは動作しないかもしれません
+    # sudo apt update
+    # sudo apt install libncurses5-dev libncursesw5-dev
+    import curses
+except ModuleNotFoundError:
+    logging.error("curses not found")
+    sys.exit(-1)
+
+
 
 
 #

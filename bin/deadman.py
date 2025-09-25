@@ -9,15 +9,23 @@
 #
 # 標準ライブラリのインポート
 #
-
-import curses
-import socket
-import re
-import asyncio
 import argparse
-
+import asyncio
+import logging
+import re
+import socket
+import sys
 from subprocess import DEVNULL, PIPE
 from shutil import which
+
+try:
+    # WindowsのWVSでUbuntuを実行している場合はcursesは動作しないかもしれません
+    # sudo apt update
+    # sudo apt install libncurses5-dev libncursesw5-dev
+    import curses
+except ModuleNotFoundError:
+    logging.error("curses not found")
+    sys.exit(-1)
 
 TITLE_PROGNAME: str = "Yet Another Deadman"
 TITLE_VERSION: str = "[2025.09.24]"

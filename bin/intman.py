@@ -13,6 +13,9 @@ import time
 
 try:
     # WindowsのWVSでUbuntuを実行している場合はcursesは動作しないかもしれません
+    #
+    # dpkg -l | grep ncurses
+    #
     # sudo apt update
     # sudo apt install libncurses5-dev libncursesw5-dev
     import curses

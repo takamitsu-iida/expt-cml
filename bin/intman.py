@@ -6,7 +6,8 @@
 import logging
 import sys
 import curses
-import asyncio
+# import asyncio
+import time
 import argparse
 
 
@@ -68,9 +69,13 @@ class NodeTarget:
         self.node = node
         self.results = []
 
-    async def update(self) -> None:
+        # インターフェイスごとの結果を保存する
+        self.intf_results = []
+
+
+    def update(self) -> None:
         try:
-            infos = await self.getinfo()
+            infos = self.getinfo()
         except Exception as e:
             self.result = "ERR"
             logging.error(f"Error updating node {self.hostname}: {e}")
@@ -82,8 +87,9 @@ class NodeTarget:
             self.results.pop()
 
 
-    async def getinfo(self) -> tuple[str, str, str]:
-        return (self.node.label, self.node.state, self.cpu_usage)
+    def getinfo(self):
+        logging.debug(f"Getting info for node {self.node.cpu_usage}")
+        return self.node.cpu_usage
 
 
 
@@ -117,7 +123,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int
 
 
 
-async def main(stdscr: curses.window, client: ClientLibrary) -> None:
+def main(stdscr: curses.window, client: ClientLibrary) -> None:
     curses.start_color()
     curses.use_default_colors()
     curses.init_pair(DEFAULT_COLOR, -1, -1)
@@ -139,14 +145,15 @@ async def main(stdscr: curses.window, client: ClientLibrary) -> None:
     while True:
         for index, target in enumerate(targets):
             draw_screen(stdscr, targets, arrow_idx=index+3)
-            await target.update()
-            await asyncio.sleep(INTERVAL)
+            target.update()
+            time.sleep(INTERVAL)
 
 
 def run_curses(stdscr: curses.window, client: ClientLibrary) -> None:
 
     try:
-        asyncio.run(main(stdscr, client))
+        # asyncio.run(main(stdscr, client))
+        main(stdscr, client)
     except KeyboardInterrupt:
         pass
 

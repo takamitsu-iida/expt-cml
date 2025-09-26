@@ -53,7 +53,7 @@ from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
 # CMLのラボの名前
 LAB_NAME = "cml_lab1"
 
-INTERVAL: float = 1.0
+NODE_INTERVAL: float = 0.1
 
 DEFAULT_COLOR: int = 1
 UP_COLOR:      int = 2
@@ -88,72 +88,76 @@ INTERFACE_START: int = 19
 MAX_HOSTNAME_LENGTH = HOSTNAME_START - INTERFACE_START - 1
 
 
-
 class NodeTarget:
     def __init__(self, node) -> None:
         self.node = node
+
         self.name = node.label
         self.state = node.state
         self.cpu_usage = node.cpu_usage
 
-        # インターフェイスごとの結果を保存
-        # { 'eth0': [PingResult, PingResult, ...], 'eth1': [...], ... }
+        # インターフェイスごとに結果を保存する辞書型
         self.intf = {}
 
 
     def update(self) -> None:
         try:
+            # ノードの状態を更新する
             self.state = self.node.state
+
+            print(self.state)
+
             self.cpu_usage = self.node.cpu_usage
+
+            # 各インターフェースの情報を更新する
             for intf in self.node.interfaces():
+
+                # Loopbackインターフェースは無視する
                 if intf.label.startswith('Loop'):
                     continue
 
-                # このインタフェース名をキーとした辞書型を取り出す
+                # このインタフェース名に対応した辞書型を取り出す
                 intf_data = self.intf.setdefault(intf.label, {})
 
-                # 保存されている前回の値を取り出す
-                last_date = intf_data.get('date', None)
-                last_readpackets = intf_data.get('readpackets', None)
-                last_writepackets = intf_data.get('writepackets', None)
+                # 前回の値を取り出す
+                before_date = intf_data.get('date', None)
+                before_readpackets = intf_data.get('readpackets', None)
+                before_writepackets = intf_data.get('writepackets', None)
 
                 # 現在の値を取り出す
                 now_date = time.time()
                 now_readpackets = intf.readpackets
                 now_writepackets = intf.writepackets
 
-                # 取り出した値を保存する
+                # 現在の値を保存する
                 intf_data['date'] = now_date
                 intf_data['readpackets'] = now_readpackets
                 intf_data['writepackets'] = now_writepackets
 
-                if not last_date:
-                    # 初回起動時は値を保存するだけでよい
+                # 初回起動時は値を保存するだけでよい
+                if not before_date:
                     continue
 
-                pps = ((now_readpackets - last_readpackets) + (now_writepackets - last_writepackets)) / (now_date - last_date)
+                # Packet Per Secondを計算する
+                pps = ((now_readpackets - before_readpackets) + (now_writepackets - before_writepackets)) / (now_date - before_date)
 
-                # インタフェースの状態を取り出す
+                # インタフェースの状態を調べる
                 now_state = intf.state  # 'STARTED' or 'STOPPED'
 
-                c = ' '
-                if now_state == 'STOPPED':
-                    c = 'X'
-                else:
-                    c = self.get_result_char(pps)
+                # 取り出した値をもとに表示する文字を決定する
+                c = 'X' if now_state == 'STOPPED' else self.get_result_char(pps)
 
+                # 文字を保存する
                 results = intf_data.setdefault('results', [])
                 results.insert(0, c)
 
-                # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
+                # 過去100件のみ保存（実際に表示されるのは画面の幅による）
                 while len(results) > 100:
                     results.pop()
 
-
         except Exception as e:
-            self.result = "ERR"
-            logging.error(f"Error updating node {self.hostname}: {e}")
-
+            self.state = "ERROR"
+            logging.error(f"Error updating node {self.name}: {e}")
 
 
     def get_result_char(self, pps: float) -> str:
@@ -184,43 +188,52 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int
     # 履歴表示の最大幅を計算
     max_result_len = max(0, x - RESULT_START - 1)
 
-    for index, target in enumerate(targets, start=3):
+    # 3行目から表示開始
+    row = 3
+    for target in targets:
 
         # 矢印表示
-        if arrow_idx is not None and index == arrow_idx:
-            stdscr.addstr(index, 0, " > ", curses.A_BOLD)
+        if arrow_idx is not None and row == arrow_idx:
+            stdscr.addstr(row, 0, " > ", curses.A_BOLD)
 
-        # ホスト名とアドレスの切り詰め
+        # ノード名を切り詰め
         name_disp = target.name[:MAX_HOSTNAME_LENGTH]
 
-        # 各ターゲットの情報表示
-        stdscr.addstr(index, HOSTNAME_START, f"{name_disp:15}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
+        # ノードの情報を表示
+        stdscr.addstr(row, HOSTNAME_START, f"{name_disp:15} {target.cpu_usage}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
 
-        # 履歴表示
-        for n, c in enumerate(target.result[:max_result_len]):
-            stdscr.addstr(index, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
+        # 各インターフェースの情報を表示
+        for intf_label, intf_data in target.intf.items():
+            intf_results = intf_data.get('results', [])
+            if not intf_results:
+                continue
+
+            stdscr.addstr(row, INTERFACE_START, f"{intf_label:20}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
+
+            # インターフェースの実行結果を取り出す
+            # datas = self.intf_results.get(intf.label, None)
+            datas = intf_results
+
+            # 履歴表示
+            for n, c in enumerate(datas[:max_result_len]):
+                stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
+
+            row += 1  # 次の行へ
 
     stdscr.refresh()
 
 
 
-def main(stdscr: curses.window, lab) -> None:
-
+def main(stdscr: curses.window, targets: list[NodeTarget]) -> None:
     while True:
         for index, target in enumerate(targets):
-            #draw_screen(stdscr, targets, arrow_idx=index+3)
             target.update()
-
-            #print(f"{target.name} {target.cpu_usage}")
-            gig1 = target.intf.get('GigabitEthernet1', {})
-            results = gig1.get('results', [])
-            print(results)
+            draw_screen(stdscr, targets, arrow_idx=index+3)
+            time.sleep(NODE_INTERVAL)
+        time.sleep(1)
 
 
-            time.sleep(INTERVAL)
-
-
-def run_curses(stdscr: curses.window, lab) -> None:
+def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
     curses.start_color()
     curses.use_default_colors()
     curses.init_pair(DEFAULT_COLOR, -1, -1)
@@ -229,7 +242,7 @@ def run_curses(stdscr: curses.window, lab) -> None:
     curses.curs_set(0)  # カーソルを非表示にする
 
     try:
-        main(stdscr, lab)
+        main(stdscr, targets)
     except KeyboardInterrupt:
         pass
 
@@ -251,19 +264,18 @@ if __name__ == "__main__":
     # 接続を待機する
     client.is_system_ready(wait=True)
 
+    # 対象のラボを探す
     lab = client.find_labs_by_title(LAB_NAME)
-
     if not lab:
         logging.error(f"Error: ラボ '{LAB_NAME}' が見つかりません")
         sys.exit(-1)
-
     lab = lab[0]
 
+    # 対象ノードを探す
     targets = [NodeTarget(node) for node in lab.nodes()]
-
     if not targets:
         logging.error(f"Error: ターゲットノードがありません")
         sys.exit(-1)
 
-    main(None, None)
-    # curses.wrapper(lambda stdscr: run_curses(stdscr, lab))
+    # cursesアプリケーションとして実行
+    curses.wrapper(lambda stdscr: run_curses(stdscr, targets))

@@ -109,12 +109,13 @@ class NodeTarget:
                 if intf.label.startswith('Loop'):
                     continue
 
-                datas = self.intf_results.setdefault(intf.label, {})
+                # このインタフェース名の辞書型を取り出す
+                intf_data = self.intf_results.setdefault(intf.label, {})
 
                 # 前回の値を取り出す
-                last_date = datas.get('date')
-                last_readpackets = datas.get('readpackets', None)
-                last_writepackets = datas.get('writepackets', None)
+                last_date = intf_data.get('date', None)
+                last_readpackets = intf_data.get('readpackets', None)
+                last_writepackets = intf_data.get('writepackets', None)
 
                 # 現在の値を取り出す
                 now = time.time()
@@ -122,9 +123,9 @@ class NodeTarget:
                 writepackets = intf.writepackets
 
                 # 値を更新
-                datas['date'] = now
-                datas['readpackets'] = readpackets
-                datas['writepackets'] = writepackets
+                intf_data['date'] = now
+                intf_data['readpackets'] = readpackets
+                intf_data['writepackets'] = writepackets
 
                 if not last_date:
                     # 初回起動時は値を保存するだけでよい
@@ -133,7 +134,7 @@ class NodeTarget:
                 diff_time = time.time() - last_date
                 pps = ((readpackets - last_readpackets) + (writepackets - last_writepackets)) / diff_time
 
-                results = datas.get('results', [])
+                results = intf_data.get('results', [])
                 results.push(pps)
 
                 # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による

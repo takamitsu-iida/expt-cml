@@ -98,10 +98,7 @@ class IntfStat:
 
 
 def get_past_intfstat(current_time: float, stat_list: list, diff_seconds: float = 3.0):
-    if not stat_list:
-        return None
-
-    candidate = stat_list[0]
+    candidate = None
     for stat in stat_list:
         if current_time - stat.time < diff_seconds:
             candidate = stat
@@ -118,8 +115,14 @@ class NodeTarget:
         self.state = node.state
         self.cpu_usage = node.cpu_usage
 
-        # インターフェイスごとに結果を保存する辞書型
+        # インターフェイスごとに結果を保存する辞書型を初期化する
         self.intf = {}
+
+        for i in node.interfaces():
+            self.intf[i.label] = {
+                'stat_list': [],
+                'result_list': []
+            }
 
 
     def update(self) -> None:
@@ -136,10 +139,19 @@ class NodeTarget:
                     continue
 
                 # このインタフェース名に対応した辞書型を取り出す
-                intf_data = self.intf.setdefault(intf.label, {})
+                intf_data = self.intf.get(intf.label, None)
+                if intf_data is None:
+                    continue
 
                 # 過去のデータが入ったリストを取り出す
-                stat_list = intf_data.setdefault('stat_list', [])
+                stat_list = intf_data.get('stat_list', None)
+                if stat_list is None:
+                    continue
+
+                # 結果の履歴を保存するリストを取り出す
+                result_list = intf_data.get('result_list', None)
+                if result_list is None:
+                    continue
 
                 # 現在の値を取り出してIntfStatオブジェクトにする
                 now = time.time()
@@ -152,28 +164,30 @@ class NodeTarget:
                 while len(stat_list) > 100:
                     stat_list.pop()
 
-                # 履歴文字を保存するリスト
-                results = intf_data.setdefault('results', [])
-
                 # Packet Per Secondを計算する
 
                 # stat_listを探して古いデータを取得する
                 past_stat = get_past_intfstat(now, stat_list, diff_seconds=5.0)
                 if past_stat is None:
-                    results.insert(0, '.')
+                    result_list.insert(0, '.')
                 else:
-                    pps = ((stat.readpackets - past_stat.readpackets) + (stat.writepackets - past_stat.writepackets)) / (now - past_stat.time)
-                    # 取り出した値をもとに表示する文字を決定する
-                    c = 'X' if stat.state == 'STOPPED' else self.get_result_char(pps)
-                    results.insert(0, c)
+                    diff_time = now - past_stat.time
+                    if diff_time < 0.1:
+                        result_list.insert(0, '.')
+                    else:
+                        pps = ((stat.readpackets - past_stat.readpackets) + (stat.writepackets - past_stat.writepackets)) / (now - past_stat.time)
+                        # 取り出した値をもとに表示する文字を決定する
+                        c = 'X' if stat.state == 'STOPPED' else self.get_result_char(pps)
+                        result_list.insert(0, c)
 
                 # 過去100件のみ保存（実際に表示されるのは画面の幅による）
-                while len(results) > 100:
-                    results.pop()
+                while len(result_list) > 100:
+                    result_list.pop()
 
         except Exception as e:
             self.state = "ERROR"
             logging.error(f"Error updating node {self.name}: {e}")
+            raise e
 
 
     def get_result_char(self, pps: float) -> str:
@@ -219,7 +233,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
         name_disp = target.name[:MAX_HOSTNAME_LENGTH]
 
         # ノードの情報を表示
-        stdscr.addstr(row, HOSTNAME_START, f"{name_disp} {target.cpu_usage}%", curses.color_pair(UP_COLOR if target.state == "BOOTED" else DOWN_COLOR))
+        stdscr.addstr(row, HOSTNAME_START, f"{name_disp} {target.state} {target.cpu_usage}%", curses.color_pair(UP_COLOR if target.state == "BOOTED" else DOWN_COLOR))
 
         # 次の行へ
         row += 1
@@ -229,15 +243,15 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
 
             # 各インターフェースの情報を表示
             for intf_name, intf_data in target.intf.items():
-                intf_results = intf_data.get('results', [])
-                if not intf_results:
+                result_list = intf_data.get('result_list', None)
+                if not result_list:
                     continue
 
                 intf_name_disp = intf_name[:MAX_INTERFACE_NAME_LENGTH]
                 stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:20}", curses.color_pair(DOWN_COLOR if intf_data.get('state') == 'STOPPED' else UP_COLOR))
 
                 # 履歴表示
-                for n, c in enumerate(intf_results[:max_result_len]):
+                for n, c in enumerate(result_list[:max_result_len]):
                     stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
 
                 # 次の行へ

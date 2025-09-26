@@ -2,7 +2,7 @@
 
 #
 # Yet Another Deadman
-# Deadman(https://github.com/upa/deadman)をシンプルに再実装したものです
+# deadman(https://github.com/upa/deadman)をシンプルに再実装したものです
 # 余分な機能を削除し、基本的な機能に焦点を当てています
 #
 
@@ -21,8 +21,9 @@ from shutil import which
 
 try:
     # WindowsのWVSでUbuntuを実行している場合はcursesは動作しないかもしれません
-    # sudo apt update
-    # sudo apt install libncurses5-dev libncursesw5-dev
+    # libncursesをインストールしたあと、Pythonを再インストールしてください
+    #   sudo apt update
+    #   sudo apt install libncurses5-dev libncursesw5-dev
     import curses
 except ModuleNotFoundError:
     logging.error("curses not found")
@@ -219,7 +220,10 @@ def parse_config(filename: str) -> list[PingTarget | str]:
 
 
 def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_idx: int | None = None) -> None:
+    # 画面のクリア
     stdscr.clear()
+
+    # 画面のサイズを取得
     _y, x = stdscr.getmaxyx()
 
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
@@ -255,13 +259,6 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
 
 
 async def main(stdscr: curses.window, targets: list[PingTarget]) -> None:
-    curses.start_color()
-    curses.use_default_colors()
-    curses.init_pair(DEFAULT_COLOR, -1, -1)
-    curses.init_pair(UP_COLOR, curses.COLOR_GREEN, -1)
-    curses.init_pair(DOWN_COLOR, curses.COLOR_RED, -1)
-    curses.curs_set(0)  # カーソルを非表示にする
-
     while True:
         for index, target in enumerate(targets):
             if target != SEPARATOR:
@@ -272,6 +269,13 @@ async def main(stdscr: curses.window, targets: list[PingTarget]) -> None:
 
 
 def run_curses(stdscr: curses.window, targets: list[PingTarget | str]) -> None:
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(DEFAULT_COLOR, -1, -1)
+    curses.init_pair(UP_COLOR, curses.COLOR_GREEN, -1)
+    curses.init_pair(DOWN_COLOR, curses.COLOR_RED, -1)
+    curses.curs_set(0)  # カーソルを非表示にする
+
     try:
         asyncio.run(main(stdscr, targets))
     except (KeyboardInterrupt, RuntimeError):
@@ -292,22 +296,27 @@ if __name__ == "__main__":
         logging.error(f"failed to load config file: {e}")
         sys.exit(-1)
 
+    # cursesアプリケーションとして実行
     curses.wrapper(lambda stdscr: run_curses(stdscr, targets))
 
-    # curses.wrapper()を使うと、終了時に端末の状態が復元され、実行結果が消えてしまう
-    # curses.endwin()を呼ばないように工夫すれば実行結果は残るが、端末の挙動がおかしくなってしまう
-    # 実行結果をテキストとして表示することにする
+    #
+    # Ctrl-Cで終了した後の処理
+    #
 
-    # 画面幅を取得
+    # curses.wrapper()を使うと、終了時に実行結果が消えてしまう
+    # curses.endwin()を呼ばないように工夫すれば実行結果は残るものの、その後の端末の挙動がおかしくなってしまう
+    # 見た目は変わってしまうが、実行結果をテキストとして表示することにする
+
     try:
         width = os.get_terminal_size().columns
     except OSError:
         width = 80  # 取得できない場合のデフォルト値
 
-    # 最後に結果をテキストとして出力
+    print(f"{HEADER_INFO}")
+    print(f"{HEADER_COLS}")
     for index, target in enumerate(targets, start=1):
         if target == SEPARATOR:
-            print("-" * (width - 3))
+            print("   " + "-" * (width - 3))
             continue
         name_disp = target.name[:MAX_HOSTNAME_LENGTH]
         addr_disp = target.addr[:MAX_ADDRESS_LENGTH]
@@ -319,4 +328,4 @@ if __name__ == "__main__":
         # 履歴表示の桁を画面幅に制限
         result_str = "".join(target.result[:max_result_len])
 
-        print(f"{name_disp:15} {addr_disp:20} {values_str} {result_str}")
+        print(f"   {name_disp:15} {addr_disp:20} {values_str} {result_str}")

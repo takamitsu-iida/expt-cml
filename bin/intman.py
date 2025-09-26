@@ -89,6 +89,27 @@ MAX_HOSTNAME_LENGTH = INTERFACE_START - HOSTNAME_START - 1
 MAX_INTERFACE_NAME_LENGTH = RESULT_START - INTERFACE_START - 1
 
 
+class IntfStat:
+    def __init__(self, current_time: float, readpackets: int, writepackets: int, state: str):
+        self.time = current_time
+        self.readpackets = readpackets
+        self.writepackets = writepackets
+        self.state = state  # 'STARTED' or 'STOPPED'
+
+
+def get_past_intfstat(current_time: float, stat_list: list, diff_seconds: float = 3.0):
+    if not stat_list:
+        return None
+
+    candidate = stat_list[0]
+    for stat in stat_list:
+        if current_time - stat.time < diff_seconds:
+            candidate = stat
+        else:
+            break
+    return candidate
+
+
 class NodeTarget:
     def __init__(self, node) -> None:
         self.node = node
@@ -117,43 +138,34 @@ class NodeTarget:
                 # このインタフェース名に対応した辞書型を取り出す
                 intf_data = self.intf.setdefault(intf.label, {})
 
-                # 前回の値を取り出す
-                before_date = intf_data.get('date', None)
-                before_readpackets = intf_data.get('readpackets', None)
-                before_writepackets = intf_data.get('writepackets', None)
+                # 過去のデータが入ったリストを取り出す
+                stat_list = intf_data.setdefault('stat_list', [])
 
-                # 現在の値を取り出す
-                now_date = time.time()
-                now_readpackets = intf.readpackets
-                now_writepackets = intf.writepackets
-                now_state = intf.state  # 'STARTED' or 'STOPPED'
-                stat = {
-                    'date': now_date,
-                    'readpackets': now_readpackets,
-                    'writepackets': now_writepackets,
-                    'state': now_state
-                }
+                # 現在の値を取り出してIntfStatオブジェクトにする
+                now = time.time()
+                stat = IntfStat(now, intf.readpackets, intf.writepackets, intf.state)
 
+                # リストの先頭に挿入
+                stat_list.insert(0, stat)
 
-                # 現在の値を保存する
-                intf_data['date'] = now_date
-                intf_data['readpackets'] = now_readpackets
-                intf_data['writepackets'] = now_writepackets
-                intf_data['state'] = now_state
+                # 最大100件を保存
+                while len(stat_list) > 100:
+                    stat_list.pop()
 
-                # 初回起動時は値を保存するだけでよい
-                if not before_date:
-                    continue
+                # 履歴文字を保存するリスト
+                results = intf_data.setdefault('results', [])
 
                 # Packet Per Secondを計算する
-                pps = ((now_readpackets - before_readpackets) + (now_writepackets - before_writepackets)) / (now_date - before_date)
 
-                # 取り出した値をもとに表示する文字を決定する
-                c = 'X' if now_state == 'STOPPED' else self.get_result_char(pps)
-
-                # 文字を保存する
-                results = intf_data.setdefault('results', [])
-                results.insert(0, c)
+                # stat_listを探して古いデータを取得する
+                past_stat = get_past_intfstat(now, stat_list, diff_seconds=5.0)
+                if past_stat is None:
+                    results.insert(0, '.')
+                else:
+                    pps = ((stat.readpackets - past_stat.readpackets) + (stat.writepackets - past_stat.writepackets)) / (now - past_stat.time)
+                    # 取り出した値をもとに表示する文字を決定する
+                    c = 'X' if stat.state == 'STOPPED' else self.get_result_char(pps)
+                    results.insert(0, c)
 
                 # 過去100件のみ保存（実際に表示されるのは画面の幅による）
                 while len(results) > 100:
@@ -196,7 +208,6 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
     # 履歴表示の最大幅を計算
     max_result_len = max(0, x - RESULT_START - 1)
 
-    # 4行目から表示開始(0開始なので3が4行目)
     row = 3
     for i, target in enumerate(targets):
 

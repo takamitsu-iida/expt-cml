@@ -98,7 +98,7 @@ class NodeTarget:
 
         # インターフェイスごとの結果を保存
         # { 'eth0': [PingResult, PingResult, ...], 'eth1': [...], ... }
-        self.intf_results = {}
+        self.intf = {}
 
 
     def update(self) -> None:
@@ -109,8 +109,8 @@ class NodeTarget:
                 if intf.label.startswith('Loop'):
                     continue
 
-                # このインタフェース名の辞書型を取り出す
-                intf_data = self.intf_results.setdefault(intf.label, {})
+                # このインタフェース名をキーとした辞書型を取り出す
+                intf_data = self.intf.setdefault(intf.label, {})
 
                 # 保存されている前回の値を取り出す
                 last_date = intf_data.get('date', None)
@@ -131,22 +131,47 @@ class NodeTarget:
                     # 初回起動時は値を保存するだけでよい
                     continue
 
-                diff_time = now_date - last_date
-                pps = ((now_readpackets - last_readpackets) + (now_writepackets - last_writepackets)) / diff_time
+                pps = ((now_readpackets - last_readpackets) + (now_writepackets - last_writepackets)) / (now_date - last_date)
+
+                # インタフェースの状態を取り出す
+                now_state = intf.state  # 'STARTED' or 'STOPPED'
+
+                c = ' '
+                if now_state == 'STOPPED':
+                    c = 'X'
+                else:
+                    c = self.get_result_char(pps)
 
                 results = intf_data.setdefault('results', [])
-                results.append(pps)
+                results.insert(0, c)
 
                 # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
                 while len(results) > 100:
                     results.pop()
 
-            print(self.intf_results)
 
         except Exception as e:
             self.result = "ERR"
             logging.error(f"Error updating node {self.hostname}: {e}")
 
+
+
+    def get_result_char(self, pps: float) -> str:
+        if pps < SCALE * 1:
+            return "▁"
+        if pps < SCALE * 2:
+            return "▂"
+        if pps < SCALE * 3:
+            return "▃"
+        if pps < SCALE * 4:
+            return "▄"
+        if pps < SCALE * 5:
+            return "▅"
+        if pps < SCALE * 6:
+            return "▆"
+        if pps < SCALE * 7:
+            return "▇"
+        return "█"
 
 
 def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int | None = None) -> None:
@@ -179,16 +204,23 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int
 
 
 
-def main(stdscr: curses.window, client: ClientLibrary) -> None:
+def main(stdscr: curses.window, lab) -> None:
 
     while True:
         for index, target in enumerate(targets):
-            draw_screen(stdscr, targets, arrow_idx=index+3)
+            #draw_screen(stdscr, targets, arrow_idx=index+3)
             target.update()
+
+            #print(f"{target.name} {target.cpu_usage}")
+            gig1 = target.intf.get('GigabitEthernet1', {})
+            results = gig1.get('results', [])
+            print(results)
+
+
             time.sleep(INTERVAL)
 
 
-def run_curses(stdscr: curses.window, client: ClientLibrary) -> None:
+def run_curses(stdscr: curses.window, lab) -> None:
     curses.start_color()
     curses.use_default_colors()
     curses.init_pair(DEFAULT_COLOR, -1, -1)
@@ -197,7 +229,7 @@ def run_curses(stdscr: curses.window, client: ClientLibrary) -> None:
     curses.curs_set(0)  # カーソルを非表示にする
 
     try:
-        main(stdscr, client)
+        main(stdscr, lab)
     except KeyboardInterrupt:
         pass
 
@@ -208,7 +240,7 @@ if __name__ == "__main__":
     parser.add_argument("configfile", help="config file for intman")
     args = parser.parse_args()
 
-    RTT_SCALE = args.scale
+    SCALE = args.scale
 
     try:
         client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
@@ -230,13 +262,8 @@ if __name__ == "__main__":
     targets = [NodeTarget(node) for node in lab.nodes()]
 
     if not targets:
-        logging.error(f"Error: ノードがありません")
+        logging.error(f"Error: ターゲットノードがありません")
         sys.exit(-1)
 
-    while True:
-        for target in targets:
-            target.update()
-            time.sleep(INTERVAL)
-
-
-    # curses.wrapper(lambda stdscr: run_curses(stdscr, client))
+    main(None, None)
+    # curses.wrapper(lambda stdscr: run_curses(stdscr, lab))

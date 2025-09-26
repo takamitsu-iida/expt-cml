@@ -117,7 +117,6 @@ class NodeTarget:
 
         # インターフェイスごとに結果を保存する辞書型を初期化する
         self.intf = {}
-
         for i in node.interfaces():
             self.intf[i.label] = {
                 'stat_list': [],

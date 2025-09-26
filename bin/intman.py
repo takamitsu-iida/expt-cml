@@ -4,7 +4,6 @@
 # 標準ライブラリのインポート
 #
 import argparse
-# import asyncio
 import logging
 import sys
 import time
@@ -32,7 +31,6 @@ try:
 except ModuleNotFoundError:
     logging.error("curses not found")
     logging.error("Please install the required packages.")
-    logging.error("For example:")
     logging.error("  sudo apt update")
     logging.error("  sudo apt install libncurses5-dev libncursesw5-dev")
     logging.error("  and then, install Python again")
@@ -55,7 +53,7 @@ from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
 # CMLのラボの名前
 LAB_NAME = "cml_lab1"
 
-INTERVAL: float = 0.05
+INTERVAL: float = 1.0
 
 DEFAULT_COLOR: int = 1
 UP_COLOR:      int = 2
@@ -94,29 +92,31 @@ MAX_HOSTNAME_LENGTH = HOSTNAME_START - INTERFACE_START - 1
 class NodeTarget:
     def __init__(self, node) -> None:
         self.node = node
-        self.results = []
+        self.name = node.label
+        self.state = node.state
+        self.cpu_usage = node.cpu_usage
 
-        # インターフェイスごとの結果を保存する
+        # インターフェイスごとの結果を保存
+        # { 'eth0': [PingResult, PingResult, ...], 'eth1': [...], ... }
         self.intf_results = []
 
 
     def update(self) -> None:
         try:
-            infos = self.getinfo()
+            self.state = self.node.state
+            self.cpu_usage = self.node.cpu_usage
+            for intf in self.node.interfaces():
+                if intf.label.startswith('Loop'):
+                    continue
+                logging.debug(f"Interface {intf.label}: RX {intf.readpackets} TX {intf.writepackets}")
+
+                # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
+                # while len(self.intf_results) > 100:
+                #     self.intf_results.pop()
+
         except Exception as e:
             self.result = "ERR"
             logging.error(f"Error updating node {self.hostname}: {e}")
-
-        self.results.append("◆")
-
-        # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
-        while len(self.results) > 100:
-            self.results.pop()
-
-
-    def getinfo(self):
-        logging.debug(f"Getting info for node {self.node.cpu_usage}")
-        return self.node.cpu_usage
 
 
 
@@ -204,20 +204,11 @@ if __name__ == "__main__":
         logging.error(f"Error: ノードがありません")
         sys.exit(-1)
 
-    print(targets)
 
     while True:
         for target in targets:
-            print(target.node.label)
-            for intf in target.node.interfaces():
-                if intf.label.startswith('Loop'):
-                    continue
-                print(intf.label, intf.readpackets, intf.readbytes)
-        print("")
-        time.sleep(1.0)
-
-
-
+            target.update()
+            time.sleep(INTERVAL)
 
 
     # curses.wrapper(lambda stdscr: run_curses(stdscr, client))

@@ -109,10 +109,7 @@ class NodeTarget:
                 if intf.label.startswith('Loop'):
                     continue
 
-                datas = self.intf_results.get(intf.label, None)
-                if datas is None:
-                    datas = {}
-                    self.intf_results[intf.label] = datas
+                datas = self.intf_results.setdefault(intf.label, {})
 
                 # 前回の値を取り出す
                 last_date = datas.get('date')

@@ -98,7 +98,7 @@ class NodeTarget:
 
         # インターフェイスごとの結果を保存
         # { 'eth0': [PingResult, PingResult, ...], 'eth1': [...], ... }
-        self.intf_results = []
+        self.intf_results = {}
 
 
     def update(self) -> None:
@@ -108,11 +108,42 @@ class NodeTarget:
             for intf in self.node.interfaces():
                 if intf.label.startswith('Loop'):
                     continue
-                logging.debug(f"Interface {intf.label}: RX {intf.readpackets} TX {intf.writepackets}")
+
+                datas = self.intf_results.get(intf.label, None)
+                if datas is None:
+                    datas = {}
+                    self.intf_results[intf.label] = datas
+
+                # 前回の値を取り出す
+                last_date = datas.get('date')
+                last_readpackets = datas.get('readpackets', None)
+                last_writepackets = datas.get('writepackets', None)
+
+                # 現在の値を取り出す
+                now = time.time()
+                readpackets = intf.readpackets
+                writepackets = intf.writepackets
+
+                # 値を更新
+                datas['date'] = now
+                datas['readpackets'] = readpackets
+                datas['writepackets'] = writepackets
+
+                if not last_date:
+                    # 初回起動時は値を保存するだけでよい
+                    continue
+
+                diff_time = time.time() - last_date
+                pps = ((readpackets - last_readpackets) + (writepackets - last_writepackets)) / diff_time
+
+                results = datas.get('results', [])
+                results.push(pps)
 
                 # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
-                # while len(self.intf_results) > 100:
-                #     self.intf_results.pop()
+                while len(results) > 100:
+                    results.pop()
+
+            print(self.intf_results)
 
         except Exception as e:
             self.result = "ERR"
@@ -203,7 +234,6 @@ if __name__ == "__main__":
     if not targets:
         logging.error(f"Error: ノードがありません")
         sys.exit(-1)
-
 
     while True:
         for target in targets:

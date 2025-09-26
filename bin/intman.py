@@ -178,7 +178,7 @@ class NodeTarget:
         return "█"
 
 
-def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int | None = None) -> None:
+def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | None = None) -> None:
     stdscr.clear()
     _y, x = stdscr.getmaxyx()
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
@@ -190,10 +190,10 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int
 
     # 3行目から表示開始
     row = 3
-    for target in targets:
+    for i, target in enumerate(targets):
 
-        # 矢印表示
-        if arrow_idx is not None and row == arrow_idx:
+        # 対象となるターゲットには矢印を表示する
+        if index is not None and i == index:
             stdscr.addstr(row, 0, " > ", curses.A_BOLD)
 
         # ノード名を切り詰め
@@ -201,6 +201,9 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int
 
         # ノードの情報を表示
         stdscr.addstr(row, HOSTNAME_START, f"{name_disp:15} {target.cpu_usage}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
+
+        # 次の行へ
+        row += 1
 
         # 各インターフェースの情報を表示
         for intf_label, intf_data in target.intf.items():
@@ -218,7 +221,8 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int
             for n, c in enumerate(datas[:max_result_len]):
                 stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
 
-            row += 1  # 次の行へ
+            # 次の行へ
+            row += 1
 
     stdscr.refresh()
 
@@ -228,7 +232,7 @@ def main(stdscr: curses.window, targets: list[NodeTarget]) -> None:
     while True:
         for index, target in enumerate(targets):
             target.update()
-            draw_screen(stdscr, targets, arrow_idx=index+3)
+            draw_screen(stdscr, targets, index=index)
             time.sleep(NODE_INTERVAL)
         time.sleep(1)
 
@@ -279,3 +283,5 @@ if __name__ == "__main__":
 
     # cursesアプリケーションとして実行
     curses.wrapper(lambda stdscr: run_curses(stdscr, targets))
+
+    print(targets)

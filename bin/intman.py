@@ -38,7 +38,6 @@ except ModuleNotFoundError:
     logging.error("  and then, install Python again")
     sys.exit(-1)
 
-
 #
 # 外部ライブラリのインポート
 #
@@ -153,14 +152,6 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], arrow_idx: int
 
 def main(stdscr: curses.window, client: ClientLibrary) -> None:
 
-    curses.start_color()
-    curses.use_default_colors()
-    curses.init_pair(DEFAULT_COLOR, -1, -1)
-    curses.init_pair(UP_COLOR, curses.COLOR_GREEN, -1)
-    curses.init_pair(DOWN_COLOR, curses.COLOR_RED, -1)
-    curses.curs_set(0)  # カーソルを非表示にする
-
-
     while True:
         for index, target in enumerate(targets):
             draw_screen(stdscr, targets, arrow_idx=index+3)
@@ -169,6 +160,12 @@ def main(stdscr: curses.window, client: ClientLibrary) -> None:
 
 
 def run_curses(stdscr: curses.window, client: ClientLibrary) -> None:
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(DEFAULT_COLOR, -1, -1)
+    curses.init_pair(UP_COLOR, curses.COLOR_GREEN, -1)
+    curses.init_pair(DOWN_COLOR, curses.COLOR_RED, -1)
+    curses.curs_set(0)  # カーソルを非表示にする
 
     try:
         main(stdscr, client)
@@ -179,7 +176,7 @@ def run_curses(stdscr: curses.window, client: ClientLibrary) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--scale", type=int, default=10, help="scale of ping RTT bar gap, default 10 (ms)")
-    parser.add_argument("configfile", help="config file for deadman")
+    parser.add_argument("configfile", help="config file for intman")
     args = parser.parse_args()
 
     RTT_SCALE = args.scale

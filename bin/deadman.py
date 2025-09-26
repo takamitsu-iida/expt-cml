@@ -12,6 +12,7 @@
 import argparse
 import asyncio
 import logging
+import os
 import re
 import socket
 import sys
@@ -220,6 +221,7 @@ def parse_config(filename: str) -> list[PingTarget | str]:
 def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_idx: int | None = None) -> None:
     stdscr.clear()
     _y, x = stdscr.getmaxyx()
+
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
     stdscr.addstr(1, 0, f"{HEADER_INFO}")
     stdscr.addstr(2, 0, f"{HEADER_COLS}")
@@ -269,19 +271,10 @@ async def main(stdscr: curses.window, targets: list[PingTarget]) -> None:
         await asyncio.sleep(1)
 
 
-def run_curses(stdscr: curses.window, configfile: str) -> None:
-    try:
-        targets = parse_config(configfile)
-    except Exception as e:
-        stdscr.clear()
-        stdscr.addstr(0, 0, f"Error: ターゲットの読み込みに失敗しました\n{e}", curses.A_BOLD | curses.color_pair(DOWN_COLOR))
-        stdscr.refresh()
-        stdscr.getch()
-        return
-
+def run_curses(stdscr: curses.window, targets: list[PingTarget | str]) -> None:
     try:
         asyncio.run(main(stdscr, targets))
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, RuntimeError):
         pass
 
 
@@ -293,4 +286,37 @@ if __name__ == "__main__":
 
     RTT_SCALE = args.scale
 
-    curses.wrapper(lambda stdscr: run_curses(stdscr, args.configfile))
+    try:
+        targets = parse_config(args.configfile)
+    except Exception as e:
+        logging.error(f"failed to load config file: {e}")
+        sys.exit(-1)
+
+    curses.wrapper(lambda stdscr: run_curses(stdscr, targets))
+
+    # curses.wrapper()を使うと、終了時に端末の状態が復元され、実行結果が消えてしまう
+    # curses.endwin()を呼ばないように工夫すれば実行結果は残るが、端末の挙動がおかしくなってしまう
+    # 実行結果をテキストとして表示することにする
+
+    # 画面幅を取得
+    try:
+        width = os.get_terminal_size().columns
+    except OSError:
+        width = 80  # 取得できない場合のデフォルト値
+
+    # 最後に結果をテキストとして出力
+    for index, target in enumerate(targets, start=1):
+        if target == SEPARATOR:
+            print("-" * (width - 3))
+            continue
+        name_disp = target.name[:MAX_HOSTNAME_LENGTH]
+        addr_disp = target.addr[:MAX_ADDRESS_LENGTH]
+        values_str = f"{int(target.lossrate):3d}% {int(target.rtt):4d} {int(target.avg):4d} {target.snt:4d}"
+
+        # 履歴表示の最大幅を計算
+        max_result_len = max(0, width - RESULT_START - 1)
+
+        # 履歴表示の桁を画面幅に制限
+        result_str = "".join(target.result[:max_result_len])
+
+        print(f"{name_disp:15} {addr_disp:20} {values_str} {result_str}")

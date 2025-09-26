@@ -112,30 +112,30 @@ class NodeTarget:
                 # このインタフェース名の辞書型を取り出す
                 intf_data = self.intf_results.setdefault(intf.label, {})
 
-                # 前回の値を取り出す
+                # 保存されている前回の値を取り出す
                 last_date = intf_data.get('date', None)
                 last_readpackets = intf_data.get('readpackets', None)
                 last_writepackets = intf_data.get('writepackets', None)
 
                 # 現在の値を取り出す
-                now = time.time()
-                readpackets = intf.readpackets
-                writepackets = intf.writepackets
+                now_date = time.time()
+                now_readpackets = intf.readpackets
+                now_writepackets = intf.writepackets
 
-                # 値を更新
-                intf_data['date'] = now
-                intf_data['readpackets'] = readpackets
-                intf_data['writepackets'] = writepackets
+                # 取り出した値を保存する
+                intf_data['date'] = now_date
+                intf_data['readpackets'] = now_readpackets
+                intf_data['writepackets'] = now_writepackets
 
                 if not last_date:
                     # 初回起動時は値を保存するだけでよい
                     continue
 
-                diff_time = time.time() - last_date
-                pps = ((readpackets - last_readpackets) + (writepackets - last_writepackets)) / diff_time
+                diff_time = now_date - last_date
+                pps = ((now_readpackets - last_readpackets) + (now_writepackets - last_writepackets)) / diff_time
 
-                results = intf_data.get('results', [])
-                results.push(pps)
+                results = intf_data.setdefault('results', [])
+                results.append(pps)
 
                 # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
                 while len(results) > 100:

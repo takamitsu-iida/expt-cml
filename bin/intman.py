@@ -85,7 +85,8 @@ HOSTNAME_START: int = 3
 INTERFACE_START: int = 19
 
 # 最大ホスト名長（超える部分は切り詰め）
-MAX_HOSTNAME_LENGTH = HOSTNAME_START - INTERFACE_START - 1
+MAX_HOSTNAME_LENGTH = INTERFACE_START - HOSTNAME_START - 1
+MAX_INTERFACE_NAME_LENGTH = RESULT_START - INTERFACE_START - 1
 
 
 class NodeTarget:
@@ -104,9 +105,6 @@ class NodeTarget:
         try:
             # ノードの状態を更新する
             self.state = self.node.state
-
-            print(self.state)
-
             self.cpu_usage = self.node.cpu_usage
 
             # 各インターフェースの情報を更新する
@@ -128,11 +126,20 @@ class NodeTarget:
                 now_date = time.time()
                 now_readpackets = intf.readpackets
                 now_writepackets = intf.writepackets
+                now_state = intf.state  # 'STARTED' or 'STOPPED'
+                stat = {
+                    'date': now_date,
+                    'readpackets': now_readpackets,
+                    'writepackets': now_writepackets,
+                    'state': now_state
+                }
+
 
                 # 現在の値を保存する
                 intf_data['date'] = now_date
                 intf_data['readpackets'] = now_readpackets
                 intf_data['writepackets'] = now_writepackets
+                intf_data['state'] = now_state
 
                 # 初回起動時は値を保存するだけでよい
                 if not before_date:
@@ -140,9 +147,6 @@ class NodeTarget:
 
                 # Packet Per Secondを計算する
                 pps = ((now_readpackets - before_readpackets) + (now_writepackets - before_writepackets)) / (now_date - before_date)
-
-                # インタフェースの状態を調べる
-                now_state = intf.state  # 'STARTED' or 'STOPPED'
 
                 # 取り出した値をもとに表示する文字を決定する
                 c = 'X' if now_state == 'STOPPED' else self.get_result_char(pps)
@@ -179,8 +183,12 @@ class NodeTarget:
 
 
 def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | None = None) -> None:
+    # 画面をクリア
     stdscr.clear()
+
+    # 画面サイズを取得
     _y, x = stdscr.getmaxyx()
+
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
     stdscr.addstr(1, 0, f"{HEADER_INFO}")
     stdscr.addstr(2, 0, f"{HEADER_COLS}")
@@ -188,7 +196,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
     # 履歴表示の最大幅を計算
     max_result_len = max(0, x - RESULT_START - 1)
 
-    # 3行目から表示開始
+    # 4行目から表示開始(0開始なので3が4行目)
     row = 3
     for i, target in enumerate(targets):
 
@@ -200,41 +208,32 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
         name_disp = target.name[:MAX_HOSTNAME_LENGTH]
 
         # ノードの情報を表示
-        stdscr.addstr(row, HOSTNAME_START, f"{name_disp:15} {target.cpu_usage}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
+        stdscr.addstr(row, HOSTNAME_START, f"{name_disp} {target.cpu_usage}%", curses.color_pair(UP_COLOR if target.state == "BOOTED" else DOWN_COLOR))
 
         # 次の行へ
         row += 1
 
-        # 各インターフェースの情報を表示
-        for intf_label, intf_data in target.intf.items():
-            intf_results = intf_data.get('results', [])
-            if not intf_results:
-                continue
+        # 起動済みノードのみ、インタフェース情報を表示する
+        if target.state == "BOOTED":
 
-            stdscr.addstr(row, INTERFACE_START, f"{intf_label:20}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
+            # 各インターフェースの情報を表示
+            for intf_name, intf_data in target.intf.items():
+                intf_results = intf_data.get('results', [])
+                if not intf_results:
+                    continue
 
-            # インターフェースの実行結果を取り出す
-            # datas = self.intf_results.get(intf.label, None)
-            datas = intf_results
+                intf_name_disp = intf_name[:MAX_INTERFACE_NAME_LENGTH]
+                stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:20}", curses.color_pair(DOWN_COLOR if intf_data.get('state') == 'STOPPED' else UP_COLOR))
 
-            # 履歴表示
-            for n, c in enumerate(datas[:max_result_len]):
-                stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
+                # 履歴表示
+                for n, c in enumerate(intf_results[:max_result_len]):
+                    stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
 
-            # 次の行へ
-            row += 1
+                # 次の行へ
+                row += 1
 
     stdscr.refresh()
 
-
-
-def main(stdscr: curses.window, targets: list[NodeTarget]) -> None:
-    while True:
-        for index, target in enumerate(targets):
-            target.update()
-            draw_screen(stdscr, targets, index=index)
-            time.sleep(NODE_INTERVAL)
-        time.sleep(1)
 
 
 def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
@@ -246,7 +245,12 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
     curses.curs_set(0)  # カーソルを非表示にする
 
     try:
-        main(stdscr, targets)
+        while True:
+            for index, target in enumerate(targets):
+                target.update()
+                draw_screen(stdscr, targets, index=index)
+                time.sleep(NODE_INTERVAL)
+            time.sleep(1)
     except KeyboardInterrupt:
         pass
 
@@ -283,5 +287,3 @@ if __name__ == "__main__":
 
     # cursesアプリケーションとして実行
     curses.wrapper(lambda stdscr: run_curses(stdscr, targets))
-
-    print(targets)

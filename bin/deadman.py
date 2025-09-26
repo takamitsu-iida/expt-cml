@@ -233,6 +233,7 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
     # 履歴表示の最大幅を計算
     max_result_len = max(0, x - RESULT_START - 1)
 
+    # 4行目から表示開始(0開始なので3が4行目)
     for index, target in enumerate(targets, start=3):
         if target == SEPARATOR:
             # セパレータ表示

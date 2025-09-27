@@ -45,6 +45,9 @@ except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
 
+
+# TODO: 環境変数を確認して、存在しない場合だけローカルファイルから読む
+
 #
 # ローカルファイルからの読み込み
 #
@@ -62,13 +65,13 @@ DOWN_COLOR:    int = 3
 TITLE_PROGNAME: str = "CML Intman"
 TITLE_VERSION: str = "[2025.09.24]"
 
-PPS_SCALE: int = 10
+SCALE: int = 10
 
 # ヘッダ表示（タイトル）
 HEADER_TITLE: str = f"{TITLE_PROGNAME} {TITLE_VERSION}"
 
 # ヘッダ表示（情報）
-HEADER_INFO:  str = f"   PPS Scale {PPS_SCALE}"
+HEADER_INFO:  str = f"   PPS Scale {SCALE}"
 
 # ヘッダ表示（列名）
 #                     0         1         2         3         4         5         6         7
@@ -90,21 +93,10 @@ MAX_INTERFACE_NAME_LENGTH = RESULT_START - INTERFACE_START - 1
 
 
 class IntfStat:
-    def __init__(self, current_time: float, readpackets: int, writepackets: int, state: str):
+    def __init__(self, current_time: float, readpackets: int, writepackets: int):
         self.time = current_time
         self.readpackets = readpackets
         self.writepackets = writepackets
-        self.state = state  # 'STARTED' or 'STOPPED'
-
-
-def get_past_intfstat(current_time: float, stat_list: list, diff_seconds: float = 3.0):
-    candidate = None
-    for stat in stat_list:
-        if current_time - stat.time < diff_seconds:
-            candidate = stat
-        else:
-            break
-    return candidate
 
 
 class NodeTarget:
@@ -116,9 +108,10 @@ class NodeTarget:
         self.cpu_usage = node.cpu_usage
 
         # インターフェイスごとに結果を保存する辞書型を初期化する
-        self.intf = {}
+        self.intf_dict = {}
         for i in node.interfaces():
-            self.intf[i.label] = {
+            self.intf_dict[i.label] = {
+                'state': i.state, # 'STARTED' or 'STOPPED' or 'DEFINED_ON_CORE' or None
                 'stat_list': [],
                 'result_list': []
             }
@@ -138,46 +131,52 @@ class NodeTarget:
                     continue
 
                 # このインタフェース名に対応した辞書型を取り出す
-                intf_data = self.intf.get(intf.label, None)
+                intf_data = self.intf_dict.get(intf.label, None)
                 if intf_data is None:
                     continue
 
+                # 現在のインタフェースの状態を記録
+                intf_data['state'] = intf.state
+
                 # 過去のデータが入ったリストを取り出す
-                stat_list = intf_data.get('stat_list', None)
-                if stat_list is None:
-                    continue
+                stat_list = intf_data.get('stat_list')
 
                 # 結果の履歴を保存するリストを取り出す
-                result_list = intf_data.get('result_list', None)
-                if result_list is None:
-                    continue
+                result_list = intf_data.get('result_list')
 
                 # 現在の値を取り出してIntfStatオブジェクトにする
                 now = time.time()
-                stat = IntfStat(now, intf.readpackets, intf.writepackets, intf.state)
+                stat = IntfStat(now, intf.readpackets, intf.writepackets)
 
-                # リストの先頭に挿入
+                # IntfStatオブジェクトをリストの先頭に挿入
                 stat_list.insert(0, stat)
 
                 # 最大100件を保存
                 while len(stat_list) > 100:
                     stat_list.pop()
 
-                # Packet Per Secondを計算する
+                # Packet Per Secondを計算するために3秒前のデータを取得する
+                candidate_list = [stat for stat in stat_list if now - stat.time < 3.0]
+                past_stat = None
+                if len(candidate_list) > 0:
+                    past_stat = candidate_list[-1]
 
-                # stat_listを探して古いデータを取得する
-                past_stat = get_past_intfstat(now, stat_list, diff_seconds=5.0)
-                if past_stat is None:
+                # トラフィック履歴
+                if intf_data.get('state') is None:
+                    result_list.insert(0, 'X')
+                elif intf_data.get('state') ==  'DEFINED_ON_CORE':
+                    result_list.insert(0, 'X')
+                elif intf_data.get('state') == 'STOPPED':
+                    result_list.insert(0, 'X')
+                elif past_stat is None:
                     result_list.insert(0, '.')
                 else:
                     diff_time = now - past_stat.time
                     if diff_time < 0.1:
                         result_list.insert(0, '.')
                     else:
-                        pps = ((stat.readpackets - past_stat.readpackets) + (stat.writepackets - past_stat.writepackets)) / (now - past_stat.time)
-                        # 取り出した値をもとに表示する文字を決定する
-                        c = 'X' if stat.state == 'STOPPED' else self.get_result_char(pps)
-                        result_list.insert(0, c)
+                        pps = ((stat.readpackets - past_stat.readpackets) + (stat.writepackets - past_stat.writepackets)) / diff_time
+                        result_list.insert(0, self.get_result_char(pps))
 
                 # 過去100件のみ保存（実際に表示されるのは画面の幅による）
                 while len(result_list) > 100:
@@ -212,7 +211,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
     stdscr.clear()
 
     # 画面サイズを取得
-    _y, x = stdscr.getmaxyx()
+    y, x = stdscr.getmaxyx()
 
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
     stdscr.addstr(1, 0, f"{HEADER_INFO}")
@@ -224,7 +223,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
     row = 3
     for i, target in enumerate(targets):
 
-        # 対象となるターゲットには矢印を表示する
+        # updateしたターゲットには矢印を表示する
         if index is not None and i == index:
             stdscr.addstr(row, 0, " > ", curses.A_BOLD)
 
@@ -232,29 +231,40 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
         name_disp = target.name[:MAX_HOSTNAME_LENGTH]
 
         # ノードの情報を表示
-        stdscr.addstr(row, HOSTNAME_START, f"{name_disp} {target.state} {target.cpu_usage}%", curses.color_pair(UP_COLOR if target.state == "BOOTED" else DOWN_COLOR))
+        stdscr.addstr(row, HOSTNAME_START, f"{name_disp} ({target.state} {target.cpu_usage}%)", curses.color_pair(UP_COLOR if target.state == "BOOTED" else DOWN_COLOR))
 
         # 次の行へ
         row += 1
 
-        # 起動済みノードのみ、インタフェース情報を表示する
-        if target.state == "BOOTED":
+        # 画面の行が足りなくて表示できない場合はそこで中止
+        if row == y:
+            stdscr.refresh()
+            return
 
-            # 各インターフェースの情報を表示
-            for intf_name, intf_data in target.intf.items():
-                result_list = intf_data.get('result_list', None)
-                if not result_list:
-                    continue
+        # 各インターフェースの情報を表示
+        for intf_name, intf_data in target.intf_dict.items():
 
-                intf_name_disp = intf_name[:MAX_INTERFACE_NAME_LENGTH]
-                stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:20}", curses.color_pair(DOWN_COLOR if intf_data.get('state') == 'STOPPED' else UP_COLOR))
+            result_list = intf_data.get('result_list')
+            if not result_list:
+                continue
 
-                # 履歴表示
-                for n, c in enumerate(result_list[:max_result_len]):
-                    stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+            #if intf_data.get('state') != 'STARTED':
+            #    print(intf_data.state)
+            #    continue
 
-                # 次の行へ
-                row += 1
+            # インタフェース名
+            intf_name_disp = intf_name[:MAX_INTERFACE_NAME_LENGTH]
+            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:20}", curses.color_pair(DEFAULT_COLOR))
+
+            # 履歴表示
+            for n, c in enumerate(result_list[:max_result_len]):
+                stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+
+            # 次の行へ
+            row += 1
+            if row == y:
+                stdscr.refresh()
+                return
 
     stdscr.refresh()
 
@@ -281,8 +291,8 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--scale", type=int, default=10, help="scale of ping RTT bar gap, default 10 (ms)")
-    parser.add_argument("configfile", help="config file for intman")
+    parser.add_argument("-s", "--scale", type=int, default=10, help="scale of PPS bar gap, default 10 (10pps to 70pps)")
+    parser.add_argument("configfile", help="config file for CML Intman")
     args = parser.parse_args()
 
     SCALE = args.scale

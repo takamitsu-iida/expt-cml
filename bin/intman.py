@@ -103,14 +103,21 @@ HOSTNAME_START: int = 3
 # インターフェース名の長さと表示開始位置
 INTERFACE_START: int = HOSTNAME_START + HOSTNAME_LEN + 1
 
-# 実行結果の表示開始位置
+# 実行結果の表示開始位置（TXの開始位置は表示するときに計算する）
 RX_START: int = INTERFACE_START + INTERFACE_LEN + 1
 
-# TXの開始位置は表示するときに計算する
+
+# インターフェースごとに保存する履歴の最大数
+MAX_HISTORY: int = 100
+
+# 履歴の最大数を超えた場合に古いデータを削除する
+def limit_history_length(lst: list, max_length: int = MAX_HISTORY) -> None:
+    while len(lst) > max_length:
+        lst.pop()
 
 
 class IntfStat:
-    def __init__(self, current_time: float, readpackets: int, writepackets: int):
+    def __init__(self, current_time: float, readpackets: int, writepackets: int) -> None:
         self.time = current_time
         self.readpackets = readpackets
         self.writepackets = writepackets
@@ -127,6 +134,11 @@ class NodeTarget:
 
         # インターフェイスごとに結果を保存する辞書型を初期化する
         self.intf_dict = {}
+
+        # すべてのインターフェースについて辞書型を初期化する
+        self.intf_dict = {i.label: {'state': i.state, 'stat_list': [], 'rx_result_list': [], 'tx_result_list': []} for i in node.interfaces()}
+
+        """
         for i in node.interfaces():
             self.intf_dict[i.label] = {
                 'state': i.state, # 'STARTED' or 'STOPPED' or 'DEFINED_ON_CORE' or None
@@ -134,6 +146,7 @@ class NodeTarget:
                 'rx_result_list': [],
                 'tx_result_list': []
             }
+        """
 
 
     def update(self) -> None:
@@ -158,11 +171,11 @@ class NodeTarget:
                 intf_data['state'] = intf.state
 
                 # 過去のデータが入ったリストを取り出す
-                stat_list = intf_data.get('stat_list')
-
-                # 結果の履歴を保存するリストを取り出す
-                rx_result_list = intf_data.get('rx_result_list')
-                tx_result_list = intf_data.get('tx_result_list')
+                stat_list, rx_result_list, tx_result_list = (
+                    intf_data.get('stat_list'),
+                    intf_data.get('rx_result_list'),
+                    intf_data.get('tx_result_list')
+                )
 
                 # 現在の値を取り出してIntfStatオブジェクトにする
                 now = time.time()
@@ -170,10 +183,6 @@ class NodeTarget:
 
                 # IntfStatオブジェクトをリストの先頭に挿入
                 stat_list.insert(0, stat)
-
-                # 最大100件を保存
-                while len(stat_list) > 100:
-                    stat_list.pop()
 
                 # Packet Per Secondを計算するために3秒前のデータを取得する
                 candidate_list = [stat for stat in stat_list if now - stat.time < 3.0]
@@ -185,10 +194,7 @@ class NodeTarget:
                 if intf_data.get('state') is None:
                     rx_result_list.insert(0, 'X')
                     tx_result_list.insert(0, 'X')
-                elif intf_data.get('state') ==  'DEFINED_ON_CORE':
-                    rx_result_list.insert(0, 'X')
-                    tx_result_list.insert(0, 'X')
-                elif intf_data.get('state') == 'STOPPED':
+                elif intf_data.get('state') !=  'STARTED':
                     rx_result_list.insert(0, 'X')
                     tx_result_list.insert(0, 'X')
                 elif past_stat is None:
@@ -202,14 +208,13 @@ class NodeTarget:
                     else:
                         rx_pps = (stat.readpackets - past_stat.readpackets) / diff_time
                         rx_result_list.insert(0, self.get_result_char(rx_pps))
+
                         tx_pps = (stat.writepackets - past_stat.writepackets) / diff_time
                         tx_result_list.insert(0, self.get_result_char(tx_pps))
 
-                # 過去100件のみ保存（実際に表示されるのは画面の幅による）
-                while len(rx_result_list) > 100:
-                    rx_result_list.pop()
-                while len(tx_result_list) > 100:
-                    tx_result_list.pop()
+                # 最大100件を保存
+                for lst in (stat_list, rx_result_list, tx_result_list):
+                    limit_history_length(lst)
 
         except Exception as e:
             self.state = "ERROR"
@@ -235,7 +240,7 @@ class NodeTarget:
         return "█"
 
 
-def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | None = None) -> None:
+def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: int | None = None) -> None:
     # 画面をクリア
     stdscr.clear()
 
@@ -243,7 +248,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
     y, x = stdscr.getmaxyx()
 
     # RXとTXの表示幅、開始位置を調整
-    rx_len = tx_len = (x - RX_START) // 2 -1
+    rx_len = max(3, (x - RX_START) // 2 - 1)
     tx_start = RX_START + rx_len + 1
 
     # 幅が足りない場合は何も表示せずに終了
@@ -265,7 +270,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
     for i, target in enumerate(targets):
 
         # updateしたターゲットには矢印を表示する
-        if index is not None and i == index:
+        if active_index is not None and i == active_index:
             stdscr.addstr(row, 0, " > ", curses.A_BOLD)
 
         # ノード名を切り詰め
@@ -277,18 +282,15 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
         # 次の行へ
         row += 1
         # 画面の行が足りなくて表示できない場合はそこで中止
-        if row == y:
+        if row >= y:
             stdscr.refresh()
             return
 
         # 各インターフェースの情報を表示
         for intf_name, intf_data in target.intf_dict.items():
             rx_result_list = intf_data.get('rx_result_list')
-            if not rx_result_list:
-                continue
-
             tx_result_list = intf_data.get('tx_result_list')
-            if not tx_result_list:
+            if not rx_result_list or not tx_result_list:
                 continue
 
             #if intf_data.get('state') != 'STARTED':
@@ -296,8 +298,8 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
             #    continue
 
             # インタフェース名
-            intf_name_disp = intf_name[:INTERFACE_LEN]
-            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:<{INTERFACE_LEN + 1}}", curses.color_pair(DEFAULT_COLOR))
+            intf_name_disp = f"{intf_name[:INTERFACE_LEN]:<{INTERFACE_LEN + 1}}"
+            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp}", curses.color_pair(DEFAULT_COLOR))
 
             # RX表示
             for n, c in enumerate(rx_result_list[:rx_len]):
@@ -309,7 +311,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
 
             # 次の行へ
             row += 1
-            if row == y:
+            if row >= y:
                 stdscr.refresh()
                 return
 
@@ -329,19 +331,21 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
         while True:
             for index, target in enumerate(targets):
                 target.update()
-                draw_screen(stdscr, targets, index=index)
+                draw_screen(stdscr, targets, active_index=index)
                 time.sleep(NODE_INTERVAL)
             time.sleep(1)
     except KeyboardInterrupt:
         pass
 
 
-def dump_lab(client):
+def dump_lab(client: ClientLibrary) -> None:
 
     for lab in client.all_labs():
         print(lab.title)
-        lab.node
-
+        for node in lab.nodes():
+            print(f"  {node.name}")
+            for intf in node.interfaces():
+                print(f"    {intf.name}")
 
 
 
@@ -361,11 +365,10 @@ if __name__ == "__main__":
         client.get_lab_list
     except Exception as e:
         logging.critical(str(e))
-        sys.exit(-1)
 
     if args.dump:
         dump_lab(client)
-
+        sys.exit(0)
 
     # 対象のラボを探す
     lab = client.find_labs_by_title(LAB_NAME)

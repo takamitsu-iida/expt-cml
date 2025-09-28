@@ -290,7 +290,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
 
             # インタフェース名
             intf_name_disp = intf_name[:INTERFACE_LEN]
-            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:INTERFACE_LEN+1}", curses.color_pair(DEFAULT_COLOR))
+            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:<{INTERFACE_LEN+1}}", curses.color_pair(DEFAULT_COLOR))
 
             # RX表示
             for n, c in enumerate(rx_result_list[:rx_len]):

@@ -339,13 +339,21 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
 
 
 def dump_lab(client: ClientLibrary) -> None:
-
+    labs_info = []
     for lab in client.all_labs():
-        print(lab.title)
+        lab_dict = {
+            "title": lab.title,
+            "id": lab.id,
+            "nodes": []
+        }
         for node in lab.nodes():
-            print(f"  {node.name}")
-            for intf in node.interfaces():
-                print(f"    {intf.name}")
+            node_dict = {
+                "name": node.name,
+                "interfaces": [intf.name for intf in node.interfaces()]
+            }
+            lab_dict["nodes"].append(node_dict)
+        labs_info.append(lab_dict)
+    print(labs_info)
 
 
 
@@ -353,7 +361,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dump", action='store_true', default=False, help="dump lab node and interface")
     parser.add_argument("-s", "--scale", type=int, default=10, help="scale of PPS bar gap, default 10 (10pps to 70pps)")
-    parser.add_argument("configfile", help="config file for CML Intman")
+    parser.add_argument("configfile", nargs='?', default=None, help="config file for CML Intman")
     args = parser.parse_args()
 
     SCALE = args.scale
@@ -369,6 +377,11 @@ if __name__ == "__main__":
     if args.dump:
         dump_lab(client)
         sys.exit(0)
+
+    # 以降の処理は configfile の指定が必要
+    if args.configfile is None:
+        logging.error("Error: configfileの指定が必要です")
+        sys.exit(-1)
 
     # 対象のラボを探す
     lab = client.find_labs_by_title(LAB_NAME)

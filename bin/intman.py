@@ -5,6 +5,7 @@
 #
 import argparse
 import logging
+import os
 import sys
 import time
 
@@ -45,19 +46,31 @@ except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
 
-
-# TODO: 環境変数を確認して、存在しない場合だけローカルファイルから読む
-
 #
-# ローカルファイルからの読み込み
+# CMLに接続するための情報を取得する
 #
-from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
+
+# 環境変数が設定されている場合はそれを使用し、設定されていない場合はローカルファイルから読み込む
+CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL2_HOST")
+CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
+CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
+
+if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
+    # ローカルファイルからの読み込み
+    try:
+        from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
+    except ImportError as e:
+        logging.critical("CML connection info not found")
+        logging.critical("Please set environment variables or create cml_config.py")
+        sys.exit(-1)
 
 # CMLのラボの名前
 LAB_NAME = "cml_lab1"
 
+# ノードから情報を取得したあと、次のノードの情報を取得するまでの待ち時間（秒）
 NODE_INTERVAL: float = 0.1
 
+# 表示に使用する文字と色
 DEFAULT_COLOR: int = 1
 UP_COLOR:      int = 2
 DOWN_COLOR:    int = 3
@@ -65,6 +78,7 @@ DOWN_COLOR:    int = 3
 TITLE_PROGNAME: str = "CML Intman"
 TITLE_VERSION: str = "[2025.09.24]"
 
+# PPSのスケール（10にすると10pps～70ppsの7段階）
 SCALE: int = 10
 
 # ヘッダ表示（タイトル）
@@ -76,20 +90,24 @@ HEADER_INFO:  str = f"   PPS Scale {SCALE}"
 # ヘッダ表示（列名）
 #                     0         1         2         3         4         5         6         7
 #                     01234567890123456789012345678901234567890123456789012345678901234567890
-HEADER_COLS:  str = f"   HOSTNAME        INTERFACE            RESULT"
+HEADER_COLS:  str = f"   HOSTNAME         INTERFACE               RX           TX"
+#                        |                |                       |
+#                        3                20                       +-- 7段階の棒グラフ
 
-# 実行結果の表示開始位置
-RESULT_START: int = 40
 
 # ホスト名の表示開始位置
 HOSTNAME_START: int = 3
+HOSTNAME_LEN : int = 15
 
-# インターフェースの表示開始位置
-INTERFACE_START: int = 19
+# インターフェース名の長さと表示開始位置と
+INTERFACE_START: int = HOSTNAME_START + HOSTNAME_LEN + 1
+INTERFACE_LEN: int = 15
 
-# 最大ホスト名長（超える部分は切り詰め）
-MAX_HOSTNAME_LENGTH = INTERFACE_START - HOSTNAME_START - 1
-MAX_INTERFACE_NAME_LENGTH = RESULT_START - INTERFACE_START - 1
+# 実行結果の表示開始位置
+RX_START: int = INTERFACE_START + INTERFACE_LEN + 1
+
+def get_rx_len(terminal_width: int):
+    return (terminal_width - RX_START - 1) // 2
 
 
 class IntfStat:
@@ -142,7 +160,8 @@ class NodeTarget:
                 stat_list = intf_data.get('stat_list')
 
                 # 結果の履歴を保存するリストを取り出す
-                result_list = intf_data.get('result_list')
+                rx_result_list = intf_data.get('rx_result_list')
+                tx_result_list = intf_data.get('tx_result_list')
 
                 # 現在の値を取り出してIntfStatオブジェクトにする
                 now = time.time()
@@ -163,24 +182,33 @@ class NodeTarget:
 
                 # トラフィック履歴
                 if intf_data.get('state') is None:
-                    result_list.insert(0, 'X')
+                    rx_result_list.insert(0, 'X')
+                    tx_result_list.insert(0, 'X')
                 elif intf_data.get('state') ==  'DEFINED_ON_CORE':
-                    result_list.insert(0, 'X')
+                    rx_result_list.insert(0, 'X')
+                    tx_result_list.insert(0, 'X')
                 elif intf_data.get('state') == 'STOPPED':
-                    result_list.insert(0, 'X')
+                    rx_result_list.insert(0, 'X')
+                    tx_result_list.insert(0, 'X')
                 elif past_stat is None:
-                    result_list.insert(0, '.')
+                    rx_result_list.insert(0, '.')
+                    tx_result_list.insert(0, '.')
                 else:
                     diff_time = now - past_stat.time
                     if diff_time < 0.1:
-                        result_list.insert(0, '.')
+                        rx_result_list.insert(0, '.')
+                        tx_result_list.insert(0, '.')
                     else:
-                        pps = ((stat.readpackets - past_stat.readpackets) + (stat.writepackets - past_stat.writepackets)) / diff_time
-                        result_list.insert(0, self.get_result_char(pps))
+                        rx_pps = (stat.readpackets - past_stat.readpackets) / diff_time
+                        rx_result_list.insert(0, self.get_result_char(rx_pps))
+                        tx_pps = (stat.writepackets - past_stat.writepackets) / diff_time
+                        tx_result_list.insert(0, self.get_result_char(tx_pps))
 
                 # 過去100件のみ保存（実際に表示されるのは画面の幅による）
-                while len(result_list) > 100:
-                    result_list.pop()
+                while len(rx_result_list) > 100:
+                    rx_result_list.pop()
+                while len(tx_result_list) > 100:
+                    tx_result_list.pop()
 
         except Exception as e:
             self.state = "ERROR"
@@ -213,13 +241,18 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
     # 画面サイズを取得
     y, x = stdscr.getmaxyx()
 
+    # RXの表示可能な長さを計算
+    rx_len = tx_len = get_rx_len(x)
+    tx_start = RX_START + rx_len + 1
+
+    # 0行目
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
+    # 1行目
     stdscr.addstr(1, 0, f"{HEADER_INFO}")
+    # 2行目
     stdscr.addstr(2, 0, f"{HEADER_COLS}")
 
-    # 履歴表示の最大幅を計算
-    max_result_len = max(0, x - RESULT_START - 1)
-
+    # 3行目以降で各ノードの情報を表示
     row = 3
     for i, target in enumerate(targets):
 
@@ -228,14 +261,13 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
             stdscr.addstr(row, 0, " > ", curses.A_BOLD)
 
         # ノード名を切り詰め
-        name_disp = target.name[:MAX_HOSTNAME_LENGTH]
+        name_disp = target.name[:HOSTNAME_LEN]
 
         # ノードの情報を表示
         stdscr.addstr(row, HOSTNAME_START, f"{name_disp} ({target.state} {target.cpu_usage}%)", curses.color_pair(UP_COLOR if target.state == "BOOTED" else DOWN_COLOR))
 
         # 次の行へ
         row += 1
-
         # 画面の行が足りなくて表示できない場合はそこで中止
         if row == y:
             stdscr.refresh()
@@ -243,9 +275,12 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
 
         # 各インターフェースの情報を表示
         for intf_name, intf_data in target.intf_dict.items():
+            rx_result_list = intf_data.get('rx_result_list')
+            if not rx_result_list:
+                continue
 
-            result_list = intf_data.get('result_list')
-            if not result_list:
+            tx_result_list = intf_data.get('tx_result_list')
+            if not tx_result_list:
                 continue
 
             #if intf_data.get('state') != 'STARTED':
@@ -253,12 +288,16 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
             #    continue
 
             # インタフェース名
-            intf_name_disp = intf_name[:MAX_INTERFACE_NAME_LENGTH]
-            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:20}", curses.color_pair(DEFAULT_COLOR))
+            intf_name_disp = intf_name[:INTERFACE_LEN]
+            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:INTERFACE_LEN+1}", curses.color_pair(DEFAULT_COLOR))
 
-            # 履歴表示
-            for n, c in enumerate(result_list[:max_result_len]):
-                stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+            # RX表示
+            for n, c in enumerate(rx_result_list[:rx_len]):
+                stdscr.addstr(row, RX_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+
+            # TX表示
+            for n, c in enumerate(tx_result_list[:tx_len]):
+                stdscr.addstr(row, tx_start + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
 
             # 次の行へ
             row += 1

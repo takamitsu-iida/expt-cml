@@ -65,9 +65,6 @@ if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
         logging.critical("Please set environment variables or create cml_config.py")
         sys.exit(-1)
 
-# CMLのラボの名前
-LAB_NAME = "cml_lab1"
-
 # ノードから情報を取得したあと、次のノードの情報を取得するまでの待ち時間（秒）
 NODE_INTERVAL: float = 0.1
 
@@ -86,7 +83,7 @@ SCALE: int = 10
 HEADER_TITLE: str = f"{TITLE_PROGNAME} {TITLE_VERSION}"
 
 # ヘッダ表示（情報）
-HEADER_INFO:  str = f"   PPS Scale {SCALE}"
+HEADER_INFO:  str = f"   PPS Scale"
 
 # ヘッダ表示（列名）
 #                     0         1         2         3         4         5         6         7
@@ -124,7 +121,7 @@ class IntfStat:
 
 
 class NodeTarget:
-    def __init__(self, node) -> None:
+    def __init__(self, node, conf: dict) -> None:
         self.node = node
 
         self.name = node.label
@@ -135,16 +132,17 @@ class NodeTarget:
         self.intf_dict = {}
 
         # すべてのインターフェースについて辞書型を初期化する
-        self.intf_dict = {i.label: {'state': i.state, 'stat_list': [], 'rx_result_list': [], 'tx_result_list': []} for i in node.interfaces()}
+        self.intf_dict = {i.label: {'state': i.state, 'stat_list': [], 'rx_result_list': [], 'tx_result_list': []} for i in node.interfaces() if i.label in conf['interfaces']}
 
-        """初期化処理はこれと同じ
+        """これと同じ
         for i in node.interfaces():
-            self.intf_dict[i.label] = {
-                'state': i.state, # 'STARTED' or 'STOPPED' or 'DEFINED_ON_CORE' or None
-                'stat_list': [],
-                'rx_result_list': [],
-                'tx_result_list': []
-            }
+            if i.label in conf['interfaces]:
+                self.intf_dict[i.label] = {
+                    'state': i.state, # 'STARTED' or 'STOPPED' or 'DEFINED_ON_CORE' or None
+                    'stat_list': [],
+                    'rx_result_list': [],
+                    'tx_result_list': []
+                }
         """
 
 
@@ -261,7 +259,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
 
     # 1行目
-    stdscr.addstr(1, 0, f"{HEADER_INFO}")
+    stdscr.addstr(1, 0, f"{HEADER_INFO} {SCALE}")
 
     # 2行目
     stdscr.addstr(2, 0, f"{HEADER_COLS:<{TX_START + tx_len}} RX")
@@ -334,7 +332,7 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
                 target.update()
                 draw_screen(stdscr, targets, active_index=index)
                 time.sleep(NODE_INTERVAL)
-            time.sleep(1)
+            time.sleep(0.5)
     except KeyboardInterrupt:
         pass
 
@@ -374,11 +372,13 @@ def parse_config(configfile: str) -> dict:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dump", action='store_true', default=False, help="dump lab node and interface")
-    parser.add_argument("-s", "--scale", type=int, default=10, help="scale of PPS bar gap, default 10 (10pps to 70pps)")
+    parser.add_argument("-s", "--scale", type=int, default=SCALE, help=f"scale of PPS bar gap, default {SCALE}")
     parser.add_argument("configfile", nargs='?', default=None, help="config file for CML Intman")
     args = parser.parse_args()
 
     SCALE = args.scale
+
+    print(SCALE)
 
     try:
         client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
@@ -397,20 +397,34 @@ if __name__ == "__main__":
         logging.error("Error: configfileの指定が必要です")
         sys.exit(-1)
 
-    intman_conf_dict = parse_config(args.configfile)
+    conf_dict = parse_config(args.configfile)
+    print(json.dumps(conf_dict, indent=2))
+    title = conf_dict.get('title', None)
+    if title is None:
+        logging.error("title is required")
+        sys.exit(-1)
+
 
     # 対象のラボを探す
-    lab = client.find_labs_by_title(LAB_NAME)
+    lab = client.find_labs_by_title(title)
     if not lab:
-        logging.error(f"Error: ラボ '{LAB_NAME}' が見つかりません")
+        logging.error(f"Error: ラボ '{title}' が見つかりません")
         sys.exit(-1)
     lab = lab[0]
 
     # 対象ノードを探す
-    targets = [NodeTarget(node) for node in lab.nodes()]
-    if not targets:
+    nodes = []
+    for node in lab.nodes():
+        for d in conf_dict['nodes']:
+            if node.label == d.get('name'):
+                nodes.append([node, d])
+                break
+    if not nodes:
         logging.error(f"Error: ターゲットノードがありません")
         sys.exit(-1)
+
+    # NodeTargetのリストに変換
+    targets = [NodeTarget(n, d) for n, d in nodes]
 
     # cursesアプリケーションとして実行
     curses.wrapper(lambda stdscr: run_curses(stdscr, targets))

@@ -4,6 +4,7 @@
 # 標準ライブラリのインポート
 #
 import argparse
+import json
 import logging
 import os
 import sys
@@ -91,7 +92,7 @@ HEADER_INFO:  str = f"   PPS Scale {SCALE}"
 #                     0         1         2         3         4         5         6         7
 #                     01234567890123456789012345678901234567890123456789012345678901234567890
 #                        |                |                    |
-HEADER_COLS:  str = f"   HOSTNAME         INTERFACE            RX"
+HEADER_COLS:  str = f"   HOSTNAME         INTERFACE            TX"
 
 # ホスト名の長さ上限、インタフェース名の長さ上限
 HOSTNAME_LEN : int = 16
@@ -103,14 +104,13 @@ HOSTNAME_START: int = 3
 # インターフェース名の長さと表示開始位置
 INTERFACE_START: int = HOSTNAME_START + HOSTNAME_LEN + 1
 
-# 実行結果の表示開始位置（TXの開始位置は表示するときに計算する）
-RX_START: int = INTERFACE_START + INTERFACE_LEN + 1
-
+# 実行結果の表示開始位置（RXの開始位置は表示するときに計算する）
+TX_START: int = INTERFACE_START + INTERFACE_LEN + 1
 
 # インターフェースごとに保存する履歴の最大数
 MAX_HISTORY: int = 100
 
-# 履歴の最大数を超えた場合に古いデータを削除する
+# 最大数を超えた場合に古いデータを削除する関数
 def limit_history_length(lst: list, max_length: int = MAX_HISTORY) -> None:
     while len(lst) > max_length:
         lst.pop()
@@ -121,7 +121,6 @@ class IntfStat:
         self.time = current_time
         self.readpackets = readpackets
         self.writepackets = writepackets
-
 
 
 class NodeTarget:
@@ -138,7 +137,7 @@ class NodeTarget:
         # すべてのインターフェースについて辞書型を初期化する
         self.intf_dict = {i.label: {'state': i.state, 'stat_list': [], 'rx_result_list': [], 'tx_result_list': []} for i in node.interfaces()}
 
-        """
+        """初期化処理はこれと同じ
         for i in node.interfaces():
             self.intf_dict[i.label] = {
                 'state': i.state, # 'STARTED' or 'STOPPED' or 'DEFINED_ON_CORE' or None
@@ -247,14 +246,16 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
     # 画面サイズを取得
     y, x = stdscr.getmaxyx()
 
-    # RXとTXの表示幅、開始位置を調整
-    rx_len = max(3, (x - RX_START) // 2 - 1)
-    tx_start = RX_START + rx_len + 1
+    # RXとTXの表示幅を調整
+    tx_len = rx_len = max(3, (x - TX_START) // 2 - 1)
 
-    # 幅が足りない場合は何も表示せずに終了
-    if rx_len < 3:
+    # 表示幅が足りない場合は何も表示せずに終了
+    if tx_len <= 3:
         stdscr.refresh()
         return
+
+    # RXの表示開始位置
+    rx_start = TX_START + tx_len + 1
 
     # 0行目
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
@@ -263,7 +264,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
     stdscr.addstr(1, 0, f"{HEADER_INFO}")
 
     # 2行目
-    stdscr.addstr(2, 0, f"{HEADER_COLS:<{RX_START + rx_len}} TX")
+    stdscr.addstr(2, 0, f"{HEADER_COLS:<{TX_START + tx_len}} RX")
 
     # 3行目以降で各ノードの情報を表示
     row = 3
@@ -301,13 +302,13 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
             intf_name_disp = f"{intf_name[:INTERFACE_LEN]:<{INTERFACE_LEN + 1}}"
             stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp}", curses.color_pair(DEFAULT_COLOR))
 
-            # RX表示
-            for n, c in enumerate(rx_result_list[:rx_len]):
-                stdscr.addstr(row, RX_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
-
             # TX表示
             for n, c in enumerate(tx_result_list[:tx_len]):
-                stdscr.addstr(row, tx_start + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+                stdscr.addstr(row, TX_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+
+            # RX表示
+            for n, c in enumerate(rx_result_list[:rx_len]):
+                stdscr.addstr(row, rx_start + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
 
             # 次の行へ
             row += 1
@@ -347,14 +348,24 @@ def dump_lab(client: ClientLibrary) -> None:
             "nodes": []
         }
         for node in lab.nodes():
+            if node.node_definition in ['external_connector', 'unmanaged_switch']:
+                continue
+
             node_dict = {
-                "name": node.name,
-                "interfaces": [intf.name for intf in node.interfaces()]
+                "node_def": node.node_definition,
+                "name": node.label,
+                "interfaces": [intf.label for intf in node.interfaces()]
             }
             lab_dict["nodes"].append(node_dict)
         labs_info.append(lab_dict)
-    print(labs_info)
 
+    for info in labs_info:
+        print_text = json.dumps(info, indent=2, ensure_ascii=False)
+        print(print_text)
+        print('')
+
+
+def parse_config()
 
 
 if __name__ == "__main__":
@@ -382,6 +393,8 @@ if __name__ == "__main__":
     if args.configfile is None:
         logging.error("Error: configfileの指定が必要です")
         sys.exit(-1)
+
+    intman_conf_dict = parse_config(args.configfile)
 
     # 対象のラボを探す
     lab = client.find_labs_by_title(LAB_NAME)

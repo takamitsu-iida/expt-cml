@@ -131,7 +131,8 @@ class NodeTarget:
             self.intf_dict[i.label] = {
                 'state': i.state, # 'STARTED' or 'STOPPED' or 'DEFINED_ON_CORE' or None
                 'stat_list': [],
-                'result_list': []
+                'rx_result_list': [],
+                'tx_result_list': []
             }
 
 

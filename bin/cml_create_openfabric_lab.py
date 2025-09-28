@@ -160,6 +160,7 @@ exit
 #
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -174,9 +175,23 @@ except ImportError as e:
     sys.exit(-1)
 
 #
-# ローカルファイルからの読み込み
+# CMLに接続するための情報を取得する
 #
-from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
+
+# 環境変数が設定されている場合はそれを使用し、設定されていない場合はローカルファイルから読み込む
+CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL2_HOST")
+CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
+CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
+
+if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
+    # ローカルファイルから読み込み
+    try:
+        from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
+    except ImportError as e:
+        logging.critical("CML connection info not found")
+        logging.critical("Please set environment variables or create cml_config.py")
+        sys.exit(-1)
+
 
 # このファイルへのPathオブジェクト
 app_path = Path(__file__)

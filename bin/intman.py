@@ -365,7 +365,10 @@ def dump_lab(client: ClientLibrary) -> None:
         print('')
 
 
-def parse_config()
+def parse_config(configfile: str) -> dict:
+    with open(configfile, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+    return config
 
 
 if __name__ == "__main__":

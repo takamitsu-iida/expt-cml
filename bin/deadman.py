@@ -245,12 +245,12 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
             stdscr.addstr(index, 0, " > ", curses.A_BOLD)
 
         # ホスト名とアドレスの切り詰め
-        name_disp = target.name[:MAX_HOSTNAME_LENGTH]
-        addr_disp = target.addr[:MAX_ADDRESS_LENGTH]
+        name_disp = f"{target.name[:MAX_HOSTNAME_LENGTH]:<{MAX_HOSTNAME_LENGTH}}"
+        addr_disp = f"{target.addr[:MAX_ADDRESS_LENGTH]:<{MAX_ADDRESS_LENGTH}}"
 
         # 各ターゲットの情報表示
         values_str = f"{int(target.lossrate):3d}% {int(target.rtt):4d} {int(target.avg):4d} {target.snt:4d}  "
-        stdscr.addstr(index, HOSTNAME_START, f"{name_disp:15} {addr_disp:20} {values_str}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
+        stdscr.addstr(index, HOSTNAME_START, f"{name_disp} {addr_disp} {values_str}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
 
         # 履歴表示
         for n, c in enumerate(target.result[:max_result_len]):

@@ -56,7 +56,7 @@ CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
 CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
 
 if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
-    # ローカルファイルからの読み込み
+    # ローカルファイルから読み込み
     try:
         from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
     except ImportError as e:
@@ -90,24 +90,23 @@ HEADER_INFO:  str = f"   PPS Scale {SCALE}"
 # ヘッダ表示（列名）
 #                     0         1         2         3         4         5         6         7
 #                     01234567890123456789012345678901234567890123456789012345678901234567890
-HEADER_COLS:  str = f"   HOSTNAME         INTERFACE               RX           TX"
-#                        |                |                       |
-#                        3                20                       +-- 7段階の棒グラフ
+#                        |                |                    |
+HEADER_COLS:  str = f"   HOSTNAME         INTERFACE            RX"
 
+# ホスト名の長さ上限、インタフェース名の長さ上限
+HOSTNAME_LEN : int = 16
+INTERFACE_LEN: int = 20
 
 # ホスト名の表示開始位置
 HOSTNAME_START: int = 3
-HOSTNAME_LEN : int = 15
 
-# インターフェース名の長さと表示開始位置と
+# インターフェース名の長さと表示開始位置
 INTERFACE_START: int = HOSTNAME_START + HOSTNAME_LEN + 1
-INTERFACE_LEN: int = 15
 
 # 実行結果の表示開始位置
 RX_START: int = INTERFACE_START + INTERFACE_LEN + 1
 
-def get_rx_len(terminal_width: int):
-    return (terminal_width - RX_START - 1) // 2
+# TXの開始位置は表示するときに計算する
 
 
 class IntfStat:
@@ -115,6 +114,7 @@ class IntfStat:
         self.time = current_time
         self.readpackets = readpackets
         self.writepackets = writepackets
+
 
 
 class NodeTarget:
@@ -242,16 +242,23 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
     # 画面サイズを取得
     y, x = stdscr.getmaxyx()
 
-    # RXの表示可能な長さを計算
-    rx_len = tx_len = get_rx_len(x)
+    # RXとTXの表示幅、開始位置を調整
+    rx_len = tx_len = (x - RX_START) // 2 -1
     tx_start = RX_START + rx_len + 1
+
+    # 幅が足りない場合は何も表示せずに終了
+    if rx_len < 3:
+        stdscr.refresh()
+        return
 
     # 0行目
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
+
     # 1行目
     stdscr.addstr(1, 0, f"{HEADER_INFO}")
+
     # 2行目
-    stdscr.addstr(2, 0, f"{HEADER_COLS}")
+    stdscr.addstr(2, 0, f"{HEADER_COLS:<{RX_START + rx_len}} TX")
 
     # 3行目以降で各ノードの情報を表示
     row = 3
@@ -290,7 +297,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], index: int | N
 
             # インタフェース名
             intf_name_disp = intf_name[:INTERFACE_LEN]
-            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:<{INTERFACE_LEN+1}}", curses.color_pair(DEFAULT_COLOR))
+            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp:<{INTERFACE_LEN + 1}}", curses.color_pair(DEFAULT_COLOR))
 
             # RX表示
             for n, c in enumerate(rx_result_list[:rx_len]):
@@ -329,8 +336,18 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
         pass
 
 
+def dump_lab(client):
+
+    for lab in client.all_labs():
+        print(lab.title)
+        lab.node
+
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--dump", action='store_true', default=False, help="dump lab node and interface")
     parser.add_argument("-s", "--scale", type=int, default=10, help="scale of PPS bar gap, default 10 (10pps to 70pps)")
     parser.add_argument("configfile", help="config file for CML Intman")
     args = parser.parse_args()
@@ -339,12 +356,16 @@ if __name__ == "__main__":
 
     try:
         client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+        # 接続を待機する
+        client.is_system_ready(wait=True)
+        client.get_lab_list
     except Exception as e:
         logging.critical(str(e))
         sys.exit(-1)
 
-    # 接続を待機する
-    client.is_system_ready(wait=True)
+    if args.dump:
+        dump_lab(client)
+
 
     # 対象のラボを探す
     lab = client.find_labs_by_title(LAB_NAME)

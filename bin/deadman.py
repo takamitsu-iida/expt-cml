@@ -2,9 +2,23 @@
 
 #
 # Yet Another Deadman
-# deadman(https://github.com/upa/deadman)をシンプルに再実装したものです
-# 余分な機能を削除し、基本的な機能に焦点を当てています
+# deadman(https://github.com/upa/deadman)をシンプルに再実装したものです。
+# 余分な機能を削除し、流用しやすいようにしています。
 #
+
+# 【使い方】
+#
+# bin/deadman.py deadman.conf
+#
+# 【deadman.confの例】
+#
+# googleDNS	8.8.8.8
+# quad9		9.9.9.9
+# mroot		202.12.27.33
+# kame		210.155.141.200
+# ---
+# mroot6	2001:dc3::35
+# kame6		2001:2f0:0:8800::1:1#   example.com
 
 #
 # 標準ライブラリのインポート
@@ -12,7 +26,6 @@
 import argparse
 import asyncio
 import logging
-import os
 import re
 import socket
 import sys
@@ -30,7 +43,7 @@ except ModuleNotFoundError:
     sys.exit(-1)
 
 TITLE_PROGNAME: str = "Yet Another Deadman"
-TITLE_VERSION: str = "[2025.09.24]"
+TITLE_VERSION: str = "[2025.09.29]"
 
 PING_INTERVAL: float = 0.1
 
@@ -133,7 +146,6 @@ class PingTarget:
         return self.chars[level]
 
 
-
 class Ping:
     def __init__(self, addr: str, timeout: float = 1.0) -> None:
         self.addr = addr
@@ -222,7 +234,6 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
     # 画面のサイズを取得
     y, x = stdscr.getmaxyx()
 
-
     # 0行目
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
     # 1行目
@@ -306,34 +317,3 @@ if __name__ == "__main__":
 
     # cursesアプリケーションとして実行
     curses.wrapper(lambda stdscr: run_curses(stdscr, targets))
-
-    #
-    # Ctrl-Cで終了した後の処理
-    #
-
-    # curses.wrapper()を使うと、終了時に実行結果が消えてしまう
-    # curses.endwin()を呼ばないように工夫すれば実行結果は残るものの、その後の端末の挙動がおかしくなってしまう
-    # 見た目は変わってしまうが、実行結果をテキストとして表示することにする
-
-    try:
-        width = os.get_terminal_size().columns
-    except OSError:
-        width = 80  # 取得できない場合のデフォルト値
-
-    print(f"{HEADER_INFO}")
-    print(f"{HEADER_COLS}")
-    for index, target in enumerate(targets, start=1):
-        if target == SEPARATOR:
-            print("   " + "-" * (width - 3))
-            continue
-        name_disp = target.name[:MAX_HOSTNAME_LENGTH]
-        addr_disp = target.addr[:MAX_ADDRESS_LENGTH]
-        values_str = f"{int(target.lossrate):3d}% {int(target.rtt):4d} {int(target.avg):4d} {target.snt:4d}"
-
-        # 履歴表示の最大幅を計算
-        max_result_len = max(0, width - RESULT_START - 1)
-
-        # 履歴表示の桁を画面幅に制限
-        result_str = "".join(target.result[:max_result_len])
-
-        print(f"   {name_disp:15} {addr_disp:20} {values_str} {result_str}")

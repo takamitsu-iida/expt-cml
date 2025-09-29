@@ -1,5 +1,57 @@
 #!/usr/bin/env python3
 
+######################################################################
+# CML Intman
+#
+# 【使い方】
+#  bin/intman.py intman.conf
+#
+# 【設定ファイルの例】
+#
+# {
+#   "title": "cml_lab1",
+#   "id": "2fb9f009-c9b2-4c61-8b84-31dae42b3853",
+#   "nodes": [
+#     {
+#       "node_def": "csr1000v",
+#       "name": "R1",
+#       "interfaces": [
+#         "GigabitEthernet1",
+#         "GigabitEthernet2"
+#       ]
+#     },
+#     {
+#       "node_def": "csr1000v",
+#       "name": "R2",
+#       "interfaces": [
+#         "GigabitEthernet1",
+#         "GigabitEthernet2"
+#       ]
+#     }
+#   ]
+# }
+#
+# 【設定ファイルの作り方】
+#
+# ファイル形式はJSONです。
+# bin/intman.py --dump
+# を実行すると、ラボの一覧がJSON形式で表示されるので、必要なところをコピペするか、
+#
+# bin/intman.py --dump > intman.conf
+#
+# のようにしてファイルに保存して、必要なラボだけを残して、いらない部分を削除する簡単です。
+#
+# 【CMLに接続するための情報】
+#
+# 以下の環境変数が設定されている場合はそれを使用します。
+#  VIRL2_URL
+#  VIRL2_USER
+#  VIRL2_PASS
+#
+# 設定されていない場合はローカルファイルcml_config.pyから読み込みます
+#
+######################################################################
+
 #
 # 標準ライブラリのインポート
 #
@@ -467,7 +519,7 @@ if __name__ == "__main__":
 
     # 以降の処理は configfile の指定が必要
     if args.configfile is None:
-        logger.error("Error: configfileの指定が必要です")
+        logger.error("configfileの指定が必要です")
         sys.exit(-1)
 
     conf_dict = parse_config(args.configfile)
@@ -493,7 +545,7 @@ if __name__ == "__main__":
                 nodes.append([node, d])
                 break
     if not nodes:
-        logger.error(f"Error: ターゲットノードがありません")
+        logger.error("ターゲットノードがありません")
         sys.exit(-1)
 
     # NodeTargetのリストに変換

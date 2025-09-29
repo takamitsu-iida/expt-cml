@@ -116,8 +116,8 @@ if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
     try:
         from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
     except ImportError as e:
-        logging.critical("CML connection info not found")
-        logging.critical("Please set environment variables or create cml_config.py")
+        logger.critical("CML connection info not found")
+        logger.critical("Please set environment variables or create cml_config.py")
         sys.exit(-1)
 
 # ノードから情報を取得したあと、次のノードの情報を取得するまでの待ち時間（秒）
@@ -284,7 +284,7 @@ class NodeTarget:
 
         except Exception as e:
             self.state = "ERROR"
-            logging.error(f"Error updating node {self.name}: {e}")
+            logger.error(f"Error updating node {self.name}: {e}")
             raise e
 
 
@@ -436,8 +436,8 @@ def dump_lab(client: ClientLibrary) -> None:
 
     for info in labs_info:
         info_text = json.dumps(info, indent=2, ensure_ascii=False)
-        logging.info(info_text)
-        logging.info('')
+        logger.info(info_text)
+        logger.info('')
 
 
 def parse_config(configfile: str) -> dict:
@@ -458,7 +458,8 @@ if __name__ == "__main__":
         client.is_system_ready(wait=True)
         client.get_lab_list
     except Exception as e:
-        logging.critical(str(e))
+        logger.critical(f"{e}")
+        sys.exit(-1)
 
     if args.dump:
         dump_lab(client)
@@ -466,21 +467,21 @@ if __name__ == "__main__":
 
     # 以降の処理は configfile の指定が必要
     if args.configfile is None:
-        logging.error("Error: configfileの指定が必要です")
+        logger.error("Error: configfileの指定が必要です")
         sys.exit(-1)
 
     conf_dict = parse_config(args.configfile)
-    logging.info(json.dumps(conf_dict, indent=2))
+    logger.info(json.dumps(conf_dict, indent=2))
     title = conf_dict.get('title', None)
     if title is None:
-        logging.error("title is required")
+        logger.error("title is required")
         sys.exit(-1)
 
 
     # 対象のラボを探す
     lab = client.find_labs_by_title(title)
     if not lab:
-        logging.error(f"Error: ラボ '{title}' が見つかりません")
+        logger.error(f"Error: ラボ '{title}' が見つかりません")
         sys.exit(-1)
     lab = lab[0]
 
@@ -492,7 +493,7 @@ if __name__ == "__main__":
                 nodes.append([node, d])
                 break
     if not nodes:
-        logging.error(f"Error: ターゲットノードがありません")
+        logger.error(f"Error: ターゲットノードがありません")
         sys.exit(-1)
 
     # NodeTargetのリストに変換

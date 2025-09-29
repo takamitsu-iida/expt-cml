@@ -131,14 +131,8 @@ DOWN_COLOR:    int = 3
 TITLE_PROGNAME: str = "CML Intman"
 TITLE_VERSION: str = "[2025.09.24]"
 
-# PPSのスケール（10にすると10pps～70ppsの7段階）
-SCALE: int = 10
-
 # ヘッダ表示（タイトル）
 HEADER_TITLE: str = f"{TITLE_PROGNAME} {TITLE_VERSION}"
-
-# ヘッダ表示（情報）
-HEADER_INFO:  str = f"   PPS Scale"
 
 # ヘッダ表示（列名）
 #                     0         1         2         3         4         5         6         7
@@ -284,25 +278,6 @@ class NodeTarget:
             logging.error(f"Error updating node {self.name}: {e}")
             raise e
 
-
-    def _get_result_char(self, pps: float) -> str:
-        if pps < SCALE * 1:
-            return "▁"
-        if pps < SCALE * 2:
-            return "▂"
-        if pps < SCALE * 3:
-            return "▃"
-        if pps < SCALE * 4:
-            return "▄"
-        if pps < SCALE * 5:
-            return "▅"
-        if pps < SCALE * 6:
-            return "▆"
-        if pps < SCALE * 7:
-            return "▇"
-        return "█"
-
-
     def get_result_char(self, pps: float) -> str:
         if pps <= 0:
             return "▁"
@@ -330,17 +305,18 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
     # RXの表示開始位置
     rx_start = TX_START + tx_len + 1
 
+    # 画面の行位置
+    row = 0
+
     # 0行目
-    stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
+    stdscr.addstr(row, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
+    row += 1
 
     # 1行目
-    stdscr.addstr(1, 0, f"{HEADER_INFO} {SCALE}")
+    stdscr.addstr(row, 0, f"{HEADER_COLS:<{TX_START + tx_len}} RX")
+    row += 1
 
-    # 2行目
-    stdscr.addstr(2, 0, f"{HEADER_COLS:<{TX_START + tx_len}} RX")
-
-    # 3行目以降で各ノードの情報を表示
-    row = 3
+    # 2行目以降で各ノードの情報を表示
     for i, target in enumerate(targets):
 
         # updateしたターゲットには矢印を表示する
@@ -447,12 +423,8 @@ def parse_config(configfile: str) -> dict:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dump", action='store_true', default=False, help="dump lab node and interface")
-    parser.add_argument("-s", "--scale", type=int, default=SCALE, help=f"scale of PPS bar gap, default {SCALE}")
     parser.add_argument("configfile", nargs='?', default=None, help="config file for CML Intman")
     args = parser.parse_args()
-
-    # SCALE値を修正
-    SCALE = args.scale
 
     try:
         client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)

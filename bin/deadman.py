@@ -26,6 +26,7 @@
 import argparse
 import asyncio
 import logging
+import os
 import re
 import socket
 import sys
@@ -52,12 +53,6 @@ RTT_SCALE: int = 10
 DEFAULT_COLOR: int = 1
 UP_COLOR:      int = 2
 DOWN_COLOR:    int = 3
-
-# ヘッダ表示（タイトル）
-HEADER_TITLE: str = f"{TITLE_PROGNAME} {TITLE_VERSION}"
-
-# ヘッダ表示（情報）
-HEADER_INFO:  str = f"   RTT Scale {RTT_SCALE}ms."
 
 # ヘッダ表示（列名）
 #                     0         1         2         3         4         5         6         7
@@ -109,7 +104,7 @@ class PingTarget:
         self.ttl = 0
         self.result = []
 
-        # RTT値に応じた7段階のキャラクタ
+        # 8段階のキャラクタを定義
         self.chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
 
 
@@ -133,7 +128,7 @@ class PingTarget:
         else:
             self.result.insert(0, self.get_result_char(res.rtt))
 
-        # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
+        # 履歴データは過去100件保存するが、実際に表示される数は画面の幅による
         while len(self.result) > 100:
             self.result.pop()
 
@@ -234,15 +229,17 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
     # 画面のサイズを取得
     y, x = stdscr.getmaxyx()
 
-    # 0行目
-    stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
-    # 1行目
-    stdscr.addstr(1, 0, f"{HEADER_INFO}")
-    # 2行目
-    stdscr.addstr(2, 0, f"{HEADER_COLS}")
-
     # 履歴表示可能な幅を計算
     max_result_len = max(0, x - RESULT_START - 1)
+
+    # 0行目  タイトルを太字で表示
+    stdscr.addstr(0, 0, f"{TITLE_PROGNAME} {TITLE_VERSION}", curses.A_BOLD)
+
+    # 1行目  RTT_SCALEの値を表示
+    stdscr.addstr(1, 0, f"   RTT Scale {RTT_SCALE}ms.")
+
+    # 2行目  各カラムのタイトルを表示
+    stdscr.addstr(2, 0, f"{HEADER_COLS}")
 
     # 3行目以降
     row = 3
@@ -255,7 +252,7 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
             if arrow_idx is not None and index == arrow_idx:
                 stdscr.addstr(row, 0, " > ", curses.A_BOLD)
 
-            # ホスト名とアドレスの切り詰め
+            # ホスト名とアドレスの長さを調整（長ければ切り詰める）
             name_disp = f"{target.name[:MAX_HOSTNAME_LENGTH]:<{MAX_HOSTNAME_LENGTH}}"
             addr_disp = f"{target.addr[:MAX_ADDRESS_LENGTH]:<{MAX_ADDRESS_LENGTH}}"
 

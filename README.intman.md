@@ -79,8 +79,22 @@ Pythonのモジュール virl2_client を使います。
 
 ## やってみた
 
+作成したスクリプトは [intman.py](/bin/intman.py) です。
 
+デモ用に簡単なラボで試します。
 
+<br>
+
+![demo](/assets/intman-lab.png)
+
+<br>
+
+R1とR2はCSR1000vです。
+
+等コストマルチパスになっていますので、R1からR2へのICMP RequestはGig1かGig2のどちらかを通ります。
+受信するICMP Responseもどっちで受信するかは分かりません。
+
+ターミナルを２つ開いて、一方で `intman.py` を実行、もう一方でpingを打ってみます。
 
 <!--
 アニメーションGIFの作り方
@@ -90,9 +104,7 @@ Pythonのモジュール virl2_client を使います。
 - ezgif.comでGIFに変換する
 -->
 
-作成したスクリプトは [intman.py](/bin/intman.py) です。
-
-見た目はこんな感じです。
+見た目はこのようになります。
 
 <br>
 

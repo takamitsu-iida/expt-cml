@@ -290,9 +290,9 @@ class NodeTarget:
         # return self.chars[level]
 
         # 指数を使って調整する場合
-        # base値と指数を調整（例: base=2, exp=0.7）
+        # base値と指数を調整（例: base=2, exp=0.6）
         base = 2.0
-        exp = 0.7
+        exp = 0.6
         level = int((pps / base) ** exp)
         level = max(0, min(7, level))
         return self.chars[level]
@@ -397,9 +397,6 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
                 # targetが最後のノードでなければ少し待つ
                 if index < len(targets) - 1:
                     time.sleep(NODE_INTERVAL)
-
-            # すべてのノード処理後は > を消して再描画
-            draw_screen(stdscr, targets, active_index=None)
 
             # 待機
             time.sleep(1.0)

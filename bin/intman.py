@@ -281,9 +281,20 @@ class NodeTarget:
             raise e
 
     def get_result_char(self, pps: float) -> str:
+        # chars: ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
         if pps <= 0:
             return self.chars[0]
-        level = min(7, int(math.log10(pps + 1)))
+
+        # 対数を使ってレベルを決定する場合
+        # level = min(7, int(math.log10(pps + 1)))
+        # return self.chars[level]
+
+        # 指数を使って調整する場合
+        # base値と指数を調整（例: base=2, exp=0.7）
+        base = 2.0
+        exp = 0.7
+        level = int((pps / base) ** exp)
+        level = max(0, min(7, level))
         return self.chars[level]
 
 

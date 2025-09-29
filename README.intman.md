@@ -80,6 +80,8 @@ Pythonのモジュール virl2_client を使います。
 ## やってみた
 
 
+
+
 <!--
 アニメーションGIFの作り方
 - Windows + G でゲームBarを起動する
@@ -87,3 +89,13 @@ Pythonのモジュール virl2_client を使います。
 - キャプチャ時間は30秒以内に収める
 - ezgif.comでGIFに変換する
 -->
+
+作成したスクリプトは [intman.py](/bin/intman.py) です。
+
+見た目はこんな感じです。
+
+<br>
+
+![intman](/assets/intman.gif)
+
+<br>

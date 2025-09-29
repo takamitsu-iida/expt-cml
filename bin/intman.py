@@ -194,6 +194,9 @@ class NodeTarget:
                 }
         """
 
+        # トラフィック量に応じたキャラクタ
+        self.chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+
 
     def calc_pps(self, stat_list: list[IntfStat], window_second: float = 5.0) -> tuple[float, float]:
         if stat_list is None or len(stat_list) < 2:
@@ -280,10 +283,9 @@ class NodeTarget:
 
     def get_result_char(self, pps: float) -> str:
         if pps <= 0:
-            return "▁"
+            return self.chars[0]
         level = min(7, int(math.log10(pps + 1)))
-        chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
-        return chars[level]
+        return self.chars[level]
 
 
 

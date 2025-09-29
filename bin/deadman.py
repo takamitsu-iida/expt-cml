@@ -220,37 +220,48 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
     stdscr.clear()
 
     # 画面のサイズを取得
-    _y, x = stdscr.getmaxyx()
+    y, x = stdscr.getmaxyx()
 
+
+    # 0行目
     stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
+    # 1行目
     stdscr.addstr(1, 0, f"{HEADER_INFO}")
+    # 2行目
     stdscr.addstr(2, 0, f"{HEADER_COLS}")
 
-    # 履歴表示の最大幅を計算
+    # 履歴表示可能な幅を計算
     max_result_len = max(0, x - RESULT_START - 1)
 
-    # 4行目から表示開始(0開始なので3が4行目)
-    for index, target in enumerate(targets, start=3):
+    # 3行目以降
+    row = 3
+    for index, target in enumerate(targets):
         if target == SEPARATOR:
             # セパレータ表示
-            stdscr.addstr(index, HOSTNAME_START, SEPARATOR * (x - HOSTNAME_START))
-            continue
+            stdscr.addstr(row, HOSTNAME_START, SEPARATOR * (x - HOSTNAME_START))
+        else:
+            # 矢印表示
+            if arrow_idx is not None and index == arrow_idx:
+                stdscr.addstr(row, 0, " > ", curses.A_BOLD)
 
-        # 矢印表示
-        if arrow_idx is not None and index == arrow_idx:
-            stdscr.addstr(index, 0, " > ", curses.A_BOLD)
+            # ホスト名とアドレスの切り詰め
+            name_disp = f"{target.name[:MAX_HOSTNAME_LENGTH]:<{MAX_HOSTNAME_LENGTH}}"
+            addr_disp = f"{target.addr[:MAX_ADDRESS_LENGTH]:<{MAX_ADDRESS_LENGTH}}"
 
-        # ホスト名とアドレスの切り詰め
-        name_disp = f"{target.name[:MAX_HOSTNAME_LENGTH]:<{MAX_HOSTNAME_LENGTH}}"
-        addr_disp = f"{target.addr[:MAX_ADDRESS_LENGTH]:<{MAX_ADDRESS_LENGTH}}"
+            # ターゲットの情報表示
+            values_str = f"{int(target.lossrate):3d}% {int(target.rtt):4d} {int(target.avg):4d} {target.snt:4d}  "
+            stdscr.addstr(row, HOSTNAME_START, f"{name_disp} {addr_disp} {values_str}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
 
-        # 各ターゲットの情報表示
-        values_str = f"{int(target.lossrate):3d}% {int(target.rtt):4d} {int(target.avg):4d} {target.snt:4d}  "
-        stdscr.addstr(index, HOSTNAME_START, f"{name_disp} {addr_disp} {values_str}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
+            # 履歴表示
+            for n, c in enumerate(target.result[:max_result_len]):
+                stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
 
-        # 履歴表示
-        for n, c in enumerate(target.result[:max_result_len]):
-            stdscr.addstr(index, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
+        # 次の行へ
+        row += 1
+
+        # ただし、画面の行数が足りない場合は、そこで表示を打ち切り
+        if row >= y:
+            break
 
     stdscr.refresh()
 
@@ -260,7 +271,7 @@ async def main(stdscr: curses.window, targets: list[PingTarget]) -> None:
         for index, target in enumerate(targets):
             if target != SEPARATOR:
                 await target.update()
-                draw_screen(stdscr, targets, arrow_idx=index+3)
+                draw_screen(stdscr, targets, arrow_idx=index)
                 await asyncio.sleep(PING_INTERVAL)
         await asyncio.sleep(1)
 

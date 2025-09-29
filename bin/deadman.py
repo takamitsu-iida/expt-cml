@@ -96,6 +96,9 @@ class PingTarget:
         self.ttl = 0
         self.result = []
 
+        # RTT値に応じた7段階のキャラクタ
+        self.chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+
 
     async def update(self):
         res = await self.ping.async_send()
@@ -111,31 +114,24 @@ class PingTarget:
             self.loss += 1
         self.lossrate = float(self.loss) / float(self.snt) * \
             100.0 if self.snt else 0.0
-        self.result.insert(0, self.get_result_char(res))
+
+        if not res.success:
+            self.result.insert(0, "X")
+        else:
+            self.result.insert(0, self.get_result_char(res.rtt))
 
         # 履歴データは過去100件保存するが、実際に表示されるのは画面の幅による
         while len(self.result) > 100:
             self.result.pop()
 
 
-    def get_result_char(self, res: PingResult) -> str:
-        if not res.success:
-            return "X"
-        if res.rtt < RTT_SCALE * 1:
-            return "▁"
-        if res.rtt < RTT_SCALE * 2:
-            return "▂"
-        if res.rtt < RTT_SCALE * 3:
-            return "▃"
-        if res.rtt < RTT_SCALE * 4:
-            return "▄"
-        if res.rtt < RTT_SCALE * 5:
-            return "▅"
-        if res.rtt < RTT_SCALE * 6:
-            return "▆"
-        if res.rtt < RTT_SCALE * 7:
-            return "▇"
-        return "█"
+    def get_result_char(self, rtt: float) -> str:
+        if rtt <= 0:
+            return self.ping.chars[0]
+        level = int(rtt / RTT_SCALE)
+        level = max(0, min(7, level))
+        return self.chars[level]
+
 
 
 class Ping:

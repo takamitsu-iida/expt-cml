@@ -200,7 +200,7 @@ class NodeTarget:
         """
 
 
-    def calc_pps(self, stat_list: list[IntfStat], window_second: float = 3.0) -> tuple[float, float]:
+    def calc_pps(self, stat_list: list[IntfStat], window_second: float = 5.0) -> tuple[float, float]:
         if stat_list is None or len(stat_list) < 2:
             return 0.0, 0.0
 
@@ -212,7 +212,7 @@ class NodeTarget:
             oldest = window_stats[-1]
             diff_time = newest.time - oldest.time
             # division by zero 対策
-            if diff_time < 1.0:
+            if diff_time < 0.5:
                 return 0.0, 0.0
             rx_diff_packets = newest.readpackets - oldest.readpackets
             rx_pps = rx_diff_packets / diff_time if diff_time > 0 else 0
@@ -261,7 +261,7 @@ class NodeTarget:
                 stat_list.insert(0, stat)
 
                 # Packet Per Secondを計算
-                rx_pps, tx_pps = self.calc_pps(stat_list, window_second=3.0)
+                rx_pps, tx_pps = self.calc_pps(stat_list, window_second=5.0)
 
                 # トラフィック履歴
                 if intf_data.get('state') is None:
@@ -397,7 +397,7 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
                 target.update()
                 draw_screen(stdscr, targets, active_index=index)
                 time.sleep(NODE_INTERVAL)
-            time.sleep(0.5)
+            time.sleep(1.0)
     except KeyboardInterrupt:
         pass
 
@@ -441,9 +441,8 @@ if __name__ == "__main__":
     parser.add_argument("configfile", nargs='?', default=None, help="config file for CML Intman")
     args = parser.parse_args()
 
+    # SCALE値を修正
     SCALE = args.scale
-
-    print(SCALE)
 
     try:
         client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)

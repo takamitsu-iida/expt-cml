@@ -10,6 +10,8 @@ import os
 import sys
 import time
 
+from pathlib import Path
+
 try:
     # WindowsのWVSでUbuntuを実行している場合はcursesは動作しないかもしれません
     # dpkg -l | grep ncurses
@@ -46,6 +48,58 @@ try:
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
+
+
+#
+# ログ設定
+#
+
+# このファイルへのPathオブジェクト
+app_path = Path(__file__)
+
+# このファイルの名前から拡張子を除いてプログラム名を得る
+app_name = app_path.stem
+
+# アプリケーションのホームディレクトリはこのファイルからみて一つ上
+app_home = app_path.parent.joinpath('..').resolve()
+
+# ログファイルの名前
+log_file = app_path.with_suffix('.log').name
+
+# ログファイルを置くディレクトリ
+log_dir = app_home.joinpath('log')
+log_dir.mkdir(exist_ok=True)
+
+# ログファイルのパス
+log_path = log_dir.joinpath(log_file)
+
+
+# 独自にロガーを取得する
+logger = logging.getLogger(__name__)
+
+# ログレベル設定
+# レベルはこの順で下にいくほど詳細になる
+#   logging.CRITICAL
+#   logging.ERROR
+#   logging.WARNING --- 初期値はこのレベル
+#   logging.INFO
+#   logging.DEBUG
+logger.setLevel(logging.INFO)
+
+# フォーマット
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+# 標準出力には出力しない
+# stdout_handler = logging.StreamHandler(sys.stdout)
+# stdout_handler.setFormatter(formatter)
+# stdout_handler.setLevel(logging.INFO)
+# logger.addHandler(stdout_handler)
+
+# ログファイルのハンドラ
+file_handler = logging.FileHandler(log_path, 'a+')
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.INFO)
+logger.addHandler(file_handler)
 
 #
 # CMLに接続するための情報を取得する
@@ -146,6 +200,30 @@ class NodeTarget:
         """
 
 
+    def calc_pps(self, stat_list: list[IntfStat], window_second: float = 3.0) -> tuple[float, float]:
+        if stat_list is None or len(stat_list) < 2:
+            return 0.0, 0.0
+
+        newest = stat_list[0]
+
+        window_stats = [stat for stat in stat_list if newest.time - stat.time < window_second]
+
+        if len(window_stats) >= 2:
+            oldest = window_stats[-1]
+            diff_time = newest.time - oldest.time
+            # division by zero 対策
+            if diff_time < 1.0:
+                return 0.0, 0.0
+            rx_diff_packets = newest.readpackets - oldest.readpackets
+            rx_pps = rx_diff_packets / diff_time if diff_time > 0 else 0
+            tx_diff_packets = newest.writepackets - oldest.writepackets
+            tx_pps = tx_diff_packets / diff_time if diff_time > 0 else 0
+        else:
+            rx_pps = 0
+            tx_pps = 0
+        return rx_pps, tx_pps
+
+
     def update(self) -> None:
         try:
             # ノードの状態を更新する
@@ -153,6 +231,7 @@ class NodeTarget:
             self.cpu_usage = self.node.cpu_usage
 
             # 各インターフェースの情報を更新する
+            # node.interfaces()を呼ぶことでvirl2_clientが最新情報を取得する
             for intf in self.node.interfaces():
 
                 # Loopbackインターフェースは無視する
@@ -167,7 +246,7 @@ class NodeTarget:
                 # 現在のインタフェースの状態を記録
                 intf_data['state'] = intf.state
 
-                # 過去のデータが入ったリストを取り出す
+                # intf_dataの中のリストを取り出す
                 stat_list, rx_result_list, tx_result_list = (
                     intf_data.get('stat_list'),
                     intf_data.get('rx_result_list'),
@@ -181,11 +260,8 @@ class NodeTarget:
                 # IntfStatオブジェクトをリストの先頭に挿入
                 stat_list.insert(0, stat)
 
-                # Packet Per Secondを計算するために3秒前のデータを取得する
-                candidate_list = [stat for stat in stat_list if now - stat.time < 3.0]
-                past_stat = None
-                if len(candidate_list) > 0:
-                    past_stat = candidate_list[-1]
+                # Packet Per Secondを計算
+                rx_pps, tx_pps = self.calc_pps(stat_list, window_second=3.0)
 
                 # トラフィック履歴
                 if intf_data.get('state') is None:
@@ -194,22 +270,11 @@ class NodeTarget:
                 elif intf_data.get('state') !=  'STARTED':
                     rx_result_list.insert(0, 'X')
                     tx_result_list.insert(0, 'X')
-                elif past_stat is None:
-                    rx_result_list.insert(0, '.')
-                    tx_result_list.insert(0, '.')
                 else:
-                    diff_time = now - past_stat.time
-                    if diff_time < 0.1:
-                        rx_result_list.insert(0, '.')
-                        tx_result_list.insert(0, '.')
-                    else:
-                        rx_pps = (stat.readpackets - past_stat.readpackets) / diff_time
-                        rx_result_list.insert(0, self.get_result_char(rx_pps))
+                    rx_result_list.insert(0, self.get_result_char(rx_pps))
+                    tx_result_list.insert(0, self.get_result_char(tx_pps))
 
-                        tx_pps = (stat.writepackets - past_stat.writepackets) / diff_time
-                        tx_result_list.insert(0, self.get_result_char(tx_pps))
-
-                # 最大100件を保存
+                # リストの長さを制限する
                 for lst in (stat_list, rx_result_list, tx_result_list):
                     limit_history_length(lst)
 

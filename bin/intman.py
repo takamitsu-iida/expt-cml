@@ -45,7 +45,8 @@ except ModuleNotFoundError:
 # 外部ライブラリのインポート
 #
 try:
-    from virl2_client import ClientLibrary, Node
+    from virl2_client import ClientLibrary
+    from virl2_client.models.node import Node
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -205,13 +206,13 @@ class NodeTarget:
         if stat_list is None or len(stat_list) < 2:
             return 0.0, 0.0
 
+        # 最新のデータ
+        newest = stat_list[0]
+
         # window_second秒以内のデータだけを取り出す
         window_stats = [stat for stat in stat_list if newest.time - stat.time < window_second]
         if len(window_stats) < 2:
             return 0.0, 0.0
-
-        # 最新のデータ
-        newest = stat_list[0]
 
         # window_second秒以内で一番古いデータ
         oldest = window_stats[-1]

@@ -394,7 +394,14 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
             for index, target in enumerate(targets):
                 target.update()
                 draw_screen(stdscr, targets, active_index=index)
-                time.sleep(NODE_INTERVAL)
+                # targetが最後のノードでなければ少し待つ
+                if index < len(targets) - 1:
+                    time.sleep(NODE_INTERVAL)
+
+            # すべてのノード処理後は > を消して再描画
+            draw_screen(stdscr, targets, active_index=None)
+
+            # 待機
             time.sleep(1.0)
     except KeyboardInterrupt:
         pass

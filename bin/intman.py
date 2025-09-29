@@ -357,21 +357,17 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
 
         # 次の行へ
         row += 1
-        # 画面の行が足りなくて表示できない場合はそこで中止
+        # 画面の行が足りなくて表示できない場合はその時点で中止
         if row >= y:
             stdscr.refresh()
             return
 
-        # 各インターフェースの情報を表示
+        # 各インターフェースの情報を表示する
         for intf_name, intf_data in target.intf_dict.items():
             rx_result_list = intf_data.get('rx_result_list')
             tx_result_list = intf_data.get('tx_result_list')
             if not rx_result_list or not tx_result_list:
                 continue
-
-            #if intf_data.get('state') != 'STARTED':
-            #    print(intf_data.state)
-            #    continue
 
             # インタフェース名
             intf_name_disp = f"{intf_name[:INTERFACE_LEN]:<{INTERFACE_LEN + 1}}"
@@ -439,9 +435,9 @@ def dump_lab(client: ClientLibrary) -> None:
         labs_info.append(lab_dict)
 
     for info in labs_info:
-        print_text = json.dumps(info, indent=2, ensure_ascii=False)
-        print(print_text)
-        print('')
+        info_text = json.dumps(info, indent=2, ensure_ascii=False)
+        logging.info(info_text)
+        logging.info('')
 
 
 def parse_config(configfile: str) -> dict:
@@ -474,7 +470,7 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     conf_dict = parse_config(args.configfile)
-    print(json.dumps(conf_dict, indent=2))
+    logging.info(json.dumps(conf_dict, indent=2))
     title = conf_dict.get('title', None)
     if title is None:
         logging.error("title is required")

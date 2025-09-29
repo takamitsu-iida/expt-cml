@@ -45,7 +45,7 @@ except ModuleNotFoundError:
 # 外部ライブラリのインポート
 #
 try:
-    from virl2_client import ClientLibrary
+    from virl2_client import ClientLibrary, Node
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -156,20 +156,24 @@ TX_START: int = INTERFACE_START + INTERFACE_LEN + 1
 MAX_HISTORY: int = 100
 
 # 最大数を超えた場合に古いデータを削除する関数
-def limit_history_length(lst: list, max_length: int = MAX_HISTORY) -> None:
+def limit_list_length(lst: list, max_length: int = MAX_HISTORY) -> None:
     while len(lst) > max_length:
         lst.pop()
 
 
 class IntfStat:
     def __init__(self, current_time: float, readpackets: int, writepackets: int) -> None:
+        # 採取した時間
         self.time = current_time
+        # 読み込んだパケット数
         self.readpackets = readpackets
+
+        # 書き込んだパケット数
         self.writepackets = writepackets
 
 
 class NodeTarget:
-    def __init__(self, node, conf: dict) -> None:
+    def __init__(self, node: Node, conf: dict) -> None:
         self.node = node
 
         self.name = node.label
@@ -193,7 +197,7 @@ class NodeTarget:
                 }
         """
 
-        # トラフィック量に応じたキャラクタ
+        # PPS値に応じた7段階のキャラクタ
         self.chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
 
 
@@ -201,23 +205,25 @@ class NodeTarget:
         if stat_list is None or len(stat_list) < 2:
             return 0.0, 0.0
 
+        # window_second秒以内のデータだけを取り出す
+        window_stats = [stat for stat in stat_list if newest.time - stat.time < window_second]
+        if len(window_stats) < 2:
+            return 0.0, 0.0
+
+        # 最新のデータ
         newest = stat_list[0]
 
-        window_stats = [stat for stat in stat_list if newest.time - stat.time < window_second]
+        # window_second秒以内で一番古いデータ
+        oldest = window_stats[-1]
 
-        if len(window_stats) >= 2:
-            oldest = window_stats[-1]
-            diff_time = newest.time - oldest.time
-            # division by zero 対策
-            if diff_time < 0.5:
-                return 0.0, 0.0
-            rx_diff_packets = newest.readpackets - oldest.readpackets
-            rx_pps = rx_diff_packets / diff_time if diff_time > 0 else 0
-            tx_diff_packets = newest.writepackets - oldest.writepackets
-            tx_pps = tx_diff_packets / diff_time if diff_time > 0 else 0
-        else:
-            rx_pps = 0
-            tx_pps = 0
+        # 差分を計算
+        diff_time = newest.time - oldest.time
+
+        # PPSを計算
+        # division by zeroを避けるためにdiff_timeが0.1秒以下の場合は0.0とする
+        rx_pps = (newest.readpackets - oldest.readpackets) / diff_time if diff_time > 0.1 else 0.0
+        tx_pps = (newest.writepackets - oldest.writepackets) / diff_time if diff_time > 0.1 else 0.0
+
         return rx_pps, tx_pps
 
 
@@ -260,7 +266,7 @@ class NodeTarget:
                 # Packet Per Secondを計算
                 rx_pps, tx_pps = self.calc_pps(stat_list, window_second=5.0)
 
-                # トラフィック履歴
+                # トラフィック量を文字に変換してリストの先頭に挿入
                 if intf_data.get('state') is None:
                     rx_result_list.insert(0, 'X')
                     tx_result_list.insert(0, 'X')
@@ -273,23 +279,30 @@ class NodeTarget:
 
                 # リストの長さを制限する
                 for lst in (stat_list, rx_result_list, tx_result_list):
-                    limit_history_length(lst)
+                    limit_list_length(lst)
 
         except Exception as e:
             self.state = "ERROR"
             logging.error(f"Error updating node {self.name}: {e}")
             raise e
 
+
     def get_result_char(self, pps: float) -> str:
-        # chars: ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+        # return self._get_result_char_by_log(pps)
+        return self._get_result_char_by_exp(pps)
+
+
+    def _get_result_char_by_log(self, pps: float) -> str:
         if pps <= 0:
             return self.chars[0]
+        # ppsの対数をとってレベルを決定
+        level = min(7, int(math.log10(pps + 1)))
+        return self.chars[level]
 
-        # 対数を使ってレベルを決定する場合
-        # level = min(7, int(math.log10(pps + 1)))
-        # return self.chars[level]
 
-        # 指数を使って調整する場合
+    def _get_result_char_by_exp(self, pps: float) -> str:
+        if pps <= 0:
+            return self.chars[0]
         # base値と指数を調整（例: base=2, exp=0.6）
         base = 2.0
         exp = 0.6

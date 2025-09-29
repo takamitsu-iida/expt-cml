@@ -50,7 +50,6 @@ except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
 
-
 #
 # ログ設定
 #

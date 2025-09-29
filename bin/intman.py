@@ -6,6 +6,7 @@
 import argparse
 import json
 import logging
+import math
 import os
 import sys
 import time
@@ -284,7 +285,7 @@ class NodeTarget:
             raise e
 
 
-    def get_result_char(self, pps: float) -> str:
+    def _get_result_char(self, pps: float) -> str:
         if pps < SCALE * 1:
             return "▁"
         if pps < SCALE * 2:
@@ -300,6 +301,15 @@ class NodeTarget:
         if pps < SCALE * 7:
             return "▇"
         return "█"
+
+
+    def get_result_char(self, pps: float) -> str:
+        if pps <= 0:
+            return "▁"
+        level = min(7, int(math.log10(pps + 1)))
+        chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+        return chars[level]
+
 
 
 def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: int | None = None) -> None:

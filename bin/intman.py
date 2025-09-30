@@ -192,15 +192,14 @@ HEADER_TITLE: str = f"{TITLE_PROGNAME} {TITLE_VERSION}"
 #                        |                |                    |
 HEADER_COLS:  str = f"   HOSTNAME         INTERFACE            TX"
 
-# ホスト名の長さ上限、インタフェース名の長さ上限
-HOSTNAME_LEN : int = 16
-INTERFACE_LEN: int = 20
-
 # ホスト名の表示開始位置
 HOSTNAME_START: int = 3
 
 # インターフェース名の長さと表示開始位置
-INTERFACE_START: int = HOSTNAME_START + HOSTNAME_LEN + 1
+INTERFACE_START: int = 20
+
+# インタフェース名の長さ上限
+INTERFACE_LEN: int = 20
 
 # 実行結果の表示開始位置（RXの開始位置は表示するときに計算する）
 TX_START: int = INTERFACE_START + INTERFACE_LEN + 1
@@ -250,7 +249,7 @@ class NodeTarget:
                 }
         """
 
-        # PPS値に応じた7段階のキャラクタ
+        # 値に応じた8段階のキャラクタ
         self.chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
 
 
@@ -366,80 +365,78 @@ class NodeTarget:
 
 
 def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: int | None = None) -> None:
-    # 画面をクリア
-    stdscr.clear()
+    try:
+        # 画面を消去
+        # stdscr.clear() よりもerase()の方が高速でチラつかない
+        stdscr.erase()
 
-    # 画面サイズを取得
-    y, x = stdscr.getmaxyx()
+        # 画面サイズを取得
+        y, x = stdscr.getmaxyx()
 
-    # RXとTXの表示幅を調整
-    tx_len = rx_len = max(3, (x - TX_START) // 2 - 1)
+        # RXとTXの表示幅を調整
+        tx_len = rx_len = max(3, (x - TX_START) // 2 - 1)
 
-    # 表示幅が足りない場合は何も表示せずに終了
-    if tx_len <= 3:
-        stdscr.refresh()
-        return
-
-    # RXの表示開始位置
-    rx_start = TX_START + tx_len + 1
-
-    # 画面の行位置
-    row = 0
-
-    # 0行目
-    stdscr.addstr(row, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)  # タイトルを太字で表示
-    row += 1
-
-    # 1行目
-    stdscr.addstr(row, 0, f"{HEADER_COLS:<{TX_START + tx_len}} RX")
-    row += 1
-
-    # 2行目以降で各ノードの情報を表示
-    for i, target in enumerate(targets):
-
-        # updateしたターゲットには矢印を表示する
-        if active_index is not None and i == active_index:
-            stdscr.addstr(row, 0, " > ", curses.A_BOLD)
-
-        # ノード名を切り詰め
-        name_disp = target.name[:HOSTNAME_LEN]
-
-        # ノードの情報を表示
-        stdscr.addstr(row, HOSTNAME_START, f"{name_disp} ({target.state} {target.cpu_usage}%)", curses.color_pair(UP_COLOR if target.state == "BOOTED" else DOWN_COLOR))
-
-        # 次の行へ
-        row += 1
-        # 画面の行が足りなくて表示できない場合はその時点で中止
-        if row >= y:
-            stdscr.refresh()
+        # 表示幅が足りない場合は何も表示せずに終了
+        if tx_len <= 3:
             return
 
-        # 各インターフェースの情報を表示する
-        for intf_name, intf_data in target.intf_dict.items():
-            rx_result_list = intf_data.get('rx_result_list')
-            tx_result_list = intf_data.get('tx_result_list')
-            if not rx_result_list or not tx_result_list:
-                continue
+        # RXの表示開始位置
+        rx_start = TX_START + tx_len + 1
 
-            # インタフェース名
-            intf_name_disp = f"{intf_name[:INTERFACE_LEN]:<{INTERFACE_LEN + 1}}"
-            stdscr.addstr(row, INTERFACE_START, f"{intf_name_disp}", curses.color_pair(DEFAULT_COLOR))
+        # 0行目  タイトルを太字で表示
+        stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)
 
-            # TX表示
-            for n, c in enumerate(tx_result_list[:tx_len]):
-                stdscr.addstr(row, TX_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+        # 1行目  各カラムのタイトルを表示
+        stdscr.addstr(1, 0, f"{HEADER_COLS:<{TX_START + tx_len}} RX")
 
-            # RX表示
-            for n, c in enumerate(rx_result_list[:rx_len]):
-                stdscr.addstr(row, rx_start + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+        # 2行目以降で各ノードの情報を表示
+        row = 2
+        for i, target in enumerate(targets):
+
+            # update対象ターゲットには矢印を表示する
+            if active_index is not None and i == active_index:
+                stdscr.addstr(row, 0, " > ", curses.A_BOLD)
+
+            # ノードの情報を表示
+            stdscr.addstr(row, HOSTNAME_START, f"{target.name} ({target.state} {target.cpu_usage}%)", curses.color_pair(UP_COLOR if target.state == "BOOTED" else DOWN_COLOR))
 
             # 次の行へ
             row += 1
+
+            # 画面の行が足りなくて表示できない場合はその時点で中止
             if row >= y:
-                stdscr.refresh()
                 return
 
-    stdscr.refresh()
+            # 各インターフェースの情報を表示する
+            for intf_name, intf_data in target.intf_dict.items():
+                rx_result_list = intf_data.get('rx_result_list')
+                tx_result_list = intf_data.get('tx_result_list')
+                if not rx_result_list or not tx_result_list:
+                    continue
+
+                # インタフェース名
+                stdscr.addstr(row, INTERFACE_START, f"{intf_name[:INTERFACE_LEN]:<{INTERFACE_LEN + 1}}", curses.color_pair(DEFAULT_COLOR))
+
+                # TX表示
+                for n, c in enumerate(tx_result_list[:tx_len]):
+                    stdscr.addstr(row, TX_START + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+
+                # RX表示
+                for n, c in enumerate(rx_result_list[:rx_len]):
+                    stdscr.addstr(row, rx_start + n, c, curses.color_pair(DOWN_COLOR if c == "X" else UP_COLOR))
+
+                # 次の行へ
+                row += 1
+
+                # 画面の行が足りなくて表示できない場合はその時点で中止
+                if row >= y:
+                    return
+
+    finally:
+        # 画面を更新
+        # stdscr.refresh()よりもnoutrefresh()とdoupdate()の組み合わせの方が高速でチラつかない
+        stdscr.noutrefresh()
+        curses.doupdate()
 
 
 

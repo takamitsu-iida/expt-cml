@@ -26,7 +26,6 @@
 import argparse
 import asyncio
 import logging
-import os
 import re
 import socket
 import sys
@@ -72,44 +71,47 @@ VALUES_START: int = 41
 RESULT_START: int = 62
 
 # セパレータ行のキャラクタ
-SEPARATOR = "-"
+SEPARATOR: str = "-"
 
 # 最大ホスト名長（超える部分は切り詰め）
-MAX_HOSTNAME_LENGTH = ADDRESS_START - HOSTNAME_START - 1
+MAX_HOSTNAME_LENGTH: int = ADDRESS_START - HOSTNAME_START - 1
 
 # 最大アドレス長（超える部分は切り詰め）
-MAX_ADDRESS_LENGTH = VALUES_START - ADDRESS_START - 1
+MAX_ADDRESS_LENGTH: int = VALUES_START - ADDRESS_START - 1
 
 
 class PingResult:
     def __init__(self, success: bool = False, rtt: float = 0.0, ttl: int = 0, errcode: int = -1) -> None:
-        self.success = success
-        self.rtt = rtt
-        self.ttl = ttl
-        self.errcode = errcode
+        self.success: bool = success
+        self.rtt: float = rtt
+        self.ttl: int = ttl
+        self.errcode: int = errcode
 
 
 class PingTarget:
     def __init__(self, name: str, addr: str) -> None:
-        self.name = name
-        self.addr = addr
-        self.ping = Ping(addr)
-        self.state = False
-        self.rtt = 0.0
-        self.avg = 0.0
-        self.snt = 0
-        self.loss = 0
-        self.lossrate = 0.0
-        self.tot = 0.0
-        self.ttl = 0
-        self.result = []
+        self.name: str = name
+        self.addr: str = addr
+        self.ping: Ping = Ping(addr)
+        self.state: bool = False
+        self.rtt: float = 0.0
+        self.avg: float = 0.0
+        self.snt: int = 0
+        self.loss: int = 0
+        self.lossrate: float = 0.0
+        self.tot: float = 0.0
+        self.ttl: int = 0
+        self.result: list[str] = []
 
         # 8段階のキャラクタを定義
-        self.chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+        self.chars: list[str] = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
 
 
     async def update(self):
+        # pingを送信して結果を取得
         res = await self.ping.async_send()
+
+        # 統計情報を更新
         self.snt += 1
         if res.success:
             self.state = True
@@ -120,20 +122,26 @@ class PingTarget:
         else:
             self.state = False
             self.loss += 1
-        self.lossrate = float(self.loss) / float(self.snt) * \
-            100.0 if self.snt else 0.0
 
-        if not res.success:
-            self.result.insert(0, "X")
-        else:
+        # division by zeroに注意
+        self.lossrate = float(self.loss) / float(self.snt) * 100.0 if self.snt else 0.0
+
+        # 最新のデータを先頭に追加
+        if self.state:
             self.result.insert(0, self.get_result_char(res.rtt))
+        else:
+            self.result.insert(0, "X")
 
-        # 履歴データは過去100件保存するが、実際に表示される数は画面の幅による
+        # 履歴データを過去100件に制限（実際に表示される数は画面の幅による）
         while len(self.result) > 100:
             self.result.pop()
 
 
     def get_result_char(self, rtt: float) -> str:
+        """
+        RTT値をRTT_SCALEに応じて8段階でキャラクタ表示する。
+        RTT_SCALE=10なら0～70ms、RTT_SCALE=100なら0～700msを8段階で分ける。
+        """
         if rtt <= 0:
             return self.ping.chars[0]
         level = int(rtt / RTT_SCALE)
@@ -143,12 +151,16 @@ class PingTarget:
 
 class Ping:
     def __init__(self, addr: str, timeout: float = 1.0) -> None:
-        self.addr = addr
-        self.timeout = timeout
-        self.ipversion = whichipversion(self.addr)
-        if not self.ipversion:
+        self.addr: str = addr
+        self.timeout: float = timeout
+
+        # IPアドレスのバージョンを調べる
+        self.ipversion: int | bool = whichipversion(self.addr)
+        if self.ipversion is False:
             raise RuntimeError("invalid IP address '%s'" % self.addr)
-        self.pingcmd = pingcmd(self.ipversion)
+
+        # pingコマンドを調べる(IPv6の場合はping6コマンド)
+        self.pingcmd: list[str] = pingcmd(self.ipversion)
 
 
     async def async_send(self) -> PingResult:
@@ -195,15 +207,11 @@ def whichipversion(addr: str) -> int | bool:
     return False
 
 
-def pingcmd(ipv: int) -> list[str] | None:
-    if ipv == 4:
-        return ["ping", "-c", "1"]
+def pingcmd(ipv: int) -> list[str]:
     if ipv == 6:
         if which('ping6'):
             return ["ping6", "-c", "1"]
-        else:
-            return ["ping", "-c", "1"]
-    return None
+    return ["ping", "-c", "1"]
 
 
 def parse_config(filename: str) -> list[PingTarget | str]:
@@ -223,55 +231,59 @@ def parse_config(filename: str) -> list[PingTarget | str]:
 
 
 def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_idx: int | None = None) -> None:
-    # 画面のクリア
-    stdscr.clear()
+    try:
+        # 画面を消去  clear()よりもerase()の方が高速でチラつかない
+        stdscr.erase()
 
-    # 画面のサイズを取得
-    y, x = stdscr.getmaxyx()
+        # 画面のサイズを取得
+        y, x = stdscr.getmaxyx()
 
-    # 履歴表示可能な幅を計算
-    max_result_len = max(0, x - RESULT_START - 1)
+        # 履歴表示可能な幅を計算
+        max_result_len = max(0, x - RESULT_START - 1)
 
-    # 0行目  タイトルを太字で表示
-    stdscr.addstr(0, 0, f"{TITLE_PROGNAME} {TITLE_VERSION}", curses.A_BOLD)
+        # 0行目  タイトルを太字で表示
+        stdscr.addstr(0, 0, f"{TITLE_PROGNAME} {TITLE_VERSION}", curses.A_BOLD)
 
-    # 1行目  RTT_SCALEの値を表示
-    stdscr.addstr(1, 0, f"   RTT Scale {RTT_SCALE}ms.")
+        # 1行目  RTT_SCALEの値を表示
+        stdscr.addstr(1, 0, f"   RTT Scale {RTT_SCALE}ms.")
 
-    # 2行目  各カラムのタイトルを表示
-    stdscr.addstr(2, 0, f"{HEADER_COLS}")
+        # 2行目  各カラムのタイトルを表示
+        stdscr.addstr(2, 0, f"{HEADER_COLS}")
 
-    # 3行目以降
-    row = 3
-    for index, target in enumerate(targets):
-        if target == SEPARATOR:
-            # セパレータ表示
-            stdscr.addstr(row, HOSTNAME_START, SEPARATOR * (x - HOSTNAME_START))
-        else:
-            # 矢印表示
-            if arrow_idx is not None and index == arrow_idx:
-                stdscr.addstr(row, 0, " > ", curses.A_BOLD)
+        # 3行目以降
+        row = 3
+        for index, target in enumerate(targets):
+            if target == SEPARATOR:
+                # セパレータ表示
+                stdscr.addstr(row, HOSTNAME_START, SEPARATOR * (x - HOSTNAME_START))
+            else:
+                # 矢印表示
+                if arrow_idx is not None and index == arrow_idx:
+                    stdscr.addstr(row, 0, " > ", curses.A_BOLD)
 
-            # ホスト名とアドレスの長さを調整（長ければ切り詰める）
-            name_disp = f"{target.name[:MAX_HOSTNAME_LENGTH]:<{MAX_HOSTNAME_LENGTH}}"
-            addr_disp = f"{target.addr[:MAX_ADDRESS_LENGTH]:<{MAX_ADDRESS_LENGTH}}"
+                # ホスト名とアドレスの長さを調整（長ければ切り詰める）
+                name_disp = f"{target.name[:MAX_HOSTNAME_LENGTH]:<{MAX_HOSTNAME_LENGTH}}"
+                addr_disp = f"{target.addr[:MAX_ADDRESS_LENGTH]:<{MAX_ADDRESS_LENGTH}}"
 
-            # ターゲットの情報表示
-            values_str = f"{int(target.lossrate):3d}% {int(target.rtt):4d} {int(target.avg):4d} {target.snt:4d}  "
-            stdscr.addstr(row, HOSTNAME_START, f"{name_disp} {addr_disp} {values_str}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
+                # ターゲットの情報表示
+                values_str = f"{int(target.lossrate):3d}% {int(target.rtt):4d} {int(target.avg):4d} {target.snt:4d}  "
+                stdscr.addstr(row, HOSTNAME_START, f"{name_disp} {addr_disp} {values_str}", curses.color_pair(UP_COLOR if target.state else DOWN_COLOR))
 
-            # 履歴表示
-            for n, c in enumerate(target.result[:max_result_len]):
-                stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
+                # 履歴表示
+                for n, c in enumerate(target.result[:max_result_len]):
+                    stdscr.addstr(row, RESULT_START + n, c, curses.color_pair(UP_COLOR if c != "X" else DOWN_COLOR))
 
-        # 次の行へ
-        row += 1
+            # 次の行へ
+            row += 1
 
-        # ただし、画面の行数が足りない場合は、そこで表示を打ち切り
-        if row >= y:
-            break
-
-    stdscr.refresh()
+            # ただし、画面の行数が足りない場合は、そこで表示を打ち切り
+            if row >= y:
+                break
+    finally:
+        # 画面を更新  stdscr.refresh()よりもnoutrefresh()とdoupdate()の組み合わせの方が高速でチラつかない
+        # stdscr.refresh()
+        stdscr.noutrefresh()
+        curses.doupdate()
 
 
 async def main(stdscr: curses.window, targets: list[PingTarget]) -> None:

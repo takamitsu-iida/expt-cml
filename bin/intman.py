@@ -9,36 +9,29 @@ Cisco Modeling Labs (CML) のラボ・ノード・インターフェースのト
   pip install virl2-client==2.9
 
 【使い方】
-  bin/intman.py intman.conf
+  bin/intman.py intman.yaml
 
 【設定ファイルの例】
-{
-  "title": "cml_lab1",
-  "id": "2fb9f009-c9b2-4c61-8b84-31dae42b3853",
-  "nodes": [
-    {
-      "node_def": "csr1000v",
-      "name": "R1",
-      "interfaces": [
-        "GigabitEthernet1",
-        "GigabitEthernet2"
-      ]
-    },
-    {
-      "node_def": "csr1000v",
-      "name": "R2",
-      "interfaces": [
-        "GigabitEthernet1",
-        "GigabitEthernet2"
-      ]
-    }
-  ]
-}
+
+title: cml_lab1
+id: 2fb9f009-c9b2-4c61-8b84-31dae42b3853
+nodes:
+- node_def: csr1000v
+  name: R1
+  interfaces:
+  - GigabitEthernet1
+  - GigabitEthernet2
+- node_def: csr1000v
+  name: R2
+  interfaces:
+  - GigabitEthernet1
+  - GigabitEthernet2
 
 【設定ファイルの作り方】
 ファイル形式はYAMLです。
 bin/intman.py --dump を実行すると、ラボの一覧がYAML形式で表示されるので、必要なところをコピペするか、
 bin/intman.py --dump > intman.yaml のようにしてファイルに保存して、必要なラボだけを残して、いらない部分を削除してください。
+記載のあるノードとインタフェースだけを表示します。
 
 【CMLに接続するための情報】
 以下の環境変数が設定されている場合はそれを使用します。
@@ -153,11 +146,11 @@ logger.setLevel(logging.INFO)
 # フォーマット
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-# 標準出力には出力しない
-# stdout_handler = logging.StreamHandler(sys.stdout)
-# stdout_handler.setFormatter(formatter)
-# stdout_handler.setLevel(logging.INFO)
-# logger.addHandler(stdout_handler)
+# 標準出力のハンドラ
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setFormatter(formatter)
+stdout_handler.setLevel(logging.INFO)
+logger.addHandler(stdout_handler)
 
 # ログファイルのハンドラ
 file_handler = logging.FileHandler(log_path, 'a+')
@@ -234,7 +227,7 @@ class IntfStat:
 
 
 class NodeTarget:
-    def __init__(self, node: Node, conf: dict) -> None:
+    def __init__(self, node: Node, conf_dict: dict) -> None:
         self.node: Node = node
         self.name: str = node.label
         self.state: str = node.state
@@ -244,7 +237,7 @@ class NodeTarget:
         self.intf_dict: dict[str, dict] = {}
 
         # すべてのインターフェースについて辞書型を初期化する
-        self.intf_dict = {i.label: {'state': i.state, 'stat_list': [], 'rx_result_list': [], 'tx_result_list': []} for i in node.interfaces() if i.label in conf['interfaces']}
+        self.intf_dict = {i.label: {'state': i.state, 'stat_list': [], 'rx_result_list': [], 'tx_result_list': []} for i in node.interfaces() if i.label in conf_dict['interfaces']}
 
         """これと同じ
         for i in node.interfaces():
@@ -495,7 +488,9 @@ def dump_lab(client: ClientLibrary) -> None:
         labs_info.append(lab_dict)
 
     # YAML形式で出力
-    print(yaml.dump(labs_info, allow_unicode=True, sort_keys=False))
+    for lab_dict in labs_info:
+        print(yaml.dump(lab_dict, allow_unicode=True, sort_keys=False))
+        print('')
 
 
 def parse_config(configfile: str) -> dict:
@@ -539,9 +534,9 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     conf_dict = parse_config(args.configfile)
-    logger.info(yaml.dump(conf_dict, allow_unicode=True, sort_keys=False))
     if not conf_dict or 'title' not in conf_dict:
         logger.error("title is required")
+        logger.info(yaml.dump(conf_dict, allow_unicode=True, sort_keys=False))
         sys.exit(-1)
 
     # 対象のラボを探す

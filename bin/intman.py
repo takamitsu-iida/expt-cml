@@ -1,62 +1,58 @@
 #!/usr/bin/env python3
 
-######################################################################
-# CML Intman
-#
-# 【使い方】
-#  bin/intman.py intman.conf
-#
-# 【設定ファイルの例】
-#
-# {
-#   "title": "cml_lab1",
-#   "id": "2fb9f009-c9b2-4c61-8b84-31dae42b3853",
-#   "nodes": [
-#     {
-#       "node_def": "csr1000v",
-#       "name": "R1",
-#       "interfaces": [
-#         "GigabitEthernet1",
-#         "GigabitEthernet2"
-#       ]
-#     },
-#     {
-#       "node_def": "csr1000v",
-#       "name": "R2",
-#       "interfaces": [
-#         "GigabitEthernet1",
-#         "GigabitEthernet2"
-#       ]
-#     }
-#   ]
-# }
-#
-# 【設定ファイルの作り方】
-#
-# ファイル形式はJSONです。
-# bin/intman.py --dump
-# を実行すると、ラボの一覧がJSON形式で表示されるので、必要なところをコピペするか、
-#
-# bin/intman.py --dump > intman.conf
-#
-# のようにしてファイルに保存して、必要なラボだけを残して、いらない部分を削除する簡単です。
-#
-# 【CMLに接続するための情報】
-#
-# 以下の環境変数が設定されている場合はそれを使用します。
-#  VIRL2_URL
-#  VIRL2_USER
-#  VIRL2_PASS
-#
-# 設定されていない場合はローカルファイルcml_config.pyから読み込みます
-#
-######################################################################
+"""
+CML Intman
+
+Cisco Modeling Labs (CML) のラボ・ノード・インターフェースのトラフィック量を可視化するツールです。
+
+【事前準備】
+  pip install virl2-client==2.9
+
+【使い方】
+  bin/intman.py intman.conf
+
+【設定ファイルの例】
+{
+  "title": "cml_lab1",
+  "id": "2fb9f009-c9b2-4c61-8b84-31dae42b3853",
+  "nodes": [
+    {
+      "node_def": "csr1000v",
+      "name": "R1",
+      "interfaces": [
+        "GigabitEthernet1",
+        "GigabitEthernet2"
+      ]
+    },
+    {
+      "node_def": "csr1000v",
+      "name": "R2",
+      "interfaces": [
+        "GigabitEthernet1",
+        "GigabitEthernet2"
+      ]
+    }
+  ]
+}
+
+【設定ファイルの作り方】
+ファイル形式はYAMLです。
+bin/intman.py --dump を実行すると、ラボの一覧がYAML形式で表示されるので、必要なところをコピペするか、
+bin/intman.py --dump > intman.yaml のようにしてファイルに保存して、必要なラボだけを残して、いらない部分を削除してください。
+
+【CMLに接続するための情報】
+以下の環境変数が設定されている場合はそれを使用します。
+  VIRL2_URL
+  VIRL2_USER
+  VIRL2_PASS
+設定されていない場合はローカルファイルcml_config.pyから読み込みます
+
+"""
 
 #
 # 標準ライブラリのインポート
 #
 import argparse
-import json
 import logging
 import math
 import os
@@ -100,7 +96,23 @@ try:
     from virl2_client import ClientLibrary
     from virl2_client.models.node import Node
 except ImportError as e:
-    logging.critical(str(e))
+    message = """
+virl2_client module not found.
+  pip install --upgrade pip
+  pip install virl2-client==2.9
+    """.strip()
+    logging.critical(str(e) + "\n" + message)
+    sys.exit(-1)
+
+try:
+    import yaml
+except ImportError as e:
+    message = """
+yaml module not found.
+  pip install --upgrade pip
+  pip install pyyaml
+    """.strip()
+    logging.critical(str(e) + "\n" + message)
     sys.exit(-1)
 
 #
@@ -180,7 +192,7 @@ UP_COLOR:      int = 2
 DOWN_COLOR:    int = 3
 
 TITLE_PROGNAME: str = "CML Intman"
-TITLE_VERSION: str = "[2025.09.24]"
+TITLE_VERSION: str = "[2025.09.30]"
 
 # ヘッダ表示（列名）
 #                   0         1         2         3         4         5         6         7
@@ -336,6 +348,8 @@ class NodeTarget:
 
 
     def get_result_char(self, pps: float) -> str:
+        # ppsの値に応じて8段階のキャラクタを返す
+        # 下記の２つはどちらでもいい感じに表示される
         # return self._get_result_char_by_log(pps)
         return self._get_result_char_by_exp(pps)
 
@@ -372,8 +386,9 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
         # RXとTXの表示幅を調整
         tx_len = rx_len = max(3, (x - TX_START) // 2 - 1)
 
-        # 表示幅が足りない場合は何も表示せずに終了
-        if tx_len <= 3:
+        # 画面が小さすぎる場合はエラーメッセージを表示して終了
+        if y < 4 or tx_len < 2:
+            stdscr.addstr(0, 0, "Terminal size too small", curses.A_BOLD)
             return
 
         # RXの表示開始位置
@@ -479,22 +494,30 @@ def dump_lab(client: ClientLibrary) -> None:
             lab_dict["nodes"].append(node_dict)
         labs_info.append(lab_dict)
 
-    for info in labs_info:
-        info_text = json.dumps(info, indent=2, ensure_ascii=False)
-        logger.info(info_text)
-        logger.info('')
+    # YAML形式で出力
+    print(yaml.dump(labs_info, allow_unicode=True, sort_keys=False))
 
 
 def parse_config(configfile: str) -> dict:
-    with open(configfile, 'r', encoding='utf-8') as f:
-        config = json.load(f)
-    return config
+    try:
+        with open(configfile, 'r', encoding='utf-8') as f:
+            config_dict = yaml.safe_load(f)
+        return config_dict
+    except FileNotFoundError:
+        logger.error(f"設定ファイルが見つかりません: {configfile}")
+        sys.exit(-1)
+    except yaml.YAMLError as e:
+        logger.error(f"YAMLの解析に失敗しました: {e}")
+        sys.exit(-1)
+    except Exception as e:
+        logger.error(f"設定ファイルの読み込みで予期しないエラー: {e}")
+        sys.exit(-1)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dump", action='store_true', default=False, help="dump lab node and interface")
-    parser.add_argument("configfile", nargs='?', default=None, help="config file for CML Intman")
+    parser.add_argument("configfile", nargs='?', default=None, help="config yaml file for CML Intman")
     args = parser.parse_args()
 
     try:
@@ -512,17 +535,17 @@ if __name__ == "__main__":
 
     # 以降の処理は configfile の指定が必要
     if args.configfile is None:
-        logger.error("configfileの指定が必要です")
+        parser.print_help()
         sys.exit(-1)
 
     conf_dict = parse_config(args.configfile)
-    logger.info(json.dumps(conf_dict, indent=2))
-    title = conf_dict.get('title', None)
-    if title is None:
+    logger.info(yaml.dump(conf_dict, allow_unicode=True, sort_keys=False))
+    if not conf_dict or 'title' not in conf_dict:
         logger.error("title is required")
         sys.exit(-1)
 
     # 対象のラボを探す
+    title = conf_dict.get('title', None)
     lab = client.find_labs_by_title(title)
     if not lab:
         logger.error(f"Error: ラボ '{title}' が見つかりません")

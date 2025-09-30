@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 
-#
-# Yet Another Deadman
-# deadman(https://github.com/upa/deadman)をシンプルに再実装したものです。
-# 余分な機能を削除し、流用しやすいようにしています。
-#
+"""
+Yet Another Deadman
 
-# 【使い方】
-#
-# bin/deadman.py deadman.conf
-#
-# 【deadman.confの例】
-#
-# googleDNS	8.8.8.8
-# quad9		9.9.9.9
-# mroot		202.12.27.33
-# kame		210.155.141.200
-# ---
-# mroot6	2001:dc3::35
-# kame6		2001:2f0:0:8800::1:1#   example.com
+deadman(https://github.com/upa/deadman)を簡潔に再利用しやすい形で再実装したものです。
+
+【使い方】
+  bin/deadman.py deadman.conf
+
+【deadman.confの例】
+googleDNS	8.8.8.8
+quad9		9.9.9.9
+mroot		202.12.27.33
+kame		210.155.141.200
+---
+mroot6	    2001:dc3::35
+kame6		2001:2f0:0:8800::1:1
+
+"""
 
 #
 # 標準ライブラリのインポート
@@ -240,6 +239,11 @@ def draw_screen(stdscr: curses.window, targets: list[PingTarget | str], arrow_id
 
         # 履歴表示可能な幅を計算
         max_result_len = max(0, x - RESULT_START - 1)
+
+        # 画面が小さすぎる場合はエラーメッセージを表示して終了
+        if y < 5 or x < 60:
+            stdscr.addstr(0, 0, "Terminal size too small", curses.A_BOLD)
+            return
 
         # 0行目  タイトルを太字で表示
         stdscr.addstr(0, 0, f"{TITLE_PROGNAME} {TITLE_VERSION}", curses.A_BOLD)

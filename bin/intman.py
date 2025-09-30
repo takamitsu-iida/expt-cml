@@ -126,7 +126,6 @@ log_dir.mkdir(exist_ok=True)
 # ログファイルのパス
 log_path = log_dir.joinpath(log_file)
 
-
 # 独自にロガーを取得する
 logger = logging.getLogger(__name__)
 
@@ -183,14 +182,11 @@ DOWN_COLOR:    int = 3
 TITLE_PROGNAME: str = "CML Intman"
 TITLE_VERSION: str = "[2025.09.24]"
 
-# ヘッダ表示（タイトル）
-HEADER_TITLE: str = f"{TITLE_PROGNAME} {TITLE_VERSION}"
-
 # ヘッダ表示（列名）
-#                     0         1         2         3         4         5         6         7
-#                     01234567890123456789012345678901234567890123456789012345678901234567890
-#                        |                |                    |
-HEADER_COLS:  str = f"   HOSTNAME         INTERFACE            TX"
+#                   0         1         2         3         4         5         6         7
+#                   01234567890123456789012345678901234567890123456789012345678901234567890
+#                      |                |                    |
+HEADER_COLS: str = "   HOSTNAME         INTERFACE            TX"
 
 # ホスト名の表示開始位置
 HOSTNAME_START: int = 3
@@ -216,24 +212,24 @@ def limit_list_length(lst: list, max_length: int = MAX_HISTORY) -> None:
 class IntfStat:
     def __init__(self, current_time: float, readpackets: int, writepackets: int) -> None:
         # 採取した時間
-        self.time = current_time
+        self.time: float = current_time
+
         # 読み込んだパケット数
-        self.readpackets = readpackets
+        self.readpackets: int = readpackets
 
         # 書き込んだパケット数
-        self.writepackets = writepackets
+        self.writepackets: int = writepackets
 
 
 class NodeTarget:
     def __init__(self, node: Node, conf: dict) -> None:
-        self.node = node
-
-        self.name = node.label
-        self.state = node.state
-        self.cpu_usage = node.cpu_usage
+        self.node: Node = node
+        self.name: str = node.label
+        self.state: str = node.state
+        self.cpu_usage: float = node.cpu_usage
 
         # インターフェイスごとに結果を保存する辞書型を初期化する
-        self.intf_dict = {}
+        self.intf_dict: dict[str, dict] = {}
 
         # すべてのインターフェースについて辞書型を初期化する
         self.intf_dict = {i.label: {'state': i.state, 'stat_list': [], 'rx_result_list': [], 'tx_result_list': []} for i in node.interfaces() if i.label in conf['interfaces']}
@@ -250,7 +246,7 @@ class NodeTarget:
         """
 
         # 値に応じた8段階のキャラクタ
-        self.chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+        self.chars: list[str] = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
 
 
     def calc_pps(self, stat_list: list[IntfStat], window_second: float = 5.0) -> tuple[float, float]:
@@ -384,7 +380,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
         rx_start = TX_START + tx_len + 1
 
         # 0行目  タイトルを太字で表示
-        stdscr.addstr(0, 0, f"{TITLE_PROGNAME}", curses.A_BOLD)
+        stdscr.addstr(0, 0, f"{TITLE_PROGNAME} {TITLE_VERSION}", curses.A_BOLD)
 
         # 1行目  各カラムのタイトルを表示
         stdscr.addstr(1, 0, f"{HEADER_COLS:<{TX_START + tx_len}} RX")
@@ -525,7 +521,6 @@ if __name__ == "__main__":
     if title is None:
         logger.error("title is required")
         sys.exit(-1)
-
 
     # 対象のラボを探す
     lab = client.find_labs_by_title(title)

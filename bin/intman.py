@@ -55,14 +55,17 @@ import time
 from pathlib import Path
 
 try:
-    # WindowsのWVSでUbuntuを実行している場合はcursesは動作しないかもしれません
+    import curses
+except ModuleNotFoundError:
+    #
+    # WindowsのWVSでUbuntuを実行している場合、cursesアプリは動作しないかもしれません
     # dpkg -l | grep ncurses
     # でncursesがインストールされているか確認して、もし入っていなければ以下を実行してください
     #
     # sudo apt update
     # sudo apt install libncurses5-dev libncursesw5-dev
     #
-    # これで動かなければPythonの再インストールが必要です。
+    # 続いてPythonの再インストールが必要です。Pythonはインストール時にncursesを検出して組み込むためです。
     #
     # pyenvでPythonをインストールする場合、モジュール不足でエラーが大量にでるかもしれません。
     # おおむね次のようなモジュールを入れておけばPythonのインストールは大丈夫だと思います。
@@ -73,8 +76,6 @@ try:
     # git pull
     # pyenv install 3.13.7
     #
-    import curses
-except ModuleNotFoundError:
     logging.error("curses not found")
     logging.error("Please install the required packages.")
     logging.error("  sudo apt update")
@@ -109,7 +110,7 @@ yaml module not found.
     sys.exit(-1)
 
 #
-# ログ設定
+# ログ設定  cursesアプリの場合は画面に表示できないので、ログはファイルに保存する
 #
 
 # このファイルへのPathオブジェクト

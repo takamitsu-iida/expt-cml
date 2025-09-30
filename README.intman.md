@@ -52,7 +52,7 @@ Windows環境で複数の宛先にpingを打つときはExPingを使う人が多
 
 deadmanのソースコードを覗いてみると、Pythonで書かれたスクリプトだとわかります。
 
-Pythonならある程度理解できますので、改造して使えるかも！？　と思ったのですが、ちょっと難しく・・・
+Pythonならある程度理解できますので、改造して使えるかも！？　と思ったのですが、中身はちょっと難しく・・・
 
 そこでdeadmanの見た目表示のアイデアを流用させていただいて、もっと簡単なスクリプトを書き起こしてみました。
 
@@ -64,13 +64,21 @@ Pythonならある程度理解できますので、改造して使えるかも�
 
 <br><br>
 
-## トラフィック量の取得
+## CMLのトラフィック量はどうやって取得する？
 
 CMLのラボの中を流れるトラフィックの量を把握するために、Pythonのモジュール virl2_client を使います。
 
-[マニュアル](https://pubhub.devnetcloud.com/media/virl2-client/docs/latest/api/virl2_client.models.html#module-virl2_client.models.interface)を見ると、インタフェースに `readpackets` と `writepackets` というプロパティがあります。
+virl2_clientのマニュアルを見ると、インタフェースに `readpackets` と `writepackets` というプロパティがあります。
 
-1秒ごとにこの `readpackets` と `writepackets` を参照して、packet per secondsを計算すればトラフィック量は把握できそうです。
+1秒ごとに `readpackets` と `writepackets` を参照して、packet per secondsを計算すればトラフィック量は把握できそうです。
+
+<br>
+
+> [!NOTE]
+>
+> 参照したマニュアルはこちら。
+>
+> https://pubhub.devnetcloud.com/media/virl2-client/docs/latest/api/virl2_client.models.html#module-virl2_client.models.interface
 
 <br><br>
 
@@ -113,14 +121,13 @@ R1とR2はCSR1000vです。
 
 Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフィック量を手っ取り早く可視化しました。
 
-LinuxでGUIアプリを作ろうとするとかなり大変ですが、ターミナルで動く軽量なモノであれば、結構簡単にできるものです。
+ちゃんとしたGUIアプリを作ろうとすると大変ですが、ターミナルで動く軽量なモノであれば意外と簡単にできるものです。
 
 [deadman.py](/bin/deadman.py) と [intman.py](/bin/intman.py) はどちらも短いPythonスクリプトですので、
 ぜひ改造して使ってみてください。
 
-PPSじゃなくてbps(Bit Per Second)の方がいいな、くらいなら、あっという間に改造できちゃうと思いますし、
-他にも過去の履歴を残しながら状態を表示したい、みたいな場面では応用できると思います。
-
+PPSじゃなくてBPS(Bit Per Second)の方がいいな、くらいなら、あっという間に改造できちゃうと思いますし、
+他にも過去の履歴を残しながら状態を表示したい、みたいな場面でいろいろ応用できると思います。
 
 
 <!--

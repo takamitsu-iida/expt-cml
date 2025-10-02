@@ -52,10 +52,10 @@ for ((i=0; i<RIGHT_COUNT; i++)); do
 done
 
 # 最初の分割: 左側はR${LEFT_LIST[0]}, 右側はR${RIGHT_LIST[0]}
-COMMAND_STRING="wt.exe split-pane -V --size 0.5 -p \"R${LEFT_LIST[0]}\""
+COMMAND_STRING="wt.exe -p \"R${LEFT_LIST[0]}\""
 COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p \"R${RIGHT_LIST[0]}\""
 
-# 左上のペインにフォーカスを移動
+# 左のペインにフォーカスを移動
 COMMAND_STRING="${COMMAND_STRING} \; move-focus left"
 
 # 左側で2番目以降のペインを水平 (上下) に均等分割

@@ -59,7 +59,7 @@ COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p \"R${RIGHT_LIST
 COMMAND_STRING="${COMMAND_STRING} \; move-focus left"
 
 # 左側で2番目以降のペインを水平 (上下) に均等分割
-for ((i=1; i<=$LEFT_COUNT; i++)); do
+for ((i=1; i<$LEFT_COUNT; i++)); do
     # 現在の残りのスペースに対して、新しいペインが必要な割合を計算
     REMAINING_PANES=$(( LEFT_COUNT - i + 1 ))
     SIZE_ARG=$(echo "scale=3; 1 / $REMAINING_PANES" | bc)
@@ -79,7 +79,7 @@ COMMAND_STRING="${COMMAND_STRING} \; move-focus right"
 
 # 右側で2番目以降のペインを水平 (上下) に均等分割
 RIGHT_START_INDEX=$LEFT_COUNT
-for ((i=1; i<=$RIGHT_COUNT; i++)); do
+for ((i=1; i<$RIGHT_COUNT; i++)); do
     # 現在の残りのスペースに対して、新しいペインが必要な割合を計算
     REMAINING_PANES=$(( RIGHT_COUNT - i + 1 ))
     SIZE_ARG=$(echo "scale=3; 1 / $REMAINING_PANES" | bc)

@@ -51,7 +51,7 @@ for ((i=0; i<RIGHT_COUNT; i++)); do
     RIGHT_LIST[$i]=$((START_ROUTER + LEFT_COUNT + i))
 done
 
-# 最初の分割: 左側はR${LEFT_LIST[0]}, 右側はR${RIGHT_LIST[0]}
+# 最初のターミナルをR${LEFT_LIST[0]}で開き、垂直分割で右側にR${RIGHT_LIST[0]}を開く
 COMMAND_STRING="wt.exe -p \"R${LEFT_LIST[0]}\""
 COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p \"R${RIGHT_LIST[0]}\""
 
@@ -83,7 +83,7 @@ for ((i=1; i<=$RIGHT_COUNT; i++)); do
     # 現在の残りのスペースに対して、新しいペインが必要な割合を計算
     REMAINING_PANES=$(( RIGHT_COUNT - i + 1 ))
     SIZE_ARG=$(echo "scale=3; 1 / $REMAINING_PANES" | bc)
-    PROFILE="${RIGHT_LIST[$i]}"
+    PROFILE="R${RIGHT_LIST[$i]}"
 
     # 水平分割のコマンドを追加
     COMMAND_STRING="${COMMAND_STRING} \; split-pane -H --size ${SIZE_ARG} -p \"${PROFILE}\""

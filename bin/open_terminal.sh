@@ -41,37 +41,37 @@ fi
 LEFT_COUNT=$(( (N + 1) / 2 ))  # 左側のペイン数 (切り上げ)
 RIGHT_COUNT=$(( N / 2 ))       # 右側のペイン数 (切り捨て)
 
-# 全ペインのポート番号を計算し、視覚的な順序で配列に格納する
-declare -a PROFILE_NAMES
-
-# R1, R2, ... のプロファイル名を配列に格納
-for ((i=0; i<N; i++)); do
-    PROFILE_NAMES[$i]="R$((START_ROUTER + i))"
+LEFT_LIST=()
+for ((i=0; i<LEFT_COUNT; i++)); do
+    LEFT_LIST[$i]=$((START_ROUTER + i))
 done
 
-COMMAND_STRING="wt.exe"
+RIGHT_LIST=()
+for ((i=0; i<RIGHT_COUNT; i++)); do
+    RIGHT_LIST[$i]=$((START_ROUTER + LEFT_COUNT + i))
+done
 
-# 現在アクティブなペインを垂直に分割し、右側に新しいペインを作成
-COMMAND_STRING="wt.exe split-pane -V --size 0.5 -p \"${PROFILE_NAMES[0]}\""
+# 最初の分割: 左側はR${LEFT_LIST[0]}, 右側はR${RIGHT_LIST[0]}
+COMMAND_STRING="wt.exe split-pane -V --size 0.5 -p \"R${LEFT_LIST[0]}\""
+COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p \"R${RIGHT_LIST[0]}\""
 
 # 左上のペインにフォーカスを移動
 COMMAND_STRING="${COMMAND_STRING} \; move-focus left"
 
 # 左側で2番目以降のペインを水平 (上下) に均等分割
-for ((i=2; i<=$LEFT_COUNT; i++)); do
+for ((i=1; i<=$LEFT_COUNT; i++)); do
     # 現在の残りのスペースに対して、新しいペインが必要な割合を計算
-    REMAINING_PANES=$(( LEFT_COUNT - i + 2 ))
+    REMAINING_PANES=$(( LEFT_COUNT - i + 1 ))
     SIZE_ARG=$(echo "scale=3; 1 / $REMAINING_PANES" | bc)
-    PROFILE="${PROFILE_NAMES[$((i-1))]}"
+    PROFILE="${LEFT_LIST[$i]}"
 
     # 水平分割のコマンドを追加
     COMMAND_STRING="${COMMAND_STRING} \; split-pane -H --size ${SIZE_ARG} -p \"${PROFILE}\""
 
     # 分割後、フォーカスを新しく作成されたペインから上（次に分割すべきペイン）に移動
-    if [ "$i" -lt "$LEFT_COUNT" ]; then
+    if [ "$i" -lt "$((LEFT_COUNT-1))" ]; then
         COMMAND_STRING="${COMMAND_STRING} \; move-focus up"
     fi
-
 done
 
 # 右上のペインにフォーカスを移動
@@ -83,26 +83,15 @@ for ((i=1; i<=$RIGHT_COUNT; i++)); do
     # 現在の残りのスペースに対して、新しいペインが必要な割合を計算
     REMAINING_PANES=$(( RIGHT_COUNT - i + 1 ))
     SIZE_ARG=$(echo "scale=3; 1 / $REMAINING_PANES" | bc)
-    PROFILE="${PROFILE_NAMES[$((RIGHT_START_INDEX + i - 1))]}"
+    PROFILE="${RIGHT_LIST[$i]}"
 
     # 水平分割のコマンドを追加
-    # COMMAND_STRING="${COMMAND_STRING} \; split-pane -H --size ${SIZE_ARG} -p \"${PROFILE}\""
-
-    if [ $i -eq 1 ]; then
-        # 最初の右側ペインはすでに存在しているので、分割せずにプロファイルを変更
-        COMMAND_STRING="${COMMAND_STRING} \; set-profile \"${PROFILE}\""
-    else
-        COMMAND_STRING="${COMMAND_STRING} \; split-pane -H --size ${SIZE_ARG} -p \"${PROFILE}\""
-        if [ "$i" -lt "$RIGHT_COUNT" ]; then
-            COMMAND_STRING="${COMMAND_STRING} \; move-focus up"
-        fi
-    fi
+    COMMAND_STRING="${COMMAND_STRING} \; split-pane -H --size ${SIZE_ARG} -p \"${PROFILE}\""
 
     # 分割後、フォーカスを新しく作成されたペインから上（次に分割すべきペイン）に移動
-    if [ "$i" -lt "$RIGHT_COUNT" ]; then
+    if [ "$i" -lt "$((RIGHT_COUNT-1))" ]; then
         COMMAND_STRING="${COMMAND_STRING} \; move-focus up"
     fi
-
 done
 
 

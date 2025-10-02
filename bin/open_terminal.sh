@@ -54,7 +54,6 @@ done
 # 1. コマンドの組み立て
 # ---------------------------------
 COMMAND_STRING="wt.exe"
-UBUNTU="Ubuntu-20.04"
 
 # --- Step 1: 左右に均等に2分割 ---
 # 現在アクティブなペインを垂直に分割し、右側に新しいペインを作成
@@ -113,4 +112,4 @@ COMMAND_STRING="${COMMAND_STRING} \; move-focus first"
 echo "実行コマンド: ${COMMAND_STRING}"
 
 # evalを使用して、セミコロンが正しくwt.exeの区切り文字として解釈されるように実行
-# eval "${COMMAND_STRING}"
+eval "${COMMAND_STRING}"

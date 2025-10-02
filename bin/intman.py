@@ -16,29 +16,31 @@ Cisco Modeling Labs (CML) のラボ・ノード・インターフェースのト
 title: cml_lab1
 id: 2fb9f009-c9b2-4c61-8b84-31dae42b3853
 nodes:
-- node_def: csr1000v
-  name: R1
-  interfaces:
-  - GigabitEthernet1
-  - GigabitEthernet2
-- node_def: csr1000v
-  name: R2
-  interfaces:
-  - GigabitEthernet1
-  - GigabitEthernet2
+  - node_def: csr1000v
+    name: R1
+    interfaces:
+    - GigabitEthernet1
+    - GigabitEthernet2
+  - node_def: csr1000v
+    name: R2
+    interfaces:
+    - GigabitEthernet1
+    - GigabitEthernet2
 
 【設定ファイルの作り方】
 ファイル形式はYAMLです。
 bin/intman.py --dump を実行すると、ラボの一覧がYAML形式で表示されるので、必要なところをコピペするか、
-bin/intman.py --dump > intman.yaml のようにしてファイルに保存して、必要なラボだけを残して、いらない部分を削除してください。
+bin/intman.py --dump > intman.yaml のようにしてファイルに保存して、必要なラボだけを残して残りを削除してください。
 記載のあるノードとインタフェースだけを表示します。
+idは削除しても構いません。
+titleとnodesとinterfacesは必須です。
 
 【CMLに接続するための情報】
 以下の環境変数が設定されている場合はそれを使用します。
   VIRL2_URL
   VIRL2_USER
   VIRL2_PASS
-設定されていない場合はローカルファイルcml_config.pyから読み込みます
+設定されていない場合はローカルファイルcml_config.pyから読み込みます。
 
 """
 
@@ -179,6 +181,9 @@ if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
 
 # ノードから情報を取得したあと、次のノードの情報を取得するまでの待ち時間（秒）
 NODE_INTERVAL: float = 0.1
+
+# すべてのノードの情報を取得したあと、次のループまでの待ち時間（秒）
+WAIT_INTERVAL: float = 1.0
 
 # 表示に使用する文字と色
 DEFAULT_COLOR: int = 1
@@ -385,7 +390,7 @@ def draw_screen(stdscr: curses.window, targets: list[NodeTarget], active_index: 
             stdscr.addstr(0, 0, "Terminal size too small", curses.A_BOLD)
             return
 
-        # RXの表示開始位置
+        # RXの表示開始位置を計算
         rx_start = TX_START + tx_len + 1
 
         # 0行目  タイトルを太字で表示
@@ -463,7 +468,7 @@ def run_curses(stdscr: curses.window, targets: list[NodeTarget]) -> None:
                     time.sleep(NODE_INTERVAL)
 
             # 待機
-            time.sleep(1.0)
+            time.sleep(WAIT_INTERVAL)
     except KeyboardInterrupt:
         pass
 

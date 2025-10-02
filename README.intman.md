@@ -70,15 +70,65 @@ CMLのラボの中を流れるトラフィックの量を把握するために�
 
 virl2_clientのマニュアルを見ると、インタフェースに `readpackets` と `writepackets` というプロパティがあります。
 
-1秒ごとに `readpackets` と `writepackets` を参照して、packet per secondsを計算すればトラフィック量は把握できそうです。
+定期的に `readpackets` と `writepackets` を参照して、packet per secondsを計算すればトラフィック量は把握できそうです。
 
 <br>
 
 > [!NOTE]
 >
-> 参照したマニュアルはこちら。
+> マニュアルはこちら。
 >
 > https://pubhub.devnetcloud.com/media/virl2-client/docs/latest/api/virl2_client.models.html#module-virl2_client.models.interface
+
+<br>
+
+> [!NOTE]
+>
+> virl2_clientのソースコード `interface.py` はこのようになっていて、
+> readpacketsやwritepacketsといった統計値はある程度時間が経過してたら更新して、そうでなければ現在持っている値を返却します。
+>
+> ```python
+>   @property
+>   def readpackets(self) -> int:
+>       """Return the number of packets read by the interface."""
+>       self.node._lab.sync_statistics_if_outdated()
+>       return int(self.statistics["readpackets"])
+> ```
+>
+> `node.py` をみると、現在時刻と前回取得したときの時刻の差分が self._lab.auto_sync_interval よりも大きいときだけ更新します。
+>
+> ```python
+>   def sync_interface_operational_if_outdated(self) -> None:
+>       timestamp = time.time()
+>       if (
+>           self._lab.auto_sync
+>           and timestamp - self._last_sync_interface_operational_time
+>           > self._lab.auto_sync_interval
+>       ):
+>           self.sync_interface_operational()
+> ```
+>
+> `lab.py` をみると、このように初期化されてますので、自動更新が有効、1.0秒経過したら取りに行く、という動作をしています。
+>
+> ```python
+>   def __init__(
+>       self,
+>       title: str | None,
+>       lab_id: str,
+>       session: httpx.Client,
+>       username: str,
+>       password: str,
+>       auto_sync: bool = True,
+>       auto_sync_interval: float = 1.0,
+>       wait: bool = True,
+>       wait_max_iterations: int = 500,
+>       wait_time: int | float = 5,
+>       hostname: str | None = None,
+>       resource_pool_manager: ResourcePoolManagement | None = None,
+>   ) -> None:
+> ```
+>
+> ということは、トラフィック量を測定するインターバルも1秒に合わせておくと良さそうです。
 
 <br><br>
 

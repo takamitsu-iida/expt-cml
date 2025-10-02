@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# Windows Terminalを指定したペイン数で左右2分割して起動するスクリプト
-# 使い方: ./open_terminal.sh <ペイン数>
-# 例: ./open_terminal.sh 4
+#
+# 使い方: ./open_terminal.sh R1 R2 R3 ...
+#
+# 例: ./open_terminal.sh R1 R2 R3 R4
 
 # 参考
 # https://docs.microsoft.com/en-us/windows/terminal/command-line-arguments?tabs=windows
-
+#
 # 4分割の場合
 #
 # wt.exe \
@@ -16,26 +17,15 @@
 #     \; move-focus down \
 #     \; split-pane -V --size 0.5
 
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <PROFILE1> <PROFILE2> [PROFILE3 ...]"
+    exit 1
+fi
+
 # ペインの総数を取得
-N=$1
+N=$#
 
-# ルータ番号を取得
-START_ROUTER=$2
-
-if [ -z "$N" ] || ! [[ "$N" =~ ^[0-9]+$ ]] || [ "$N" -lt 2 ]; then
-    echo "エラー: 2以上のペインの数を引数として指定してください (例: ./equal_split_v3.sh 4)"
-    exit 1
-fi
-
-if [ "$N" -gt 6 ]; then
-    echo "エラー: ペインの最大数は6です。6以下の値を指定してください。"
-    exit 1
-fi
-
-if [ -z "$START_ROUTER" ] || ! [[ "$START_ROUTER" =~ ^[0-9]+$ ]]; then
-    echo "エラー: 2番目の引数として、最初のペインで使うルータ番号を指定してください (例: 1)。"
-    exit 1
-fi
+PROFILES=("$@")
 
 # 左右の列のペイン数を計算
 LEFT_COUNT=$(( (N + 1) / 2 ))  # 左側のペイン数 (切り上げ)
@@ -43,17 +33,17 @@ RIGHT_COUNT=$(( N / 2 ))       # 右側のペイン数 (切り捨て)
 
 LEFT_LIST=()
 for ((i=0; i<LEFT_COUNT; i++)); do
-    LEFT_LIST[$i]=$((START_ROUTER + i))
+    LEFT_LIST[$i]="${PROFILES[$i]}"
 done
 
 RIGHT_LIST=()
 for ((i=0; i<RIGHT_COUNT; i++)); do
-    RIGHT_LIST[$i]=$((START_ROUTER + LEFT_COUNT + i))
+    RIGHT_LIST[$i]="${PROFILES[$((LEFT_COUNT + i))]}"
 done
 
-# 最初のターミナルをR${LEFT_LIST[0]}で開き、垂直分割で右側にR${RIGHT_LIST[0]}を開く
-COMMAND_STRING="wt.exe -p \"R${LEFT_LIST[0]}\""
-COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p \"R${RIGHT_LIST[0]}\""
+# 最初のターミナルを左側の最初のプロファイルで開き、垂直分割で右側に右側の最初のプロファイルを開く
+COMMAND_STRING="wt.exe -p \"${LEFT_LIST[0]}\""
+COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p \"${RIGHT_LIST[0]}\""
 
 # 左のペインにフォーカスを移動
 COMMAND_STRING="${COMMAND_STRING} \; move-focus left"
@@ -83,7 +73,7 @@ for ((i=1; i<$RIGHT_COUNT; i++)); do
     # 現在の残りのスペースに対して、新しいペインが必要な割合を計算
     REMAINING_PANES=$(( RIGHT_COUNT - i + 1 ))
     SIZE_ARG=$(echo "scale=3; 1 / $REMAINING_PANES" | bc)
-    PROFILE="R${RIGHT_LIST[$i]}"
+    PROFILE="${RIGHT_LIST[$i]}"
 
     # 水平分割のコマンドを追加
     COMMAND_STRING="${COMMAND_STRING} \; split-pane -H --size ${SIZE_ARG} -p \"${PROFILE}\""

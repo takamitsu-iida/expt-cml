@@ -47,7 +47,7 @@ configuration:
                 "SYS_ADMIN"
               ],
               "env": [
-                "MAX_FDS=100000"
+                "MAX_FDS=1024"
               ],
               "misc_args": [],
               "run_args": [
@@ -142,30 +142,6 @@ device:
       - eth5
       - eth6
       - eth7
-      - eth8
-      - eth9
-      - eth10
-      - eth11
-      - eth12
-      - eth13
-      - eth14
-      - eth15
-      - eth16
-      - eth17
-      - eth18
-      - eth19
-      - eth20
-      - eth21
-      - eth22
-      - eth23
-      - eth24
-      - eth25
-      - eth26
-      - eth27
-      - eth28
-      - eth29
-      - eth30
-      - eth31
     serial_ports: 2
 inherited:
   image:

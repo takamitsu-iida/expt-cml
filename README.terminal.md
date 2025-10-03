@@ -79,7 +79,7 @@ GUIで設定してもいいですが、JSONを直接書いた方が簡単です�
 
 <br>
 
-この設定が反映されると Windows Terminal のGUI操作で直接telnetできるようになります。
+この設定が反映されると Windows Terminal のGUI操作だけでルータに接続できるようになります。
 
 ＜GIFアニメを入れる＞
 
@@ -89,12 +89,24 @@ GUIで設定してもいいですが、JSONを直接書いた方が簡単です�
 
 ラボ内にルータが複数あるときに、それごとにターミナルを開くのは面倒です。
 
-Windows Terminalを開いて、ペインに分割して開くbashスクリプト [open_terminal.sh](/bin/open_terminal.sh) を作成しました。
+そこでWindows Terminalをペインに分割して開くbashスクリプトを作成しました。
 
-Windows Terminalのペイン分割は挙動が複雑なので、思ったよりも難しかったです。
+<br>
 
-引数に上記の "name" で指定したアクション名を渡してあげると、それがペインとして開きます。
+> [!NOTE]
+>
+> Windows Terminalのペイン分割は挙動が複雑なので、思ったよりもスクリプトは難しかったです。
+>
+> ソースコードはこちら。
+>
+>  [open_terminal.sh](/bin/open_terminal.sh)
+
+<br>
+
+引数に上記の "name" で指定したアクションプロファイルの名前を渡してあげると、それがペインとして開きます。
+
+例。
 
 ```bash
-bin/open_terminal.sh t5001 t5002 t5003
+bin/open_terminal.sh t5001 t5002
 ```

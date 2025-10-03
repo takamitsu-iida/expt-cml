@@ -106,7 +106,9 @@ done
 COMMAND_STRING="${COMMAND_STRING} \; move-focus first"
 
 # --- Step 4: 実行 ---
-echo "実行コマンド: ${COMMAND_STRING}"
+
+# デバッグ用
+# echo "実行コマンド: ${COMMAND_STRING}"
 
 # evalを使用して、セミコロンが正しくwt.exeの区切り文字として解釈されるように実行
 eval "${COMMAND_STRING}"

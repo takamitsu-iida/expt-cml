@@ -10,8 +10,11 @@
 # CAP_AUDIT_WRITE
 # is needed to run sshd in the container
 
-#   "--sysctl", "net.vrf.strict_mode=1"
-# これを有効にすると、Dockerコンテナが起動しなくなるので注意。
+# "--sysctl", "net.vrf.strict_mode=1"
+# this may fail to boot container.
+# try
+# docker rmi <ID>
+# and boot again
 
 id: frr-10-4
 configuration:
@@ -63,7 +66,8 @@ configuration:
                 "--sysctl", "net.ipv6.seg6_flowlabel=1",
                 "--sysctl", "net.ipv6.conf.all.seg6_enabled=1",
                 "--sysctl", "net.ipv6.conf.default.seg6_enabled=1",
-                "--sysctl", "net.ipv6.conf.all.seg6_require_hmac=0"
+                "--sysctl", "net.ipv6.conf.all.seg6_require_hmac=0",
+                "--sysctl", "net.vrf.strict_mode=1"
               ],
               "extra_args": []
             },

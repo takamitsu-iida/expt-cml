@@ -88,9 +88,11 @@ GUIで設定してもいいですが、JSONを直接書いた方が簡単です�
 
 この設定が反映されると Windows Terminal のGUI操作だけでルータに接続できるようになります。
 
+Windows Terminalの下向き矢印を押すと登録したアクションプロファイルが出てきますので、それを選択するだけです。
+
 <br>
 
-＜後ほどGIFアニメを挿入＞
+![open tab](/assets/windows_terminal_open_tab.gif)
 
 <br>
 
@@ -169,5 +171,21 @@ bin/open_terminal.sh t5011 t5012 t5013 t5014
 <br>
 
 ![t5011 t5012 t5013 t5014](/assets/windows_terminal_t5011_t5012_t5013_t5014.png)
+
+<br>
+
+<br><br>
+
+## 全てのペインに同じコマンドを送る
+
+Windows Terminalのコマンドパレットに「**ブロードキャスト入力をすべてのウィンドウに切り替える**」というのがあります。
+
+分かりづらい日本語ですが、ペインに分割したときにキー入力をすべてのペインに送信する機能です。
+
+Ctrl-Shift-Pでコマンドパレットを開いて「ブロードキャスト」と日本語で入れてリターンです。
+
+<br>
+
+![broadcast](/assets/windows_terminal_broadcast.gif)
 
 <br>

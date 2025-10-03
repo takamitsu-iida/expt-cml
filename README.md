@@ -55,3 +55,15 @@ FRRをコンパイルして作成する方法は大事なので記録として�
 ## FRR(Docker)でSRv6 L3VPNを検証
 
 [README.srv6.md](/README.srv6.md)
+
+
+
+<!--
+アニメーションGIFの作り方
+- Windows + G でゲームBarを起動する
+- 動画をキャプチャする
+- キャプチャ時間は30秒以内に収める
+- ブラウザで ezgif.com を開く
+- Video to GIF を開く
+- アップロードして変換する
+-->

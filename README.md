@@ -26,11 +26,15 @@
 
 ## FRRをインストールしたUbuntuの作り方
 
+カスタムイメージの作り方は大事なので記録として残していますが、実用上はDockerがオススメです。
+
 [README.create_frr_ubuntu.md](/README.create_frr_ubuntu.md)
 
 <br>
 
 ## FRRをインストールしたUbuntuでOpenFabricを検証
+
+FRRをコンパイルして作成する方法は大事なので記録として残していますが、実用上はDockerがオススメです。
 
 [README.openfabric.md](/README.openfabric.md)
 

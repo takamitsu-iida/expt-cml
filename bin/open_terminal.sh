@@ -1,9 +1,10 @@
 #!/bin/bash
 
-#
-# 使い方: ./open_terminal.sh R1 R2 R3 ...
-#
-# 例: ./open_terminal.sh R1 R2 R3 R4
+# 使い方: bin/open_terminal.sh R1 R2 R3 ...
+
+# 引数が1つなら wt.exe -p 引数 を実行
+# 引数が2つなら wt.exe -p "R1" ; split-pane -V --size 0.5 -p "R2"
+# 引数が3つ以上なら必要な数を計算してペイン分割
 
 # 参考
 # https://docs.microsoft.com/en-us/windows/terminal/command-line-arguments?tabs=windows
@@ -17,14 +18,29 @@
 #     \; move-focus down \
 #     \; split-pane -V --size 0.5
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 1 ]; then
     echo "Usage: $0 <PROFILE1> <PROFILE2> [PROFILE3 ...]"
     exit 1
 fi
 
-# ペインの総数を取得
+if [ $# -eq 1 ]; then
+    wt.exe -p "$1"
+    exit 0
+fi
+
+if [ $# -eq 2 ]; then
+    wt.exe -p "$1" \; split-pane -V --size 0.5 -p "$2"
+    exit 0
+fi
+
+#
+# 以下、3個以上のペインを開く場合
+#
+
+# 必要なペインの総数を取得
 N=$#
 
+# 引数で渡されたプロファイル名を配列に格納
 PROFILES=("$@")
 
 # 左右の列のペイン数を計算
@@ -41,8 +57,10 @@ for ((i=0; i<RIGHT_COUNT; i++)); do
     RIGHT_LIST[$i]="${PROFILES[$((LEFT_COUNT + i))]}"
 done
 
-# 最初のターミナルを左側の最初のプロファイルで開き、垂直分割で右側に右側の最初のプロファイルを開く
+# 最初のターミナルを左側の最初のプロファイルで開き、
 COMMAND_STRING="wt.exe -p \"${LEFT_LIST[0]}\""
+
+# 垂直分割で右側に右側の最初のプロファイルを開く
 COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p \"${RIGHT_LIST[0]}\""
 
 # 左のペインにフォーカスを移動
@@ -83,7 +101,6 @@ for ((i=1; i<$RIGHT_COUNT; i++)); do
         COMMAND_STRING="${COMMAND_STRING} \; move-focus up"
     fi
 done
-
 
 # すべてのペイン作成後、左上のペインにフォーカスを移動
 COMMAND_STRING="${COMMAND_STRING} \; move-focus first"

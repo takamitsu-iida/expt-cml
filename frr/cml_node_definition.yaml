@@ -7,7 +7,11 @@
 # see FRR documentation for required sysctl settings
 # https://docs.frrouting.org/en/latest/zebra.html#sysctl-settings
 
-# CAP_AUDIT_WRITE is needed to run sshd in the container
+# CAP_AUDIT_WRITE
+# is needed to run sshd in the container
+
+#   "--sysctl", "net.vrf.strict_mode=1"
+# これを有効にすると、Dockerコンテナが起動しなくなるので注意。
 
 id: frr-10-4
 configuration:
@@ -59,8 +63,7 @@ configuration:
                 "--sysctl", "net.ipv6.seg6_flowlabel=1",
                 "--sysctl", "net.ipv6.conf.all.seg6_enabled=1",
                 "--sysctl", "net.ipv6.conf.default.seg6_enabled=1",
-                "--sysctl", "net.ipv6.conf.all.seg6_require_hmac=0",
-                "--sysctl", "net.vrf.strict_mode=1"
+                "--sysctl", "net.ipv6.conf.all.seg6_require_hmac=0"
               ],
               "extra_args": []
             },

@@ -424,6 +424,103 @@ B>  10.0.14.0/24 [200/0] via 192.168.255.14 (vrf default) (recursive), label 917
 PE11#
 ```
 
+<br>
+
+## VRFのBGPテーブルを確認
+
+`show ip bgp vrf CE detail`
+
+PE11で実行した場合
+
+```text
+PE11# show ip bgp vrf CE detail
+BGP table version is 4, local router ID is 192.168.255.11, vrf id 2
+Default local pref 100, local AS 65000
+BGP routing table entry for 10.0.11.0/24, version 1
+Paths: (1 available, best #1, vrf CE)
+  Not advertised to any peer
+  Local
+    0.0.0.0 from 0.0.0.0 (192.168.255.11)
+      Origin incomplete, metric 0, weight 32768, valid, sourced, best (First path received)
+      Last update: Fri Oct  3 22:14:05 2025
+BGP routing table entry for 10.0.12.0/24, version 2
+Paths: (2 available, best #1, vrf CE)
+  Not advertised to any peer
+  Imported from 65000:101:10.0.12.0/24
+  Local
+    192.168.255.12 (metric 30) from 0.0.0.0 (192.168.255.11) vrf default(0) announce-nh-self
+      Origin incomplete, metric 0, localpref 100, valid, sourced, local, multipath, best (Neighbor IP)
+      Extended Community: RT:65000:101
+      Originator: 192.168.255.12, Cluster list: 0.0.0.1
+      Remote label: 917504
+      Remote SID: fd00:1:12::
+      Last update: Fri Oct  3 22:14:40 2025
+BGP routing table entry for 10.0.12.0/24, version 2
+Paths: (2 available, best #1, vrf CE)
+  Not advertised to any peer
+  Imported from 65000:101:10.0.12.0/24
+  Local
+    192.168.255.12 (metric 30) from 0.0.0.0 (192.168.255.11) vrf default(0) announce-nh-self
+      Origin incomplete, metric 0, localpref 100, valid, sourced, local, multipath
+      Extended Community: RT:65000:101
+      Originator: 192.168.255.12, Cluster list: 0.0.0.1
+      Remote label: 917504
+      Remote SID: fd00:1:12::
+      Last update: Fri Oct  3 22:14:40 2025
+BGP routing table entry for 10.0.13.0/24, version 3
+Paths: (2 available, best #1, vrf CE)
+  Not advertised to any peer
+  Imported from 65000:101:10.0.13.0/24
+  Local
+    192.168.255.13 (metric 30) from 0.0.0.0 (192.168.255.11) vrf default(0) announce-nh-self
+      Origin incomplete, metric 0, localpref 100, valid, sourced, local, multipath, best (Neighbor IP)
+      Extended Community: RT:65000:101
+      Originator: 192.168.255.13, Cluster list: 0.0.0.1
+      Remote label: 917504
+      Remote SID: fd00:1:13::
+      Last update: Fri Oct  3 22:14:43 2025
+BGP routing table entry for 10.0.13.0/24, version 3
+Paths: (2 available, best #1, vrf CE)
+  Not advertised to any peer
+  Imported from 65000:101:10.0.13.0/24
+  Local
+    192.168.255.13 (metric 30) from 0.0.0.0 (192.168.255.11) vrf default(0) announce-nh-self
+      Origin incomplete, metric 0, localpref 100, valid, sourced, local, multipath
+      Extended Community: RT:65000:101
+      Originator: 192.168.255.13, Cluster list: 0.0.0.1
+      Remote label: 917504
+      Remote SID: fd00:1:13::
+      Last update: Fri Oct  3 22:14:43 2025
+BGP routing table entry for 10.0.14.0/24, version 4
+Paths: (2 available, best #1, vrf CE)
+  Not advertised to any peer
+  Imported from 65000:101:10.0.14.0/24
+  Local
+    192.168.255.14 (metric 30) from 0.0.0.0 (192.168.255.11) vrf default(0) announce-nh-self
+      Origin incomplete, metric 0, localpref 100, valid, sourced, local, multipath, best (Neighbor IP)
+      Extended Community: RT:65000:101
+      Originator: 192.168.255.14, Cluster list: 0.0.0.1
+      Remote label: 917504
+      Remote SID: fd00:1:14::
+      Last update: Fri Oct  3 22:14:47 2025
+BGP routing table entry for 10.0.14.0/24, version 4
+Paths: (2 available, best #1, vrf CE)
+  Not advertised to any peer
+  Imported from 65000:101:10.0.14.0/24
+  Local
+    192.168.255.14 (metric 30) from 0.0.0.0 (192.168.255.11) vrf default(0) announce-nh-self
+      Origin incomplete, metric 0, localpref 100, valid, sourced, local, multipath
+      Extended Community: RT:65000:101
+      Originator: 192.168.255.14, Cluster list: 0.0.0.1
+      Remote label: 917504
+      Remote SID: fd00:1:14::
+      Last update: Fri Oct  3 22:14:47 2025
+
+Displayed 4 routes and 7 total paths
+PE11#
+```
+
+
 <br><br>
 
 ## Traffic Steering into SRv6

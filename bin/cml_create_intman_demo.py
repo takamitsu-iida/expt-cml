@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
 #
-# virl2_clientを使ってラボを作成するスクリプトです
-# Ubuntuノードを一つ作成し、NATで外部接続できるラボを作成します
+# intman.pyの動作をデモするためのスクリプトです
 #
 
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
-LAB_NAME = "cml_create_lab1"
+LAB_NAME = "intman.py demo"
 
 # ノード定義
 NODE_DEFINITION = "ubuntu"
@@ -18,7 +17,7 @@ IMAGE_DEFINITION = "ubuntu-24-04-20250503"
 NODE_TAG = "serial:6000"
 
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うホスト名
-UBUNTU_HOSTNAME = "ubuntu-0"
+UBUNTU_HOSTNAME = "ubuntu"
 
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うユーザ名
 UBUNTU_USERNAME = "cisco"

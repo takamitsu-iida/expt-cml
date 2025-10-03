@@ -6,6 +6,12 @@
 
 <br>
 
+## ラボ内の装置に接続するターミナル操作
+
+[README.terminal.md](/README.terminal.md)
+
+<br>
+
 ## Python virl2-clientを使ったラボの作り方
 
 [README.create_lab.md](/README.create_lab.md)

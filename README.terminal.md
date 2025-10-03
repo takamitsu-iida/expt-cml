@@ -173,12 +173,10 @@ Windows Terminalのコマンドパレットに「**ブロードキャスト入�
 
 Ctrl-Shift-Pでコマンドパレットを開いて「ブロードキャスト」と日本語で入れてリターンです。
 
-トグルなので、止めたいときもCtrl-Shift-Pでコマンドパレットを開いて「ブロードキャスト」と入力します。
+トグルなので、止めたいときも同じ操作です。
 
 <br>
 
-このGIFアニメ、失敗。
-
-![broadcast](/assets/windows_terminal_broadcast.gif)
+![broadcast](/assets/windows_terminal_broadcast_input.gif)
 
 <br>

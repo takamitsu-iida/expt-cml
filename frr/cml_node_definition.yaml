@@ -145,6 +145,14 @@ device:
       - eth5
       - eth6
       - eth7
+      - eth8
+      - eth9
+      - eth10
+      - eth11
+      - eth12
+      - eth13
+      - eth14
+      - eth15
     serial_ports: 2
 inherited:
   image:

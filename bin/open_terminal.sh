@@ -3,7 +3,7 @@
 # 使い方:
 # このスクリプト内にtelnetの接続先アドレス、ポート番号を埋め込んで使用します。
 #
-# bin/open_custom_terminal.sh
+# bin/open_terminal.sh
 
 # CMLのIPアドレス
 CML="192.168.122.212"

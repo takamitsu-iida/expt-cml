@@ -40,18 +40,22 @@ inspect: ## DockerイメージのIDをインスペクトして、image_definitio
 	@cp -f ${SOURCE_NODE_DEFINITION} node_definition.yaml
 	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
 	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; echo $$SHA256
+
 	INDENT='          '; \
 	sed "s/^/$$INDENT/" cfg/telegraf.conf > telegraf_conf_indented.txt; \
 	awk '/__TELEGRAF_CONF__/ {system("cat telegraf_conf_indented.txt"); next} {print}' node_definition.yaml.template > node_definition.yaml; \
 	rm -f telegraf_conf_indented.txt;
+
 	INDENT='          '; \
 	sed "s/^/$$INDENT/" cfg/influxdb.conf > influxdb_conf_indented.txt; \
 	awk '/__INFLUXDB_CONF__/ {system("cat influxdb_conf_indented.txt"); next} {print}' node_definition.yaml.template > node_definition.yaml; \
 	rm -f influxdb_conf_indented.txt;
+
 	INDENT='          '; \
 	sed "s/^/$$INDENT/" cfg/grafana.ini > grafana_ini_indented.txt; \
 	awk '/__GRAFANA_INI__/ {system("cat grafana_ini_indented.txt"); next} {print}' node_definition.yaml.template > node_definition.yaml; \
 	rm -f grafana_ini_indented.txt;
+
 	INDENT='          '; \
 	sed "s/^/$$INDENT/" cfg/supervisord.conf > supervisord_conf_indented.txt; \
 	awk '/__SUPERVISORD_CONF__/ {system("cat supervisord_conf_indented.txt"); next} {print}' node_definition.yaml.template > node_definition.yaml; \

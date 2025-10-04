@@ -197,10 +197,11 @@ http://192.168.0.110:3000
 
 InfluxDBのトークンはmake build時に生成して、環境変数TOKENに保存しています。
 
-CMLのコンソールでトークンを確認します。
+make buildしたUbuntuでDockerイメージをインスペクトすれば値は見えます。
 
 ```bash
-printenv TOKEN
+docker images
+docker inspect tig:latest
 ```
 
-この値をコピーしておいて、Grafanaのデータソースの設定時に使います。
+TOKENを使いたい場合は、インスペクトして見えた文字列をコピーしておきます。

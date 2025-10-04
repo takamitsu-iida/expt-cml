@@ -33,7 +33,8 @@ UBUNTU_PASSWORD = "cisco"
 SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
 
 # Ubuntuノードに設定するcloud-initのJinja2テンプレート
-UBUNTU_CONFIG = """#cloud-config
+UBUNTU_CONFIG = """
+#cloud-config
 hostname: {{ UBUNTU_HOSTNAME }}
 manage_etc_hosts: True
 system_info:
@@ -97,16 +98,24 @@ write_files:
 
 runcmd:
 
-  # add /etc/hosts
+  # Add /etc/hosts
   - |
     cat - << 'EOS' >> /etc/hosts
     #
     {{ CML_ADDRESS }} cml
     EOS
 
+  # TERM
+  - |
+    cat - << 'EOS' >> /etc/bash.bashrc
+    #
+    export TERM="linux"
+    EOS
+
   # Resize terminal window
   - |
     cat - << 'EOS' >> /etc/bash.bashrc
+    #
     rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf '\\e7\\e[r\\e[999;999H\\e[6n\\e8'); IFS='[;' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi
     rsz
     EOS
@@ -136,7 +145,7 @@ runcmd:
   - systemctl stop apparmor.service
   - systemctl disable apparmor.service
 
-"""
+""".strip()
 
 ###########################################################
 

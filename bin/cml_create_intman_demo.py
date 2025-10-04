@@ -30,7 +30,8 @@ UBUNTU_PASSWORD = "cisco"
 SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
 
 # Ubuntuノードに設定するcloud-initのJinja2テンプレート
-UBUNTU_CONFIG = """#cloud-config
+UBUNTU_CONFIG = """
+#cloud-config
 hostname: {{ UBUNTU_HOSTNAME }}
 manage_etc_hosts: True
 system_info:
@@ -43,7 +44,10 @@ ssh_authorized_keys:
   - ssh-rsa {{ SSH_PUBLIC_KEY }}
 
 timezone: Asia/Tokyo
-locale: ja_JP.utf8
+
+# LC_ALL LANG
+# locale: ja_JP.UTF-8
+locale: en_US.UTF-8
 
 # run apt-get update
 # default false
@@ -61,19 +65,8 @@ packages:
   - git
   - zip
   - unzip
-  # - ansible
-
-
-#
-# ansible-pull
-#
-
-#ansible:
-#  install_method: distro
-#  package_name: ansible-core
-#  pull:
-#    url: "https://github.com/takamitsu-iida/expt-cml.git"
-#    playbook_name: playbook.yaml
+  - python3-venv
+  - direnv
 
 write_files:
   #
@@ -105,8 +98,24 @@ runcmd:
   # Resize terminal window
   - |
     cat - << 'EOS' >> /etc/bash.bashrc
+    #
     rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf '\\e7\\e[r\\e[999;999H\\e[6n\\e8'); IFS='[;' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi
     rsz
+    EOS
+
+  # TERM
+  - |
+    cat - << 'EOS' >> /etc/bash.bashrc
+    #
+    export TERM="linux"
+    EOS
+
+  # direnv
+  - |
+    cat - << 'EOS' >> /etc/bash.bashrc
+    # direnv
+    eval "$(direnv hook bash)"
+    export EDITOR=vi
     EOS
 
   # Disable SSH client warnings
@@ -134,7 +143,69 @@ runcmd:
   - systemctl stop apparmor.service
   - systemctl disable apparmor.service
 
-"""
+  # clone expt_cml
+  - |
+    cd /home/{{ UBUNTU_USERNAME }}
+    git clone https://github.com/takamitsu-iida/expt-cml.git
+    chown -R {{ UBUNTU_USERNAME }} expt-cml
+
+""".strip()
+
+
+r1_config = """
+!
+hostname R1
+!
+no ip domain lookup
+!
+interface Loopback0
+ ip address 192.168.255.1 255.255.255.255
+ ip router isis 1
+!
+interface Ethernet0/0
+ ip unnumbered Loopback0
+ ip router isis 1
+ isis network point-to-point
+!
+interface Ethernet0/1
+ ip unnumbered Loopback0
+ ip router isis 1
+ isis network point-to-point
+!
+router isis 1
+ net 49.0000.0000.0000.0001.00
+ router-id Loopback0
+ metric-style wide
+!
+""".strip()
+
+r2_config = """
+!
+hostname R2
+!
+no ip domain lookup
+!
+interface Loopback0
+ ip address 192.168.255.2 255.255.255.255
+ ip router isis 1
+!
+interface Ethernet0/0
+ ip unnumbered Loopback0
+ ip router isis 1
+ isis network point-to-point
+!
+interface Ethernet0/1
+ ip unnumbered Loopback0
+ ip router isis 1
+ isis network point-to-point
+!
+router isis 1
+ net 49.0000.0000.0000.0002.00
+ router-id Loopback0
+ metric-style wide
+!
+""".strip()
+
 
 ###########################################################
 
@@ -282,21 +353,24 @@ if __name__ == '__main__':
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
 
+        #
         # 外部接続用のNATを作る
-        ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=0, y=0)
+        #
 
-        # ubuntuのインスタンスを作る
-        ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=0, y=200)
+        # external_connectorを作成する
+        ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=-680, y=-160)
+
+        #
+        # ubuntuを作る
+        #
+
+        ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=-680, y=-40)
 
         # 起動イメージを指定する
         ubuntu_node.image_definition = IMAGE_DEFINITION
 
         # 初期状態はインタフェースが存在しないので、追加する
-        # Ubuntuのslot番号の範囲は0-7
-        # slot番号はインタフェース名ではない
-        # ens2-ens9が作られる
-        for i in range(8):
-            ubuntu_node.create_interface(i, wait=True)
+        ubuntu_node.create_interface(0, wait=True)
 
         # NATとubuntuを接続する
         lab.connect_two_nodes(ext_conn_node, ubuntu_node)
@@ -329,8 +403,45 @@ if __name__ == '__main__':
         ]
 
         # タグを設定する
-        # "serial:6000"
         ubuntu_node.add_tag(tag=NODE_TAG)
+
+        #
+        # R1とR2を作成する
+        #
+
+        r1_node = lab.create_node(label="R1", node_definition="iol-xe", x=-560, y=-40)
+        r2_node = lab.create_node(label="R2", node_definition="iol-xe", x=-360, y=-40)
+
+        # IOLの場合はイメージ定義は存在しない
+        r1_node.image_definition = None
+        r2_node.image_definition = None
+
+        # インタフェースを作る
+        for i in range(4):
+            r1_node.create_interface(i, wait=True)
+            r2_node.create_interface(i, wait=True)
+
+        # ルータ間を接続する
+        lab.connect_two_nodes(r1_node, r2_node)
+        lab.connect_two_nodes(r1_node, r2_node)
+
+        # ルータ設定
+        r1_node.configuration = [
+            {
+                'name': "ios_config.txt",
+                'content': r1_config
+            }
+        ]
+        r2_node.configuration = [
+            {
+                'name': "ios_config.txt",
+                'content': r2_config
+            }
+        ]
+
+        # タグをつける
+        r1_node.add_tag("serial:5001")
+        r2_node.add_tag("serial:5002")
 
         # start the lab
         lab.start()

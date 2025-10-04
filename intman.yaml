@@ -1,15 +1,17 @@
-title: cml_lab1
-id: 2fb9f009-c9b2-4c61-8b84-31dae42b3853
+title: intman.py demo
+id: d15dc959-6ea9-4b9c-b029-3868135e84f3
 nodes:
-  - node_def: csr1000v
-    name: R1
-    interfaces:
-    - Loopback0
-    - GigabitEthernet1
-    - GigabitEthernet2
-  - node_def: csr1000v
-    name: R2
-    interfaces:
-    - Loopback0
-    - GigabitEthernet1
-    - GigabitEthernet2
+- node_def: ubuntu
+  name: ubuntu
+  interfaces:
+  - ens2
+- node_def: iol-xe
+  name: R1
+  interfaces:
+  - Ethernet0/0
+  - Ethernet0/1
+- node_def: iol-xe
+  name: R2
+  interfaces:
+  - Ethernet0/0
+  - Ethernet0/1

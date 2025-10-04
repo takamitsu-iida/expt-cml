@@ -18,7 +18,7 @@
 #     \; move-focus down \
 #     \; split-pane -V --size 0.5
 
-if [ $# -lt 1 ]; then
+if [ $# -eq 0 ]; then
     echo "Usage: $0 <PROFILE1> <PROFILE2> [PROFILE3 ...]"
     exit 1
 fi
@@ -29,7 +29,9 @@ if [ $# -eq 1 ]; then
 fi
 
 if [ $# -eq 2 ]; then
-    wt.exe -p "$1" \; split-pane -V --size 0.5 -p "$2"
+    wt.exe -p "$1" \
+    \; split-pane -V --size 0.5 -p "$2" \
+    \; move-focus first
     exit 0
 fi
 

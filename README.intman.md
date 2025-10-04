@@ -178,3 +178,16 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 
 PPSじゃなくてBPS(Bit Per Second)の方がいいな、くらいなら、あっという間に改造できちゃうと思いますし、
 他にも過去の履歴を残しながら状態を表示したい、みたいな場面でいろいろ応用できると思います。
+
+
+<br><br>
+
+> [!NOTE]
+>
+> CMLのラボ内のUbuntuにPATtyで接続する場合、ターミナルの設定がvt220に設定されるためうまく表示できません。
+> 以下を試してください。
+>
+> ```bash
+> export LC_ALL="en_US.UTF-8"
+> export TERM="linux"
+> ```

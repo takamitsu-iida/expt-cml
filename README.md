@@ -16,13 +16,15 @@ Windows Terminal使いの方にオススメしたい使い方です。
 
 ## Python virl2-clientを使ったラボの作り方
 
+Pythonスクリプトの中に機器の設定を埋め込んでラボを作った方が楽です。
+
 [README.create_lab.md](/README.create_lab.md)
 
 <br>
 
 ## Ubuntuのカスタムイメージの作り方
 
-Ubuntuはよく使うので、自分用にカスタマイズするのがオススメです。
+Ubuntuはよく使うので、自分用にカスタマイズしたものを用意した方が便利です。
 
 [README.create_custom_ubuntu.md](/README.create_custom_ubuntu.md)
 
@@ -30,7 +32,7 @@ Ubuntuはよく使うので、自分用にカスタマイズするのがオス�
 
 ## FRRをインストールしたUbuntuの作り方
 
-カスタムイメージの作り方は大事なので記録として残していますが、実用上はDockerがオススメです。
+カスタムイメージの作り方は大事なので記録として残していますが、**実用上はDockerがオススメ**です。
 
 [README.create_frr_ubuntu.md](/README.create_frr_ubuntu.md)
 

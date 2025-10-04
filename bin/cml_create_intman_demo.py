@@ -86,6 +86,19 @@ write_files:
             dhcp6: false
             link-local: []
 
+  - path: /var/tmp/setup_intman.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      cd /home/{{ UBUNTU_USERNAME }}
+      git clone https://github.com/takamitsu-iida/expt-cml.git
+      cd expt-cml
+      python3 -m venv .venv
+      /home/{{ UBUNTU_USERNAME }}/.venv/bin/activate
+      pip install --upgrade pip
+      pip install -r requirements.txt
+
 runcmd:
 
   # add /etc/hosts
@@ -143,11 +156,9 @@ runcmd:
   - systemctl stop apparmor.service
   - systemctl disable apparmor.service
 
-  # clone expt_cml
-  - |
-    cd /home/{{ UBUNTU_USERNAME }}
-    git clone https://github.com/takamitsu-iida/expt-cml.git
-    chown -R {{ UBUNTU_USERNAME }} expt-cml
+  # clone expt_cml and setup intman.py
+  # Pythonの仮想環境を作る必要があるので/var/tmp/setup_intman.shを手動で実行する
+  # - su {{ UBUNTU_USERNAME }} -c "/var/tmp/setup_intman.sh"
 
 """.strip()
 

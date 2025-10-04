@@ -9,11 +9,16 @@
 CML="192.168.122.212"
 
 # PATtyで接続したいポート番号
+# PORT_LIST=(5011)
+# PORT_LIST=(5011 5012)
+# PORT_LIST=(5011 5012 5013)
 PORT_LIST=(5011 5012 5013 5014)
 
 #
 # 以下、変更不要
 #
+
+SCRIPT_NAME=$(basename "$0")
 
 # Windows Terminalで開くアクションプロファイル名(PowerShellを開く)
 PS="Windows PowerShell"
@@ -25,12 +30,12 @@ TELNET="wsl -e /usr/bin/telnet"
 # wt.exe -p 'Windows PowerShell' wsl -e /usr/bin/telnet 192.168.122.212 5001
 
 if [ ${#PORT_LIST[@]} -eq 1 ]; then
-    wt.exe -p ${PS} ${TELNET} ${CML} ${PORT_LIST[0]}
+    wt.exe --title ${SCRIPT_NAME} -p ${PS} ${TELNET} ${CML} ${PORT_LIST[0]}
     exit 0
 fi
 
 if [ ${#PORT_LIST[@]} -eq 2 ]; then
-    wt.exe -p ${PS} ${TELNET} ${CML} ${PORT_LIST[0]} \
+    wt.exe --title ${SCRIPT_NAME} -p ${PS} ${TELNET} ${CML} ${PORT_LIST[0]} \
       \; split-pane -V --size 0.5 -p ${PS} ${TELNET} ${CML} ${PORT_LIST[1]} \
       \; move-focus first
     exit 0
@@ -56,10 +61,10 @@ for ((i=0; i<RIGHT_COUNT; i++)); do
     RIGHT_LIST[$i]="${PORT_LIST[$((LEFT_COUNT + i))]}"
 done
 
-# 最初のターミナルを開き、
-COMMAND_STRING="wt.exe -p ${PS} ${TELNET} ${CML} ${LEFT_LIST[0]}"
+# 最初のターミナルを開いて
+COMMAND_STRING="wt.exe --title ${SCRIPT_NAME} -p ${PS} ${TELNET} ${CML} ${LEFT_LIST[0]}"
 
-# 垂直分割で右側に右側の最初のプロファイルを開く
+# 垂直分割で右側にペインを開く
 COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p ${PS} ${TELNET} ${CML} ${RIGHT_LIST[0]}"
 
 # 左のペインにフォーカスを移動

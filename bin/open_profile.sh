@@ -57,10 +57,10 @@ for ((i=0; i<RIGHT_COUNT; i++)); do
     RIGHT_LIST[$i]="${PROFILES[$((LEFT_COUNT + i))]}"
 done
 
-# 最初のターミナルを左側の最初のプロファイルで開き、
+# 最初のターミナルをLEFT_LISTの先頭のプロファイルで開き、
 COMMAND_STRING="wt.exe -p \"${LEFT_LIST[0]}\""
 
-# 垂直分割で右側に右側の最初のプロファイルを開く
+# 垂直分割で右側にRIGHT_LISTの先頭のプロファイルを開く
 COMMAND_STRING="${COMMAND_STRING} \; split-pane -V --size 0.5 -p \"${RIGHT_LIST[0]}\""
 
 # 左のペインにフォーカスを移動
@@ -82,7 +82,7 @@ for ((i=1; i<$LEFT_COUNT; i++)); do
     fi
 done
 
-# 右上のペインにフォーカスを移動
+# 右のペインにフォーカスを移動
 COMMAND_STRING="${COMMAND_STRING} \; move-focus right"
 
 # 右側で2番目以降のペインを水平 (上下) に均等分割

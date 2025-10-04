@@ -96,11 +96,13 @@ Windows Terminalの下向き矢印を押すと登録したアクションプロ�
 
 <br><br>
 
-## 複数のターミナルを一度に開く
+## 複数のアクションプロファイルを一度に開く
 
 ラボ内にルータが複数あるときに、それごとにターミナルを開くのは面倒です。
 
-そこでWindows Terminalをペインに分割して開くbashスクリプトを作成しました。
+Windows Terminalをペインに分割して開くbashスクリプトを作成しました。
+
+すでにWindows Terminalのアクションプロファイルを作成済みであれば、その名前を指定して開きます。
 
 <br>
 
@@ -110,18 +112,18 @@ Windows Terminalの下向き矢印を押すと登録したアクションプロ�
 >
 > ソースコードはこちら。
 >
-> [open_terminal.sh](/bin/open_terminal.sh)
+> [open_profile.sh](/bin/open_profile.sh)
 
 <br>
 
-引数に上記の "name" で指定したアクションプロファイルの名前を渡してあげると、それがペインとして開きます。
+スクリプトの引数に上記の "name" で指定したアクションプロファイル名を渡してあげると、それがペインとして開きます。
 
 例１．プロファイルが一つの場合
 
 普通にWindows Terminalが起動します。
 
 ```bash
-bin/open_terminal.sh t5011
+bin/open_profile.sh t5011
 ```
 
 ![t5011](/assets/windows_terminal_t5011.png)
@@ -133,7 +135,7 @@ bin/open_terminal.sh t5011
 左右に分割した状態で起動します。
 
 ```bash
-bin/open_terminal.sh t5011 t5012
+bin/open_profile.sh t5011 t5012
 ```
 
 ![t5011 t5012](/assets/windows_terminal_t5011_t5012.png)
@@ -145,7 +147,7 @@ bin/open_terminal.sh t5011 t5012
 左側に２個のペイン、右側に１個のペインの構成で起動します。
 
 ```bash
-bin/open_terminal.sh t5011 t5012 t5013
+bin/open_profile.sh t5011 t5012 t5013
 ```
 
 ![t5011 t5012 t5013](/assets/windows_terminal_t5011_t5012_t5013.png)
@@ -157,11 +159,44 @@ bin/open_terminal.sh t5011 t5012 t5013
 左側に２個のペイン、右側に２個のペインの構成で起動します。
 
 ```bash
-bin/open_terminal.sh t5011 t5012 t5013 t5014
+bin/open_profile.sh t5011 t5012 t5013 t5014
 ```
 
 ![t5011 t5012 t5013 t5014](/assets/windows_terminal_t5011_t5012_t5013_t5014.png)
 
+
+<br><br>
+
+## プロファイルを作っていないけど同時に開きたい場合
+
+アクションプロファイルを作るのって、それはそれで面倒です。
+
+bashのスクリプトに開きたいtelnetのポート番号を記述しておいて、コマンド一発でターミナルを開くこともできます。
+
+<br>
+
+> [!NOTE]
+>
+> ソースコードはこちら。接続先ごとにコピーして使うといいと思います。
+>
+> [open_terminal.sh](/bin/open_terminal.sh)
+
+<br>
+
+開きたいポートが5011と5012の場合、open_terminal.shにはこのように記述します。
+
+```bash
+# CMLのIPアドレス
+CML="192.168.122.212"
+
+# PATtyで接続したいポート番号
+# PORT_LIST=(5011)
+PORT_LIST=(5011 5012)
+# PORT_LIST=(5011 5012 5013)
+# PORT_LIST=(5011 5012 5013 5014)
+```
+
+接続先ポート番号が2個以上ある場合はペインに分割して開きます。
 
 <br><br>
 

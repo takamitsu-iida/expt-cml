@@ -95,7 +95,7 @@ write_files:
       git clone https://github.com/takamitsu-iida/expt-cml.git
       cd expt-cml
       python3 -m venv .venv
-      /home/{{ UBUNTU_USERNAME }}/.venv/bin/activate
+      source .venv/bin/activate
       pip install --upgrade pip
       pip install -r requirements.txt
 
@@ -158,7 +158,7 @@ runcmd:
 
   # clone expt_cml and setup intman.py
   # Pythonの仮想環境を作る必要があるので/var/tmp/setup_intman.shを手動で実行する
-  # - su {{ UBUNTU_USERNAME }} -c "/var/tmp/setup_intman.sh"
+  - su {{ UBUNTU_USERNAME }} -c "/var/tmp/setup_intman.sh"
 
 """.strip()
 

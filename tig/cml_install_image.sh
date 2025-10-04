@@ -6,7 +6,7 @@ NODE_DEF_FILENAME=tig.yaml
 IMAGE_DEF_ROOT=/var/lib/libvirt/images/virl-base-images
 IMAGE_DEF_DIR=tig
 IMAGE_DEF_FILENAME=tig.yaml
-IMAGE_NAME=tig.tar
+IMAGE_NAME=tig.tar.gz
 
 if [ -f /var/tmp/node_definition.yaml ]; then
     mv /var/tmp/node_definition.yaml ${NODE_DEF_ROOT}/${NODE_DEF_FILENAME}

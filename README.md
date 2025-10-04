@@ -8,6 +8,8 @@
 
 ## ラボ内の装置に接続するターミナル操作
 
+Windows Terminal使いの方にオススメしたい使い方です。
+
 [README.terminal.md](/README.terminal.md)
 
 <br>
@@ -19,6 +21,8 @@
 <br>
 
 ## Ubuntuのカスタムイメージの作り方
+
+Ubuntuはよく使うので、自分用にカスタマイズするのがオススメです。
 
 [README.create_custom_ubuntu.md](/README.create_custom_ubuntu.md)
 
@@ -34,13 +38,15 @@
 
 ## FRRをインストールしたUbuntuでOpenFabricを検証
 
-FRRをコンパイルして作成する方法は大事なので記録として残していますが、実用上はDockerがオススメです。
+FRRをコンパイルして作成する方法は大事なので記録として残していますが、**実用上はDockerがオススメ**です。
 
 [README.openfabric.md](/README.openfabric.md)
 
 <br>
 
-## FRR(docker)イメージの作り方
+## FRR(Docker)イメージの作り方
+
+Dockerイメージを作ってCMLに登録する方法です。できるだけ自動化できるようにしています。
 
 [README.create_custom_docker.md](/README.create_custom_docker.md)
 
@@ -55,7 +61,6 @@ FRRをコンパイルして作成する方法は大事なので記録として�
 ## FRR(Docker)でSRv6 L3VPNを検証
 
 [README.srv6.md](/README.srv6.md)
-
 
 
 <!--

@@ -43,22 +43,26 @@ inspect: ## DockerイメージのIDをインスペクトして、image_definitio
 
 	INDENT='          '; \
 	sed "s/^/$$INDENT/" cfg/telegraf.conf > telegraf_conf_indented.txt; \
-	awk '/__TELEGRAF_CONF__/ {system("cat telegraf_conf_indented.txt"); next} {print}' node_definition.yaml.template > node_definition.yaml; \
+	awk '/__TELEGRAF_CONF__/ {system("cat telegraf_conf_indented.txt"); next} {print}' node_definition.yaml > node_definition.yaml.tmp; \
+	mv node_definition.yaml.tmp node_definition.yaml; \
 	rm -f telegraf_conf_indented.txt;
 
 	INDENT='          '; \
 	sed "s/^/$$INDENT/" cfg/influxdb.conf > influxdb_conf_indented.txt; \
-	awk '/__INFLUXDB_CONF__/ {system("cat influxdb_conf_indented.txt"); next} {print}' node_definition.yaml.template > node_definition.yaml; \
+	awk '/__INFLUXDB_CONF__/ {system("cat influxdb_conf_indented.txt"); next} {print}' node_definition.yaml > node_definition.yaml.tmp; \
+	mv node_definition.yaml.tmp node_definition.yaml; \
 	rm -f influxdb_conf_indented.txt;
 
 	INDENT='          '; \
 	sed "s/^/$$INDENT/" cfg/grafana.ini > grafana_ini_indented.txt; \
-	awk '/__GRAFANA_INI__/ {system("cat grafana_ini_indented.txt"); next} {print}' node_definition.yaml.template > node_definition.yaml; \
+	awk '/__GRAFANA_INI__/ {system("cat grafana_ini_indented.txt"); next} {print}' node_definition.yaml > node_definition.yaml.tmp; \
+	mv node_definition.yaml.tmp node_definition.yaml; \
 	rm -f grafana_ini_indented.txt;
 
 	INDENT='          '; \
 	sed "s/^/$$INDENT/" cfg/supervisord.conf > supervisord_conf_indented.txt; \
-	awk '/__SUPERVISORD_CONF__/ {system("cat supervisord_conf_indented.txt"); next} {print}' node_definition.yaml.template > node_definition.yaml; \
+	awk '/__SUPERVISORD_CONF__/ {system("cat supervisord_conf_indented.txt"); next} {print}' node_definition.yaml > node_definition.yaml.tmp; \
+	mv node_definition.yaml.tmp node_definition.yaml; \
 	rm -f supervisord_conf_indented.txt;
 
 

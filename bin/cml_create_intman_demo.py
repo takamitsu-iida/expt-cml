@@ -157,7 +157,6 @@ runcmd:
   - systemctl disable apparmor.service
 
   # clone expt_cml and setup intman.py
-  # Pythonの仮想環境を作る必要があるので/var/tmp/setup_intman.shを手動で実行する
   - su {{ UBUNTU_USERNAME }} -c "/var/tmp/setup_intman.sh"
 
 """.strip()

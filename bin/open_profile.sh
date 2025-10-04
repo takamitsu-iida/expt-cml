@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# 使い方: bin/open_terminal.sh R1 R2 R3 ...
+# 使い方: bin/open_profile.sh t5001 t5002 t5003 ...
 
 # 引数が1つなら wt.exe -p 引数 を実行
-# 引数が2つなら wt.exe -p "R1" ; split-pane -V --size 0.5 -p "R2"
+# 引数が2つなら wt.exe -p "t5001" ; split-pane -V --size 0.5 -p "t5002"
 # 引数が3つ以上なら必要な数を計算してペイン分割
 
 # 参考
 # https://docs.microsoft.com/en-us/windows/terminal/command-line-arguments?tabs=windows
 #
-# 4分割の場合
+# 4分割するには
 #
 # wt.exe \
 #     \; split-pane -H --size 0.5 \

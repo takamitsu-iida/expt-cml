@@ -160,6 +160,18 @@ from(bucket: "my_bucket")
   |> derivative(unit: 1s, nonNegative: true)
 ```
 
+こっちの方がいい？
+
+```influx
+from(bucket: "my_bucket")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCInOctets")
+  |> filter(fn: (r) => r.hostname == "R1" or r.hostname == "R2")
+  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0" or r.ifDescr == "Ethernet0/1")
+  |> derivative(unit: 1s, nonNegative: true)
+  |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
+```
+
 送信 ifHCOutOctets
 
 ```influx
@@ -175,6 +187,16 @@ from(bucket: "my_bucket")
 from(bucket: "my_bucket")
   |> range(start: -1h)
   |> filter(fn: (r) => r._measurement == "interface" and r.ifDescr == "GigabitEthernet0/1")
+```
+
+```influx
+from(bucket: "my_bucket")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCOutOctets")
+  |> filter(fn: (r) => r.hostname == "R1" or r.hostname == "R2")
+  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0" or r.ifDescr == "Ethernet0/1")
+  |> derivative(unit: 1s, nonNegative: true)
+  |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
 ```
 
 <br>

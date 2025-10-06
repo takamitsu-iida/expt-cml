@@ -66,7 +66,7 @@ no ip http secure-server
 !
 """.strip()
 
-TELEGRAPH_CONFIG = """
+TELEGRAF_CONFIG = """
 [global_tags]
 
 [agent]
@@ -116,7 +116,8 @@ TELEGRAPH_CONFIG = """
 
     ## 対象装置のIPアドレス
     agents = [
-        "udp://127.0.0.1:161"
+        "udp://192.168.255.1:161",
+        "udp://192.168.255.2:161"
     ]
 
     ## リクエストごとのタイムアウト

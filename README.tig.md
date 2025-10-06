@@ -267,3 +267,10 @@ Home 画面に戻って「+ Create dashboard」をクリックします。
 「Add Visualization」をクリックします。
 
 Select data sourceの部分に登録したinfluxdbがあるのでそれをクリックします。
+
+```influx
+from(bucket: "my_bucket")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "interface")
+  |> limit(n:10)
+```

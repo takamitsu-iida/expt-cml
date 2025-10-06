@@ -65,18 +65,25 @@ cd expt-cml
 cd tig
 ```
 
-イメージをビルドします。
+イメージをビルドします。時間かかります。
 
 ```bash
 make build
 ```
 
-コンテナを実行して動作を確認してみます。
+ビルドできたら、コンテナを実行してみます。
 
 ```bash
 make run
+```
+
+コンテナにシェルで接続して動作状況を確認してみます。
+
+```bash
 make shell
 ```
+
+telegraf, influxdb, grafanaすべてのプロセスが起動していれば、ひとまず問題ありません。
 
 動作が確認できたら実行したコンテナを停止します。
 
@@ -84,7 +91,7 @@ make shell
 make stop
 ```
 
-ビルドを繰り返すときは、Dockerのキャッシュを削除します。
+ビルドを繰り返すときは、Dockerのキャッシュを削除してからビルドします。
 
 ```bash
 make clean
@@ -92,7 +99,7 @@ make prune
 make build
 ```
 
-CMLの/var/tmpにイメージをアップロードします。
+ビルドしたコンテナイメージとノード定義ファイル、イメージ定義ファイルをCMLの/var/tmpにアップロードします。
 
 ```
 make inspect
@@ -102,7 +109,7 @@ make upload
 
 CMLに登録します。
 
-CMLのコックピットのターミナルでルート特権を取ってから、シェルスクリプトを実行します。
+この作業は手打ちすると面倒なので、CMLのコックピットのターミナルでルート特権を取ってから、シェルスクリプトを実行します。
 
 ```bash
 bash /var/tmp/cml_install_image.sh
@@ -116,7 +123,7 @@ systemctl restart virl2.target
 
 <br><br><br>
 
-## Telegraf動作確認
+## Telegrafの動作確認
 
 コンテナの中で直接telegrafを起動して値が取れるかを確認します。
 
@@ -128,7 +135,9 @@ telegraf --config /etc/telegraf/telegraf.conf --test
 
 ## Telegrafの再起動
 
-/etc/telegraf/telegraf.confを変更したら再起動します。
+/etc/telegraf/telegraf.confを変更した場合、サービスを再起動します。
+
+サービスはsupervisord経由で起動していますので、次のようにします。
 
 ```bash
 supervisorctl restart telegraf
@@ -138,7 +147,11 @@ supervisorctl restart telegraf
 
 ## InfluxDB動作確認
 
-influxdbに値があるかどうかを確認します。
+influxdbに値が蓄積されているか、確認します。
+
+<br>
+
+DockerコンテナのCPU使用率
 
 ```bash
 influx query '
@@ -151,6 +164,8 @@ from(bucket: "my_bucket")
 
 <br>
 
+インタフェースの統計値
+
 ```bash
 influx query '
 from(bucket: "my_bucket")
@@ -162,50 +177,12 @@ from(bucket: "my_bucket")
 
 <br>
 
-受信 ifHCInOctets
+Telegrafがルータから情報を取得している場合、
 
 ```influx
 from(bucket: "my_bucket")
   |> range(start: -1h)
   |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCInOctets")
-  |> filter(fn: (r) => r["hostname"] == "対象装置のホスト名")
-  |> group(columns: ["ifDescr"])
-  |> derivative(unit: 1s, nonNegative: true)
-```
-
-こっちの方がいい？
-
-```influx
-from(bucket: "my_bucket")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCInOctets")
-  |> filter(fn: (r) => r.hostname == "R1" or r.hostname == "R2")
-  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0" or r.ifDescr == "Ethernet0/1")
-  |> derivative(unit: 1s, nonNegative: true)
-  |> map(fn: (r) => ({ r with _value: r._value * 8.0 })) // bpsに変換
-```
-
-送信 ifHCOutOctets
-
-```influx
-from(bucket: "my_bucket")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCOutOctets")
-  |> filter(fn: (r) => r["hostname"] == "対象装置のホスト名")
-  |> group(columns: ["ifDescr"])
-  |> derivative(unit: 1s, nonNegative: true)
-```
-
-```influx
-from(bucket: "my_bucket")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "interface" and r.ifDescr == "GigabitEthernet0/1")
-```
-
-```influx
-from(bucket: "my_bucket")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCOutOctets")
   |> filter(fn: (r) => r.hostname == "R1" or r.hostname == "R2")
   |> filter(fn: (r) => r.ifDescr == "Ethernet0/0" or r.ifDescr == "Ethernet0/1")
   |> derivative(unit: 1s, nonNegative: true)
@@ -216,7 +193,7 @@ from(bucket: "my_bucket")
 
 ## InfluxDBブラウザ
 
-Windows母艦から、
+Windows母艦からブラウザで接続します。
 
 http://192.168.0.110:8086
 
@@ -232,7 +209,7 @@ http://192.168.0.110:3000
 
 InfluxDBのトークンはmake build時に生成して環境変数TOKENに保存しています。
 
-make buildしたUbuntuであれば、Dockerイメージをインスペクトすれば値は見えます。
+make buildを実行したUbuntuであれば、Dockerイメージをインスペクトすれば値は見えます。
 
 ```bash
 docker images
@@ -297,3 +274,5 @@ tx = from(bucket: "my_bucket")
 
 union(tables: [rx, tx])
 ```
+
+これをグラフにします。

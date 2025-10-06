@@ -4,6 +4,18 @@
 
 <br>
 
+このようなラボ環境のルータR1とR2の通信量をGrafanaで可視化すると、
+
+![TIG labo](/assets/tig_labo.png)
+
+<br><br>
+
+このようになります。
+
+![Grafana dashboard](/assets/tig_grafana.png)
+
+<br>
+
 ### 事前準備１．CMLでSSHサーバを有効にする
 
 OpenSSHを有効にしていない場合のみ、コックピットで有効にしてください。ラジオボタンを有効にするだけです。
@@ -276,3 +288,7 @@ union(tables: [rx, tx])
 ```
 
 これをグラフにします。
+
+当然ですが、Wipeして初期化すると設定が消えてしまいます。
+
+Grafanaのダッシュボード画面右上に「Export」ボタンがありますので、保存しておきます。

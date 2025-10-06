@@ -120,20 +120,29 @@ TELEGRAF_CONFIG = """
         "udp://192.168.255.2:161"
     ]
 
-    ## リクエストごとのタイムアウト
-    timeout = "5s"
+    # SNMPバージョン
+    version = 2
 
     ## SNMPコミュニティ
     community = "public"
 
+    ## リクエストごとのタイムアウト
+    timeout = "5s"
+
+    ## リトライ回数
+    retries = 3
+
+    # ルータのホスト名を取得
     [[inputs.snmp.field]]
       name = "hostname"
       oid = "RFC1213-MIB::sysName.0"
       is_tag = true
+
     [[inputs.snmp.field]]
       name = "location"
       oid = "RFC1213-MIB::sysLocation.0"
       is_tag = true
+
     [[inputs.snmp.field]]
       name = "contact"
       oid = "RFC1213-MIB::sysContact.0"

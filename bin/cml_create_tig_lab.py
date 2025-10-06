@@ -422,7 +422,7 @@ if __name__ == '__main__':
             'z_index': 0
         })
 
-        text_content = "InfluxDB http://192.168.0.110:8086\nGrafana http://192.168.0.110:3000"
+        text_content = "InfluxDB http://192.168.0.110:8086\nGrafana http://192.168.0.110:3000\n(admin/password)"
         lab.create_annotation('text', **{
             'border_color': '#00000000',
             'border_style': '',

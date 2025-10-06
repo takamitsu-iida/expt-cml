@@ -147,6 +147,19 @@ from(bucket: "my_bucket")
 ' --org $DOCKER_INFLUXDB_INIT_ORG --token $DOCKER_INFLUXDB_INIT_ADMIN_TOKEN --host http://localhost:8086
 ```
 
+
+```bash
+influx query '
+from(bucket: "my_bucket")
+  |> range(start: -5m)
+  |> filter(fn: (r) => r._measurement == "interface")
+  |> limit(n:5)
+' --org $DOCKER_INFLUXDB_INIT_ORG --token $DOCKER_INFLUXDB_INIT_ADMIN_TOKEN --host http://localhost:8086
+```
+
+
+
+
 <br>
 
 受信 ifHCInOctets
@@ -219,11 +232,38 @@ http://192.168.0.110:3000
 
 InfluxDBのトークンはmake build時に生成して、環境変数TOKENに保存しています。
 
-make buildしたUbuntuでDockerイメージをインスペクトすれば値は見えます。
+make buildしたUbuntuであれば、Dockerイメージをインスペクトすれば値は見えます。
 
 ```bash
 docker images
 docker inspect tig:latest
 ```
 
-TOKENを使いたい場合は、インスペクトして見えた文字列をコピーしておきます。
+すでにCMLに登録してコンテナとして起動済みであれば、コンソールから環境変数TOKENを表示します。
+
+```bash
+printenv TOKEN
+```
+
+GrafanaからInfluxDBを参照する際にこの文字列が必要になりますのでコピーしておきます。
+
+新しいダッシュボードを作ります。
+
+「Add Visualization」をクリックします。
+
+初期状態ではデータソースの設定がないので `Configure a new data source` をクリックします。
+
+- Query languageは Flux に変更します（InfluxDB Detailsの入力内容が変わります）
+- HTTP のURLは http://127.0.0.1:8086
+- Authはそのままにしておきます（認証不要）
+- InfluxDB Details - Organizationに my_org を入力します
+- InfluxDB Details - Tokenはコピーしておいたものを貼り付けます
+- InfluxDB Details - Default Bucketは my_bucket を入力します
+
+最下部のボタン「Save & test」をクリックして動作を確認します。
+
+Home 画面に戻って「+ Create dashboard」をクリックします。
+
+「Add Visualization」をクリックします。
+
+Select data sourceの部分に登録したinfluxdbがあるのでそれをクリックします。

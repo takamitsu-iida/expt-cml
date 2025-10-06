@@ -4,7 +4,9 @@
 FROM ubuntu:24.04 AS base
 
 ENV TZ=Asia/Tokyo
-ENV LANG=ja_JP.UTF-8
+
+# ENV LANG=ja_JP.UTF-8
+ENV LANG=en_US.UTF-8
 
 RUN <<EOF
 

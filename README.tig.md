@@ -272,9 +272,9 @@ Select data sourceの部分に登録したinfluxdbがあるのでそれをクリ
 // 受信量
 rx = from(bucket: "my_bucket")
   |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCInOctets")
-  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
   |> filter(fn: (r) => r.hostname == "R1")
+  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
+  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCInOctets")
   |> derivative(unit: 1s, nonNegative: true)
   |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
   |> set(key: "direction", value: "RX")
@@ -282,12 +282,14 @@ rx = from(bucket: "my_bucket")
 // 送信量
 tx = from(bucket: "my_bucket")
   |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCOutOctets")
-  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
-  |> derivative(unit: 1s, nonNegative: true)
   |> filter(fn: (r) => r.hostname == "R1")
+  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
+  |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCOutOctets")
+  |> derivative(unit: 1s, nonNegative: true)
   |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
   |> set(key: "direction", value: "TX")
 
 union(tables: [rx, tx])
 ```
+
+invalid: runtime error: type conflict: int != float

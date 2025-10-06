@@ -26,6 +26,7 @@ fi
 
 #
 # run supervisord
+# TIGの各サービスはsupervisordで起動します。
 #
 
 /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
@@ -78,6 +79,7 @@ fi
 
 echo "READY" >/dev/console
 
+# コンテナが終了しないように bash -i をループさせます。
 trap '' INT TSTP
 while true; do
     bash -i

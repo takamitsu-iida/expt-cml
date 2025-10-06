@@ -325,7 +325,9 @@ if __name__ == '__main__':
         # このLANに足を出せば、母艦のWindows11の他、別のラボの仮想マシンであっても通信できる
         ext_conn_node.configuration = "bridge1"
 
-        # tigのインスタンスを作る
+        #
+        # TIG(Docker)のインスタンスを作る
+        #
         tig_node = lab.create_node(label="tig", node_definition="tig", x=0, y=160)
 
         # 起動イメージを指定する
@@ -343,6 +345,9 @@ if __name__ == '__main__':
             {
                 'name': 'boot.sh',
                 'content': BOOT_SH
+            }, {
+                'name': 'telegraf.conf',
+                'content': TELEGRAF_CONFIG
             }
         ]
 

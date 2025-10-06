@@ -2,10 +2,6 @@
 
 一つのコンテナの中でTIGスタックを動かします。
 
-各サービスはsupervisordで起動します。
-
-コンテナが終了しないように bash -i をループさせます。
-
 <br>
 
 ### 事前準備１．CMLでSSHサーバを有効にする
@@ -82,7 +78,7 @@ make run
 make shell
 ```
 
-実行したコンテナを停止します。
+動作が確認できたら実行したコンテナを停止します。
 
 ```bash
 make stop
@@ -93,6 +89,7 @@ make stop
 ```bash
 make clean
 make prune
+make build
 ```
 
 CMLの/var/tmpにイメージをアップロードします。
@@ -109,6 +106,11 @@ CMLのコックピットのターミナルでルート特権を取ってから�
 
 ```bash
 bash /var/tmp/cml_install_image.sh
+```
+
+最後にvirl2サービスを再起動します。
+
+```bash
 systemctl restart virl2.target
 ```
 
@@ -147,6 +149,7 @@ from(bucket: "my_bucket")
 ' --org $DOCKER_INFLUXDB_INIT_ORG --token $DOCKER_INFLUXDB_INIT_ADMIN_TOKEN --host http://localhost:8086
 ```
 
+<br>
 
 ```bash
 influx query '
@@ -156,9 +159,6 @@ from(bucket: "my_bucket")
   |> limit(n:5)
 ' --org $DOCKER_INFLUXDB_INIT_ORG --token $DOCKER_INFLUXDB_INIT_ADMIN_TOKEN --host http://localhost:8086
 ```
-
-
-
 
 <br>
 
@@ -182,7 +182,7 @@ from(bucket: "my_bucket")
   |> filter(fn: (r) => r.hostname == "R1" or r.hostname == "R2")
   |> filter(fn: (r) => r.ifDescr == "Ethernet0/0" or r.ifDescr == "Ethernet0/1")
   |> derivative(unit: 1s, nonNegative: true)
-  |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
+  |> map(fn: (r) => ({ r with _value: r._value * 8.0 })) // bpsに変換
 ```
 
 送信 ifHCOutOctets
@@ -209,7 +209,7 @@ from(bucket: "my_bucket")
   |> filter(fn: (r) => r.hostname == "R1" or r.hostname == "R2")
   |> filter(fn: (r) => r.ifDescr == "Ethernet0/0" or r.ifDescr == "Ethernet0/1")
   |> derivative(unit: 1s, nonNegative: true)
-  |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
+  |> map(fn: (r) => ({ r with _value: r._value * 8.0 })) // bpsに変換
 ```
 
 <br>
@@ -225,12 +225,12 @@ http://192.168.0.110:8086
 
 ## Grafanaブラウザ
 
-Windows母艦から、
+Windows母艦からブラウザで接続します。
 
 http://192.168.0.110:3000
 
 
-InfluxDBのトークンはmake build時に生成して、環境変数TOKENに保存しています。
+InfluxDBのトークンはmake build時に生成して環境変数TOKENに保存しています。
 
 make buildしたUbuntuであれば、Dockerイメージをインスペクトすれば値は見えます。
 
@@ -239,7 +239,7 @@ docker images
 docker inspect tig:latest
 ```
 
-すでにCMLに登録してコンテナとして起動済みであれば、コンソールから環境変数TOKENを表示します。
+すでにCMLに登録してコンテナとして起動済みであれば、コンテナを起動してコンソールから環境変数TOKENを表示します。
 
 ```bash
 printenv TOKEN
@@ -268,6 +268,8 @@ Home 画面に戻って「+ Create dashboard」をクリックします。
 
 Select data sourceの部分に登録したinfluxdbがあるのでそれをクリックします。
 
+R1のEthernet0/0の送受信量をクエリします。
+
 ```influx
 // 受信量
 rx = from(bucket: "my_bucket")
@@ -278,7 +280,7 @@ rx = from(bucket: "my_bucket")
   |> filter(fn: (r) => exists r._value)
   |> map(fn: (r) => ({ r with _value: float(v: r._value) }))  // 型をfloatに統一
   |> derivative(unit: 1s, nonNegative: true)
-  |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
+  |> map(fn: (r) => ({ r with _value: r._value * 8.0 })) // bpsに変換
   |> set(key: "direction", value: "RX")
 
 // 送信量
@@ -290,20 +292,8 @@ tx = from(bucket: "my_bucket")
   |> filter(fn: (r) => exists r._value)
   |> map(fn: (r) => ({ r with _value: float(v: r._value) }))  // 型をfloatに統一
   |> derivative(unit: 1s, nonNegative: true)
-  |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
+  |> map(fn: (r) => ({ r with _value: r._value * 8.0 })) // bpsに変換
   |> set(key: "direction", value: "TX")
 
 union(tables: [rx, tx])
 ```
-
-invalid: runtime error: type conflict: int != float
-
-
-型を確認
-
-from(bucket: "my_bucket")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "interface")
-  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
-  |> filter(fn: (r) => r.hostname == "R1")
-  |> limit(n:10)

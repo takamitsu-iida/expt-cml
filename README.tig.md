@@ -275,6 +275,7 @@ rx = from(bucket: "my_bucket")
   |> filter(fn: (r) => r.hostname == "R1")
   |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
   |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCInOctets")
+  |> filter(fn: (r) => exists r._value)
   |> map(fn: (r) => ({ r with _value: float(v: r._value) }))  // 型をfloatに統一
   |> derivative(unit: 1s, nonNegative: true)
   |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
@@ -286,6 +287,7 @@ tx = from(bucket: "my_bucket")
   |> filter(fn: (r) => r.hostname == "R1")
   |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
   |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCOutOctets")
+  |> filter(fn: (r) => exists r._value)
   |> map(fn: (r) => ({ r with _value: float(v: r._value) }))  // 型をfloatに統一
   |> derivative(unit: 1s, nonNegative: true)
   |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
@@ -295,3 +297,13 @@ union(tables: [rx, tx])
 ```
 
 invalid: runtime error: type conflict: int != float
+
+
+型を確認
+
+from(bucket: "my_bucket")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "interface")
+  |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
+  |> filter(fn: (r) => r.hostname == "R1")
+  |> limit(n:10)

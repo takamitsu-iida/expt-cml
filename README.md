@@ -64,6 +64,14 @@ Dockerイメージを作ってCMLに登録する方法です。できるだけ�
 
 [README.srv6.md](/README.srv6.md)
 
+<br>
+
+## TIG(Docker)の作り方
+
+Telegraf/InfluxDB/Grafanaを詰め込んだコンテナイメージを作ります。
+
+[README.tig.md](/README.tig.md)
+
 
 <!--
 アニメーションGIFの作り方

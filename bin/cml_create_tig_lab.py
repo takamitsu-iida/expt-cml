@@ -32,6 +32,133 @@ echo "READY" >/dev/console
 exit 0
 """.strip()
 
+# ルータ設定
+IOS_CONFIG = """
+!
+hostname R{{ ROUTER_NUMBER }}
+!
+no ip domain lookup
+!
+interface Loopback0
+ ip address 192.168.255.{{ ROUTER_NUMBER }} 255.255.255.255
+ ip router isis 1
+!
+interface Ethernet0/0
+ ip address 192.168.254.{{ ROUTER_NUMBER }} 255.255.255.0
+ ip router isis 1
+!
+interface Ethernet0/1
+  ip unnumbered Loopback0
+  ip router isis 1
+  isis network point-to-point
+!
+router isis 1
+ net 49.0000.0000.0000.000{{ ROUTER_NUMBER }}.00
+ router-id Loopback0
+ metric-style wide
+ passive-interface Ethernet0/0
+!
+snmp-server community public RO
+snmp-server community private RW
+!
+no ip http server
+no ip http secure-server
+!
+""".strip()
+
+TELEGRAPH_CONFIG = """
+[global_tags]
+
+[agent]
+    ## データ収集のインターバル
+    interval = "10s"
+
+    ## 間隔時間に合わせる
+    ## if interval="10s" then always collect on :00, :10, :20, etc.
+    round_interval = true
+
+    ## Telegraf はバッファしてまとめてoutputsに送信する
+    metric_batch_size = 1000
+
+    # 間隔時間のバラツキはなくてよい
+    collection_jitter = "0s"
+
+    ## outputsに送信する間隔
+    flush_interval = "10s"
+    flush_jitter = "0s"
+
+    ## 0sを指定すると、1秒未満の精度なので、10秒間隔は最悪の場合で11秒になる
+    ## Valid time units are "ns", "us" (or "µs"), "ms", "s".
+    precision = "0s"
+
+    ## os.Hostname()を使う
+    hostname = ""
+
+    ## ホスト名を付与
+    omit_hostname = false
+
+    # v1.40.0 以降の新しいデフォルト動作を採用する
+    skip_processors_after_aggregators = true
+
+[[outputs.influxdb_v2]]
+    urls = ["http://localhost:8086"]
+    bucket = "$DOCKER_INFLUXDB_INIT_BUCKET"
+    organization = "$DOCKER_INFLUXDB_INIT_ORG"
+    token = "$DOCKER_INFLUXDB_INIT_ADMIN_TOKEN"
+
+##
+## 対象装置ごとに[[inputs.snmp]]を追加する
+##
+
+[[inputs.snmp]]
+
+    agent_host_tag = "source"
+
+    ## 対象装置のIPアドレス
+    agents = [
+        "udp://127.0.0.1:161"
+    ]
+
+    ## リクエストごとのタイムアウト
+    timeout = "5s"
+
+    ## SNMPコミュニティ
+    community = "public"
+
+    [[inputs.snmp.field]]
+      name = "hostname"
+      oid = "RFC1213-MIB::sysName.0"
+      is_tag = true
+    [[inputs.snmp.field]]
+      name = "location"
+      oid = "RFC1213-MIB::sysLocation.0"
+      is_tag = true
+    [[inputs.snmp.field]]
+      name = "contact"
+      oid = "RFC1213-MIB::sysContact.0"
+      is_tag = true
+
+    ## インタフェースごとのトラフィック量取得
+    [[inputs.snmp.table]]
+        name = "interface"
+        oid = "IF-MIB::ifXTable"
+        inherit_tags = [ "hostname" ]
+
+        [[inputs.snmp.table.field]]
+        name = "ifDescr"
+        oid = "IF-MIB::ifDescr"
+        is_tag = true
+
+        [[inputs.snmp.table.field]]
+        name = "ifHCInOctets"
+        oid = "IF-MIB::ifHCInOctets"
+
+        [[inputs.snmp.table.field]]
+        name = "ifHCOutOctets"
+        oid = "IF-MIB::ifHCOutOctets"
+
+""".strip()
+
 
 ###########################################################
 
@@ -48,6 +175,7 @@ from pathlib import Path
 # 外部ライブラリのインポート
 #
 try:
+    from jinja2 import Template
     from virl2_client import ClientLibrary
 except ImportError as e:
     logging.critical(str(e))
@@ -188,7 +316,7 @@ if __name__ == '__main__':
         ext_conn_node.configuration = "bridge1"
 
         # tigのインスタンスを作る
-        tig_node = lab.create_node(label="tig", node_definition="tig", x=0, y=200)
+        tig_node = lab.create_node(label="tig", node_definition="tig", x=0, y=160)
 
         # 起動イメージを指定する
         tig_node.image_definition = IMAGE_DEFINITION
@@ -215,23 +343,49 @@ if __name__ == '__main__':
         tig_node.add_tag(tag=NODE_TAG)
 
         #
+        # unmanaged-switchノードを作成する
+        #
+        switch_node = lab.create_node(label="sw", node_definition="unmanaged_switch", x=0, y=280)
+
+        # switchとtigを接続する
+        lab.connect_two_nodes(switch_node, tig_node)
+
+        #
         # IOLを作成する
         #
+        r1_node = lab.create_node(label="R1", node_definition="iol-xe", x=-120, y=400)
+        r2_node = lab.create_node(label="R2", node_definition="iol-xe", x=120, y=400)
 
+        # インタフェースを作成する
+        for _ in range(4):
+            r1_node.create_interface(_, wait=True)
+            r2_node.create_interface(_, wait=True)
 
+        # switchとR1、R2を接続する
+        lab.connect_two_nodes(switch_node, r1_node)
+        lab.connect_two_nodes(switch_node, r2_node)
 
+        # R1とR2を接続する
+        lab.connect_two_nodes(r1_node, r2_node)
 
+        # Jinja2のTemplateをインスタンス化する
+        template = Template(IOS_CONFIG)
 
+        # R1の設定
+        r1_node.configuration = [{
+            'name': 'ios_config.txt',
+            'content': template.render({'ROUTER_NUMBER': 1})
+        }]
 
+        # R2の設定
+        r2_node.configuration = [{
+            'name': 'ios_config.txt',
+            'content': template.render({'ROUTER_NUMBER': 2})
+        }]
 
-
-
-
-
-
-
-
-
+        # タグを設定する
+        r1_node.add_tag(tag="serial:5001")
+        r2_node.add_tag(tag="serial:5002")
 
         #
         # アノテーションを作成する
@@ -267,7 +421,7 @@ if __name__ == '__main__':
             'z_index': 0
         })
 
-        text_content = "192.168.0.110/24"
+        text_content = "InfluxDB http://192.168.0.110:8086\nGrafana http://192.168.0.110:3000"
         lab.create_annotation('text', **{
             'border_color': '#00000000',
             'border_style': '',
@@ -280,11 +434,11 @@ if __name__ == '__main__':
             'text_unit': 'pt',
             'thickness': 1,
             'x1': 40.0,
-            'y1': 140.0,
+            'y1': 120.0,
             'z_index': 0
         })
 
-        text_content = "InfluxDB http://192.168.0.110:8086\nGrafana http://192.16.0.110:3000"
+        text_content = "192.168.254.0/24"
         lab.create_annotation('text', **{
             'border_color': '#00000000',
             'border_style': '',
@@ -297,9 +451,10 @@ if __name__ == '__main__':
             'text_unit': 'pt',
             'thickness': 1,
             'x1': 40.0,
-            'y1': 180.0,
+            'y1': 240.0,
             'z_index': 0
         })
+
 
 
 

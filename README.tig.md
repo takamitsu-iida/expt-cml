@@ -278,7 +278,7 @@ rx = from(bucket: "my_bucket")
   |> filter(fn: (r) => exists r._value)
   |> map(fn: (r) => ({ r with _value: float(v: r._value) }))  // 型をfloatに統一
   |> derivative(unit: 1s, nonNegative: true)
-  |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
+  |> map(fn: (r) => ({ r with _value: r._value * 8.0 })) // bpsに変換
   |> set(key: "direction", value: "RX")
 
 // 送信量
@@ -290,7 +290,7 @@ tx = from(bucket: "my_bucket")
   |> filter(fn: (r) => exists r._value)
   |> map(fn: (r) => ({ r with _value: float(v: r._value) }))  // 型をfloatに統一
   |> derivative(unit: 1s, nonNegative: true)
-  |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
+  |> map(fn: (r) => ({ r with _value: r._value * 8.0 })) // bpsに変換
   |> set(key: "direction", value: "TX")
 
 union(tables: [rx, tx])
@@ -307,3 +307,18 @@ from(bucket: "my_bucket")
   |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
   |> filter(fn: (r) => r.hostname == "R1")
   |> limit(n:10)
+
+
+これをグラフにします。
+
+見た目は適当に調整すればよいでしょう。
+
+<br>
+
+![dashboard](/assets/tig_grafana.png)
+
+<br>
+
+DockerなのでWipeしてしまうと消えてしまいます。
+
+Grafanaのダッシュボード画面右上に「Export」というボタンがありますので、そこでファイルに保存しておきます。

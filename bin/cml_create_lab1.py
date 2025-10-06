@@ -45,7 +45,9 @@ ssh_authorized_keys:
   - ssh-rsa {{ SSH_PUBLIC_KEY }}
 
 timezone: Asia/Tokyo
-locale: ja_JP.utf8
+
+# locale: ja_JP.utf8
+locale: en_US.UTF-8
 
 # run apt-get update
 # default false

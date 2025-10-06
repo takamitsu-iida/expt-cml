@@ -1,12 +1,8 @@
 # SRv6
 
-FRR(Docker)を使ってSRv6のL3VPNを検証します。
+CML2.9以降でDockerイメージが動作するようになっています。
 
-<br>
-
-## 事前準備
-
-[README.create_custom_docker.md](/README.create_custom_docker.md) に従ってFRRをインストールしたDockerイメージを作成してCMLに登録します。
+[この手順](/README.create_custom_docker.md)で作成したFRR(Docker)を使ってSRv6のL3VPNを検証します。
 
 <br>
 

@@ -275,6 +275,7 @@ rx = from(bucket: "my_bucket")
   |> filter(fn: (r) => r.hostname == "R1")
   |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
   |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCInOctets")
+  |> map(fn: (r) => ({ r with _value: float(v: r._value) }))  // 型をfloatに統一
   |> derivative(unit: 1s, nonNegative: true)
   |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
   |> set(key: "direction", value: "RX")
@@ -285,6 +286,7 @@ tx = from(bucket: "my_bucket")
   |> filter(fn: (r) => r.hostname == "R1")
   |> filter(fn: (r) => r.ifDescr == "Ethernet0/0")
   |> filter(fn: (r) => r._measurement == "interface" and r._field == "ifHCOutOctets")
+  |> map(fn: (r) => ({ r with _value: float(v: r._value) }))  // 型をfloatに統一
   |> derivative(unit: 1s, nonNegative: true)
   |> map(fn: (r) => ({ r with _value: r._value * 8 })) // bpsに変換
   |> set(key: "direction", value: "TX")

@@ -195,8 +195,10 @@ if __name__ == '__main__':
     def main():
 
         # 引数処理
-        parser = argparse.ArgumentParser(description='create openfabric lab')
+        parser = argparse.ArgumentParser(description='create openfabric docker lab')
         parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
+        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
+        parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
         args = parser.parse_args()
 
         # CMLを操作するvirl2_clientをインスタンス化
@@ -205,15 +207,38 @@ if __name__ == '__main__':
         # 接続を待機する
         client.is_system_ready(wait=True)
 
-        # 同タイトルのラボを消す
-        for lab in client.find_labs_by_title(LAB_NAME):
+        # LAB_NAMEのラボが存在するか確認する
+        labs = client.find_labs_by_title(LAB_NAME)
+        if labs and len(labs) > 0:
+            lab = labs[0]
+            state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+            logger.info(f"state: {state}")
+            if args.start:
+                if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
+                    logger.info(f"Starting lab '{LAB_NAME}'")
+                    lab.start(wait=True)
+                    logger.info(f"Lab '{LAB_NAME}' started")
+                else:
+                    logger.info(f"Lab '{LAB_NAME}' is already running")
+                return 0
+            elif args.pause:
+                if state == 'STARTED':
+                    logger.info(f"Pausing lab '{LAB_NAME}'")
+                    lab.stop(wait=True)
+                    logger.info(f"Lab '{LAB_NAME}' paused")
+                else:
+                    logger.info(f"Lab '{LAB_NAME}' is not running")
+                return 0
+
+            # 同名のラボが存在する場合はそれを削除する
+            logger.info(f"Deleting lab '{LAB_NAME}'")
             lab.stop(wait=True)
             lab.wipe()
             lab.remove()
 
-        # -d で起動していたらここで処理終了
-        if args.delete:
-            return 0
+            # -d で起動していたらここで処理終了
+            if args.delete:
+                return 0
 
         # 指定されたimage_definitionが存在するか確認して、なければ終了する
         image_defs = client.definitions.image_definitions()

@@ -1,18 +1,13 @@
 #!/bin/bash
 
 # 使い方:
-# このスクリプト内にtelnetの接続先アドレス、ポート番号を埋め込んで使用します。
 #
-# bin/open_terminal.sh
+# 引数にPATtyで接続したい装置のポート番号を列挙して実行します。
+#
+# bin/open_terminal.sh 5011 5012 5013 5014
 
-# CMLのIPアドレス
-CML="192.168.122.212"
-
-# PATtyで接続したいポート番号
-# PORT_LIST=(5011)
-# PORT_LIST=(5011 5012)
-# PORT_LIST=(5011 5012 5013)
-PORT_LIST=(5011 5012 5013 5014)
+# CML="192.168.122.212"
+CML="cml"
 
 #
 # 以下、変更不要
@@ -26,20 +21,39 @@ PS="Windows PowerShell"
 # wsl内にある/usr/bin/telnetを起動する
 TELNET="wsl -e /usr/bin/telnet"
 
+# 引数でポート番号を受け取る
+PORT_LIST=("$@")
+
 # 実行するのはこんな感じのコマンド
 # wt.exe -p 'Windows PowerShell' wsl -e /usr/bin/telnet 192.168.122.212 5001
 
+if [ ${#PORT_LIST[@]} -eq 0 ]; then
+    echo "Usage: $0 <PORT1> [PORT2 ...]"
+    exit 1
+fi
+
+# 引数がすべて数字かチェック
+for port in "${PORT_LIST[@]}"; do
+    if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+        echo "Error: All arguments must be numeric port numbers."
+        exit 1
+    fi
+done
+
+# 引数が1個だけなら、そのまま開く
 if [ ${#PORT_LIST[@]} -eq 1 ]; then
     wt.exe --title ${SCRIPT_NAME} -p ${PS} ${TELNET} ${CML} ${PORT_LIST[0]}
     exit 0
 fi
 
+# 引数が2個なら、垂直分割で2ペインにする
 if [ ${#PORT_LIST[@]} -eq 2 ]; then
     wt.exe --title ${SCRIPT_NAME} -p ${PS} ${TELNET} ${CML} ${PORT_LIST[0]} \
       \; split-pane -V --size 0.5 -p ${PS} ${TELNET} ${CML} ${PORT_LIST[1]} \
       \; move-focus first
     exit 0
 fi
+
 #
 # 以下、3個以上のペインを開く場合
 #

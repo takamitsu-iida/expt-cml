@@ -5,6 +5,9 @@
 # FRR(Docker)を使って、SRv6の基本的な動作を確認できるラボを作成します
 #
 
+# スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
+LAB_DESCRIPTION = 'create srv6 docker lab'
+
 # ラボの名前（既存で同じタイトルのラボがあれば削除してから作成します）
 LAB_NAME = "Docker FRR SRv6"
 
@@ -507,14 +510,44 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
+
+    def start_lab(lab):
+        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+        if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
+            logger.info(f"Starting lab '{LAB_NAME}'")
+            lab.start(wait=True)
+            logger.info(f"Lab '{LAB_NAME}' started")
+        else:
+            logger.info(f"Lab '{LAB_NAME}' is already running")
+
+
+    def stop_lab(lab):
+        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+        if state == 'STARTED':
+            logger.info(f"Stopping lab '{LAB_NAME}'")
+            lab.stop(wait=True)
+            logger.info(f"Lab '{LAB_NAME}' stopped")
+        else:
+            logger.info(f"Lab '{LAB_NAME}' is not running")
+
+
+    def delete_lab(lab):
+        logger.info(f"Deleting lab '{LAB_NAME}'")
+        stop_lab(lab)
+        lab.wipe()
+        lab.remove()
+        logger.info(f"Lab '{LAB_NAME}' deleted")
+
+
+
     def main():
 
         # 引数処理
-        parser = argparse.ArgumentParser(description='create srv6 docker lab')
+        parser = argparse.ArgumentParser(description=LAB_DESCRIPTION)
         parser.add_argument('-c', '--create', action='store_true', default=False, help='Create lab')
         parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
-        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
         parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
+        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -528,64 +561,27 @@ if __name__ == '__main__':
         # 接続を待機する
         client.is_system_ready(wait=True)
 
-        # LAB_NAMEのラボが存在するか確認する
+        # 既存のラボがあれば取得する
         labs = client.find_labs_by_title(LAB_NAME)
+        lab = labs[0] if labs and len(labs) > 0 else None
 
         if args.start:
-            if labs and len(labs) > 0:
-                lab = labs[0]
-                state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-                if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
-                    logger.info(f"Starting lab '{LAB_NAME}'")
-                    lab.start(wait=True)
-                    logger.info(f"Lab '{LAB_NAME}' started")
-                else:
-                    logger.info(f"Lab '{LAB_NAME}' is already running")
-                return 0
-            else:
-                logger.error(f"Lab '{LAB_NAME}' not found")
-                return 1
+            start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return 0
 
         if args.pause:
-            if labs and len(labs) > 0:
-                lab = labs[0]
-                state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-                if state == 'STARTED':
-                    logger.info(f"Pausing lab '{LAB_NAME}'")
-                    lab.stop(wait=True)
-                    logger.info(f"Lab '{LAB_NAME}' paused")
-                else:
-                    logger.info(f"Lab '{LAB_NAME}' is not running")
-                return 0
-            else:
-                logger.error(f"Lab '{LAB_NAME}' not found")
-                return 1
-
+            stop_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return 0
 
         if args.delete:
-            # 既存のラボがあれば削除する
-            if labs and len(labs) > 0:
-                lab = labs[0]
-                logger.info(f"Deleting lab '{LAB_NAME}'")
-                lab.stop(wait=True)
-                lab.wipe()
-                lab.remove()
-                logger.info(f"Lab '{LAB_NAME}' deleted")
-                return 0
-            else:
-                logger.info(f"Lab '{LAB_NAME}' not found")
-                return 1
+            delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return 0
 
         if args.create:
             # 既存のラボがあれば削除する
-            if labs and len(labs) > 0:
-                lab = labs[0]
+            if lab:
                 logger.info(f"Lab '{LAB_NAME}' already exists")
-                logger.info(f"Deleting existing lab '{LAB_NAME}'")
-                lab.stop(wait=True)
-                lab.wipe()
-                lab.remove()
-                logger.info(f"Lab '{LAB_NAME}' deleted")
+                delete_lab(lab)
 
         #
         # 以下、ラボを新規作成

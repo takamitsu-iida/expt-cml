@@ -29,7 +29,6 @@ apt install -y --no-install-recommends \
   iputils-ping \
   net-tools \
   mtr-tiny \
-  iperf3 \
   traceroute \
   fping \
   telnet \

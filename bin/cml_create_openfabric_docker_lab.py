@@ -5,6 +5,9 @@
 # Docker版のFRRノードを使って、3階層のOpenFabricネットワークを作成します
 #
 
+# スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
+LAB_DESCRIPTION = 'create openfabric docker lab'
+
 # ラボの名前（既存で同じタイトルのラボがあれば削除してから作成します）
 LAB_NAME = "Docker FRR OpenFabric"
 
@@ -94,6 +97,7 @@ from pathlib import Path
 try:
     from jinja2 import Template
     from virl2_client import ClientLibrary
+    from virl2_client.models.lab import Lab
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -191,61 +195,42 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
+    def start_lab(lab: Lab) -> None:
+        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+        if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
+            logger.info(f"Starting lab '{LAB_NAME}'")
+            lab.start(wait=True)
+            logger.info(f"Lab '{LAB_NAME}' started")
+        else:
+            logger.info(f"Lab '{LAB_NAME}' is already running")
 
-    def main():
 
-        # 引数処理
-        parser = argparse.ArgumentParser(description='create openfabric docker lab')
-        parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
-        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
-        parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
-        args = parser.parse_args()
-
-        # CMLを操作するvirl2_clientをインスタンス化
-        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
-
-        # 接続を待機する
-        client.is_system_ready(wait=True)
-
-        # LAB_NAMEのラボが存在するか確認する
-        labs = client.find_labs_by_title(LAB_NAME)
-        if labs and len(labs) > 0:
-            lab = labs[0]
-            state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-            logger.info(f"state: {state}")
-            if args.start:
-                if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
-                    logger.info(f"Starting lab '{LAB_NAME}'")
-                    lab.start(wait=True)
-                    logger.info(f"Lab '{LAB_NAME}' started")
-                else:
-                    logger.info(f"Lab '{LAB_NAME}' is already running")
-                return 0
-            elif args.pause:
-                if state == 'STARTED':
-                    logger.info(f"Pausing lab '{LAB_NAME}'")
-                    lab.stop(wait=True)
-                    logger.info(f"Lab '{LAB_NAME}' paused")
-                else:
-                    logger.info(f"Lab '{LAB_NAME}' is not running")
-                return 0
-
-            # 同名のラボが存在する場合はそれを削除する
-            logger.info(f"Deleting lab '{LAB_NAME}'")
+    def stop_lab(lab: Lab) -> None:
+        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+        if state == 'STARTED':
+            logger.info(f"Stopping lab '{LAB_NAME}'")
             lab.stop(wait=True)
-            lab.wipe()
-            lab.remove()
+            logger.info(f"Lab '{LAB_NAME}' stopped")
+        else:
+            logger.info(f"Lab '{LAB_NAME}' is not running")
 
-            # -d で起動していたらここで処理終了
-            if args.delete:
-                return 0
+
+    def delete_lab(lab: Lab) -> None:
+        logger.info(f"Deleting lab '{LAB_NAME}'")
+        stop_lab(lab)
+        lab.wipe()
+        lab.remove()
+        logger.info(f"Lab '{LAB_NAME}' deleted")
+
+
+    def create_lab(client: ClientLibrary) -> None:
 
         # 指定されたimage_definitionが存在するか確認して、なければ終了する
         image_defs = client.definitions.image_definitions()
         image_def_ids = [img['id'] for img in image_defs]
         if IMAGE_DEFINITION not in image_def_ids:
             logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
-            return 1
+            return
 
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
@@ -482,16 +467,55 @@ if __name__ == '__main__':
                 router_number += 1
 
 
-        # start the lab
-        # lab.start()
 
-        # print nodes and interfaces states:
-        #for node in lab.nodes():
-        #    print(node, node.state, node.cpu_usage)
-        #    for interface in node.interfaces():
-        #        print(interface, interface.readpackets, interface.writepackets)
+    def main() -> None:
 
-        return 0
+        # 引数処理
+        parser = argparse.ArgumentParser(description=LAB_DESCRIPTION)
+        parser.add_argument('-c', '--create', action='store_true', default=False, help='Create lab')
+        parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
+        parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
+        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
+        args = parser.parse_args()
 
+        # 引数が何も指定されていない場合はhelpを表示して終了
+        if len(sys.argv) == 1:
+            parser.print_help()
+            return
+
+        # CMLを操作するvirl2_clientをインスタンス化
+        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+
+        # 接続を待機する
+        client.is_system_ready(wait=True)
+
+        # 既存のラボがあれば取得する
+        labs = client.find_labs_by_title(LAB_NAME)
+        lab = labs[0] if labs and len(labs) > 0 else None
+
+        if args.start:
+            start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.pause:
+            stop_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.delete:
+            delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.create:
+            # 既存のラボがあれば削除する
+            if lab:
+                logger.info(f"Lab '{LAB_NAME}' already exists")
+                delete_lab(lab)
+            create_lab(client)
+
+            # start the lab
+            # lab.start()
+
+    #
     # 実行
-    sys.exit(main())
+    #
+    main()

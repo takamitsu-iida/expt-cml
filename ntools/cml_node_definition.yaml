@@ -1,10 +1,10 @@
 #
-# Telegraf Influxdb Grafana node definition
+# Net-Tools node definition for CML 2.9 and later
 #
 
 # CAP_AUDIT_WRITE is needed to run sshd in the container
 
-id: tig
+id: ntools
 
 schema_version: 0.0.1
 
@@ -32,7 +32,7 @@ inherited:
 
 general:
   nature: server
-  description: Telegraf Influxdb Grafana (Docker)
+  description: Net Tools (Docker)
   read_only: true
 
 device:
@@ -60,8 +60,8 @@ ui:
     Telegraf Influxdb Grafana (Docker)
   group: Others
   icon: server
-  label: TIG
-  label_prefix: tig-
+  label: NTOOLS
+  label_prefix: ntools-
   visible: true
 
 configuration:
@@ -78,12 +78,8 @@ configuration:
             "docker": {
               "image": "tig:latest",
               "mounts": [
-                "type=bind,source=cfg/boot.sh,target=/boot.sh",
-                "type=bind,source=cfg/telegraf.conf,target=/etc/telegraf/telegraf.conf",
-                "type=bind,source=cfg/influxdb.conf,target=/etc/influxdb/influxdb.conf",
-                "type=bind,source=cfg/grafana.ini,target=/etc/grafana/grafana.ini",
-                "type=bind,source=cfg/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf"
-              ],
+                "type=bind,source=cfg/boot.sh,target=/boot.sh"
+                ],
               "caps": [
                 "CAP_AUDIT_WRITE",
                 "CAP_CHOWN",
@@ -103,12 +99,7 @@ configuration:
                 "SYS_ADMIN"
               ],
               "env": [
-                "BUCKET=my_bucket",
-                "ORG=my_org",
-                "ADMIN_USER=admin",
-                "ADMIN_PASSWORD=password",
-                "GF_SECURITY_ADMIN=admin",
-                "GF_SECURITY_ADMIN_PASSWORD=password"
+                "TZ=Asia/Tokyo"
               ],
               "misc_args": [],
               "run_args": [],
@@ -116,7 +107,7 @@ configuration:
             },
             "shell": "/bin/bash",
             "day0cmd": [ "/bin/bash", "/boot.sh" ],
-            "busybox": true
+            "busybox": false
           }
       - name: boot.sh
         editable: true
@@ -132,22 +123,3 @@ configuration:
           # keep the next line to indicate that the machine is ready
           echo "READY" >/dev/console
           exit 0
-      - name: telegraf.conf
-        editable: true
-        content: |
-          __TELEGRAF_CONF__
-
-      - name: influxdb.conf
-        editable: true
-        content: |
-          __INFLUXDB_CONF__
-
-      - name: grafana.ini
-        editable: true
-        content: |
-          __GRAFANA_INI__
-
-      - name: supervisord.conf
-        editable: true
-        content: |
-          __SUPERVISORD_CONF__

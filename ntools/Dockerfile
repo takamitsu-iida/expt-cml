@@ -54,7 +54,29 @@ apt install -y --no-install-recommends \
   git \
   vim \
   nano \
-  ethtool
+  ethtool \
+  python3 \
+  python3-pip \
+  python3-venv \
+  direnv
+
+
+pip3 install --upgrade pip
+pip3 install --no-cache-dir \
+    requests \
+    flask \
+    pysnmp \
+    pysnmp-mibs \
+    scapy \
+    netaddr \
+    paramiko \
+    textfsm \
+    jinja2 \
+    ntc-templates \
+    virl2_client[pyats]==2.9 \
+
+
+
 
 #
 # sshd (should run in start.sh)
@@ -72,6 +94,14 @@ sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_conf
 grep -q '^PermitEmptyPasswords yes' /etc/ssh/sshd_config || echo 'PermitEmptyPasswords yes' >> /etc/ssh/sshd_config
 
 # username and password should be changed after container started, see start.sh
+
+#
+# direnvのhookを.bashrcに追加
+#
+echo '\n# direnv' >> /etc/bash.bashrc
+echo 'eval "$(direnv hook bash)"' >> /etc/bash.bashrc
+echo 'export EDITOR=vi' >> /etc/bash.bashrc
+
 
 # --- Clean up ---
 apt autoremove -y

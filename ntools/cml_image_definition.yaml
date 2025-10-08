@@ -1,8 +1,8 @@
-id: tig
-label: TIG
-description: Telegraf Influxdb Grafana
-node_definition_id: tig
-disk_image: tig.tar.gz
+id: ntools
+label: ntools
+description: Net Tools (Docker)
+node_definition_id: ntools
+disk_image: ntools.tar.gz
 read_only: true
 schema_version: 0.0.1
 sha256:

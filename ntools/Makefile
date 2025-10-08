@@ -3,7 +3,7 @@
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-TAG ?= tig:latest
+TAG ?= ntools:latest
 
 # 【事前準備】
 # CMLのadminユーザに対して公開鍵認証を設定しておく
@@ -25,7 +25,7 @@ SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
 SOURCE_NODE_DEFINITION = cml_node_definition.yaml
 INSTALL_SCRIPT = cml_install_image.sh
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-CONTAINER_NAME = tig-test
+CONTAINER_NAME = ntools-test
 
 # --build-argで渡す引数 (TOKENはランダムな32桁の文字列)
 BUILD_ARGS = --build-arg TOKEN=$$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)
@@ -67,9 +67,9 @@ inspect: ## DockerイメージのIDをインスペクトして、image_definitio
 
 
 save: ## Dockerイメージを保存する
-	@rm -f tig.tar.gz
-	@docker save -o tig.tar ${TAG}
-	@gzip tig.tar
+	@rm -f ntools.tar.gz
+	@docker save -o ntools.tar ${TAG}
+	@gzip ntools.tar
 
 
 run: ## Dockerコンテナを起動する
@@ -90,10 +90,10 @@ prune: ## Dockerの不要なイメージを削除する
 
 clean: ## Dockerイメージを削除する
 	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
-	@rm -f tig.tar
+	@rm -f ntools.tar.gz
 	@rm -f image_definition.yaml
 	@rm -f node_definition.yaml
 
 
-upload: ## tig.tarおよびノード定義ファイルをCMLにアップロードする
-	@rsync -avz -e "ssh ${SSH_OPTS}" tig.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}
+upload: ## ntools.tar.gzおよびノード定義ファイルをCMLにアップロードする
+	@rsync -avz -e "ssh ${SSH_OPTS}" ntools.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}

@@ -511,10 +511,16 @@ if __name__ == '__main__':
 
         # 引数処理
         parser = argparse.ArgumentParser(description='create srv6 docker lab')
+        parser.add_argument('-c', '--create', action='store_true', default=False, help='Create lab')
         parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
         parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
         parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
         args = parser.parse_args()
+
+        # 引数が何も指定されていない場合はhelpを表示して終了
+        if len(sys.argv) == 1:
+            parser.print_help()
+            return 0
 
         # CMLを操作するvirl2_clientをインスタンス化
         client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
@@ -524,10 +530,11 @@ if __name__ == '__main__':
 
         # LAB_NAMEのラボが存在するか確認する
         labs = client.find_labs_by_title(LAB_NAME)
-        if labs and len(labs) > 0:
-            lab = labs[0]
-            state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-            if args.start:
+
+        if args.start:
+            if labs and len(labs) > 0:
+                lab = labs[0]
+                state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
                 if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
                     logger.info(f"Starting lab '{LAB_NAME}'")
                     lab.start(wait=True)
@@ -535,7 +542,14 @@ if __name__ == '__main__':
                 else:
                     logger.info(f"Lab '{LAB_NAME}' is already running")
                 return 0
-            elif args.pause:
+            else:
+                logger.error(f"Lab '{LAB_NAME}' not found")
+                return 1
+
+        if args.pause:
+            if labs and len(labs) > 0:
+                lab = labs[0]
+                state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
                 if state == 'STARTED':
                     logger.info(f"Pausing lab '{LAB_NAME}'")
                     lab.stop(wait=True)
@@ -543,6 +557,12 @@ if __name__ == '__main__':
                 else:
                     logger.info(f"Lab '{LAB_NAME}' is not running")
                 return 0
+            else:
+                logger.error(f"Lab '{LAB_NAME}' not found")
+                return 1
+
+
+        if args.create or args.delete:
 
             # 同名のラボが存在する場合はそれを削除する
             logger.info(f"Deleting lab '{LAB_NAME}'")
@@ -554,6 +574,10 @@ if __name__ == '__main__':
             if args.delete:
                 return 0
 
+        #
+        # 以下、ラボを新規作成
+        #
+
         # 指定されたimage_definitionが存在するか確認して、なければ終了する
         image_defs = client.definitions.image_definitions()
         image_def_ids = [img['id'] for img in image_defs]
@@ -561,7 +585,6 @@ if __name__ == '__main__':
             logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
             return 1
 
-        # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
 
         # (X, Y)座標

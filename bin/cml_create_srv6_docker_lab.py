@@ -413,6 +413,7 @@ from pathlib import Path
 try:
     from jinja2 import Template
     from virl2_client import ClientLibrary
+    from virl2_client.models.lab import Lab
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -511,7 +512,28 @@ logger.addHandler(file_handler)
 if __name__ == '__main__':
 
 
-    def start_lab(lab):
+    def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
+        base_params = {
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': 0.0,
+            'y1': 0.0,
+            'z_index': 0
+        }
+        if params:
+            base_params.update(params)
+        lab.create_annotation('text', **base_params)
+
+
+    def start_lab(lab: Lab) -> None:
         state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
         if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
             logger.info(f"Starting lab '{LAB_NAME}'")
@@ -521,7 +543,7 @@ if __name__ == '__main__':
             logger.info(f"Lab '{LAB_NAME}' is already running")
 
 
-    def stop_lab(lab):
+    def stop_lab(lab: Lab) -> None:
         state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
         if state == 'STARTED':
             logger.info(f"Stopping lab '{LAB_NAME}'")
@@ -531,7 +553,7 @@ if __name__ == '__main__':
             logger.info(f"Lab '{LAB_NAME}' is not running")
 
 
-    def delete_lab(lab):
+    def delete_lab(lab: Lab) -> None:
         logger.info(f"Deleting lab '{LAB_NAME}'")
         stop_lab(lab)
         lab.wipe()
@@ -539,61 +561,16 @@ if __name__ == '__main__':
         logger.info(f"Lab '{LAB_NAME}' deleted")
 
 
-
-    def main():
-
-        # 引数処理
-        parser = argparse.ArgumentParser(description=LAB_DESCRIPTION)
-        parser.add_argument('-c', '--create', action='store_true', default=False, help='Create lab')
-        parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
-        parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
-        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
-        args = parser.parse_args()
-
-        # 引数が何も指定されていない場合はhelpを表示して終了
-        if len(sys.argv) == 1:
-            parser.print_help()
-            return 0
-
-        # CMLを操作するvirl2_clientをインスタンス化
-        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
-
-        # 接続を待機する
-        client.is_system_ready(wait=True)
-
-        # 既存のラボがあれば取得する
-        labs = client.find_labs_by_title(LAB_NAME)
-        lab = labs[0] if labs and len(labs) > 0 else None
-
-        if args.start:
-            start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
-            return 0
-
-        if args.pause:
-            stop_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
-            return 0
-
-        if args.delete:
-            delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
-            return 0
-
-        if args.create:
-            # 既存のラボがあれば削除する
-            if lab:
-                logger.info(f"Lab '{LAB_NAME}' already exists")
-                delete_lab(lab)
-
-        #
-        # 以下、ラボを新規作成
-        #
+    def create_lab(client: ClientLibrary) -> None:
 
         # 指定されたimage_definitionが存在するか確認して、なければ終了する
         image_defs = client.definitions.image_definitions()
         image_def_ids = [img['id'] for img in image_defs]
         if IMAGE_DEFINITION not in image_def_ids:
             logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
-            return 1
+            return
 
+        # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
 
         # (X, Y)座標
@@ -840,60 +817,6 @@ if __name__ == '__main__':
         lab.create_link(ce104_eth0, pe14_eth2, wait=True)
 
         #
-        # アノテーションを作成する
-        #
-        text_content = 'FRR SRv6 uSID'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 20,
-            'text_unit': 'pt',
-            'thickness': 1,
-            'x1': -400.0,
-            'y1': -160.0,
-            'z_index': 0
-        })
-
-        text_content = 'fd00:0001: {{ 00 router-number }}/48'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
-            'x1': -400.0,
-            'y1': -120.0,
-            'z_index': 1
-        })
-
-        text_content = '49.0001 . 0000.0000.00{{ router-number }} . 00'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
-            'x1': -400.0,
-            'y1': -80.0,
-            'z_index': 2
-        })
-
-        #
         # 外部接続用のブリッジを作成する
         #
         ext_conn_node = lab.create_node("bridge1", "external_connector", x_grid_width, -y_grid_width, wait=True)
@@ -947,40 +870,46 @@ if __name__ == '__main__':
         pe1_eth4 = p_routers[0].get_interface_by_label("eth4")
         lab.create_link(ubuntu_ens3, pe1_eth4, wait=True)
 
+        #
+        # アノテーションを作成する
+        #
+        text_content = 'FRR SRv6 uSID'
+        create_text_annotation(lab, text_content, {
+            'text_size': 20,
+            'x1': -400.0,
+            'y1': -160.0,
+            'z_index': 0
+        })
+
+        text_content = 'fd00:0001: {{ 00 router-number }}/48'
+        create_text_annotation(lab, text_content, {
+            'x1': -400.0,
+            'y1': -120.0,
+            'z_index': 1
+        })
+
+        text_content = '49.0001 . 0000.0000.00{{ router-number }} . 00'
+        create_text_annotation(lab, text_content, {
+            'x1': -400.0,
+            'y1': -80.0,
+            'z_index': 2
+        })
+
         text_content = '192.168.254.254'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
+        create_text_annotation(lab, text_content, {
             'x1': 20.0,
             'y1': -120.0,
             'z_index': 3
         })
 
         text_content = '192.168.0.254'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
+        create_text_annotation(lab, text_content, {
             'x1': 20.0,
             'y1': -200.0,
             'z_index': 3
         })
 
+        # 楕円形のアノテーションを作成する
         lab.create_annotation('ellipse', **{
             'border_color': '#808080FF',
             'border_style': '',
@@ -994,6 +923,7 @@ if __name__ == '__main__':
             'z_index': 3
         })
 
+        # 直線のアノテーションを作成する
         lab.create_annotation('line', **{
             'border_color': '#808080FF',
             'border_style': '',
@@ -1009,102 +939,42 @@ if __name__ == '__main__':
         })
 
         text_content = 'JUMP HOST'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
+        create_text_annotation(lab, text_content, {
             'x1': -80.0,
             'y1': -200.0,
             'z_index': 5
         })
 
         text_content = 'Windows Hyper-V HOST'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
+        create_text_annotation(lab, text_content, {
             'x1': 200.0,
             'y1': -240.0,
             'z_index': 5
         })
 
         text_content = '10.0.11.0/24'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
+        create_text_annotation(lab, text_content, {
             'x1': -360.0,
             'y1': 40.0,
             'z_index': 6
         })
 
         text_content = '10.0.12.0/24'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
+        create_text_annotation(lab, text_content, {
             'x1': -360.0,
             'y1': 200.0,
             'z_index': 6
         })
 
         text_content = '10.0.13.0/24'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
+        create_text_annotation(lab, text_content, {
             'x1': 240.0,
             'y1': 40.0,
             'z_index': 6
         })
 
         text_content = '10.0.14.0/24'
-        lab.create_annotation('text', **{
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
+        create_text_annotation(lab, text_content, {
             'x1': 240.0,
             'y1': 200.0,
             'z_index': 6
@@ -1177,7 +1047,52 @@ if __name__ == '__main__':
         #    for interface in node.interfaces():
         #        print(interface, interface.readpackets, interface.writepackets)
 
-        return 0
 
+    def main() -> None:
+
+        # 引数処理
+        parser = argparse.ArgumentParser(description=LAB_DESCRIPTION)
+        parser.add_argument('-c', '--create', action='store_true', default=False, help='Create lab')
+        parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
+        parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
+        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
+        args = parser.parse_args()
+
+        # 引数が何も指定されていない場合はhelpを表示して終了
+        if len(sys.argv) == 1:
+            parser.print_help()
+            return
+
+        # CMLを操作するvirl2_clientをインスタンス化
+        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+
+        # 接続を待機する
+        client.is_system_ready(wait=True)
+
+        # 既存のラボがあれば取得する
+        labs = client.find_labs_by_title(LAB_NAME)
+        lab = labs[0] if labs and len(labs) > 0 else None
+
+        if args.start:
+            start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.pause:
+            stop_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.delete:
+            delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.create:
+            # 既存のラボがあれば削除する
+            if lab:
+                logger.info(f"Lab '{LAB_NAME}' already exists")
+                delete_lab(lab)
+            create_lab(client)
+
+    #
     # 実行
-    sys.exit(main())
+    #
+    main()

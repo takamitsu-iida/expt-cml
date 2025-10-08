@@ -17,83 +17,47 @@ ENV HOSTNAME=${HOSTNAME}
 
 ENV WORKING_DIRECTORY=/var/tmp/build
 
-
-# パッケージごとにインストールしてエラーを切り分け
-RUN apt update && apt upgrade -y
-RUN apt install -y --no-install-recommends iproute2 || echo "FAILED: iproute2"
-RUN apt install -y --no-install-recommends iputils-ping || echo "FAILED: iputils-ping"
-RUN apt install -y --no-install-recommends net-tools || echo "FAILED: net-tools"
-RUN apt install -y --no-install-recommends mtr-tiny || echo "FAILED: mtr-tiny"
-RUN apt install -y --no-install-recommends traceroute || echo "FAILED: traceroute"
-RUN apt install -y --no-install-recommends fping || echo "FAILED: fping"
-RUN apt install -y --no-install-recommends telnet || echo "FAILED: telnet"
-RUN apt install -y --no-install-recommends netcat-openbsd || echo "FAILED: netcat-openbsd"
-RUN apt install -y --no-install-recommends socat || echo "FAILED: socat"
-RUN apt install -y --no-install-recommends snmp || echo "FAILED: snmp"
-RUN apt install -y --no-install-recommends snmp-mibs-downloader || echo "FAILED: snmp-mibs-downloader"
-RUN apt install -y --no-install-recommends termshark || echo "FAILED: termshark"
-RUN apt install -y --no-install-recommends openssh-client || echo "FAILED: openssh-client"
-RUN apt install -y --no-install-recommends openssh-server || echo "FAILED: openssh-server"
-RUN apt install -y --no-install-recommends less || echo "FAILED: less"
-RUN apt install -y --no-install-recommends jq || echo "FAILED: jq"
-RUN apt install -y --no-install-recommends yq || echo "FAILED: yq"
-RUN apt install -y --no-install-recommends httpie || echo "FAILED: httpie"
-RUN apt install -y --no-install-recommends procps || echo "FAILED: procps"
-RUN apt install -y --no-install-recommends dnsutils || echo "FAILED: dnsutils"
-RUN apt install -y --no-install-recommends bash || echo "FAILED: bash"
-RUN apt install -y --no-install-recommends dhcping || echo "FAILED: dhcping"
-RUN apt install -y --no-install-recommends nmap || echo "FAILED: nmap"
-RUN apt install -y --no-install-recommends wget || echo "FAILED: wget"
-RUN apt install -y --no-install-recommends curl || echo "FAILED: curl"
-RUN apt install -y --no-install-recommends git || echo "FAILED: git"
-RUN apt install -y --no-install-recommends vim || echo "FAILED: vim"
-RUN apt install -y --no-install-recommends nano || echo "FAILED: nano"
-RUN apt install -y --no-install-recommends ethtool || echo "FAILED: ethtool"
-RUN apt install -y --no-install-recommends python3 || echo "FAILED: python3"
-RUN apt install -y --no-install-recommends python3-pip || echo "FAILED: python3-pip"
-RUN apt install -y --no-install-recommends python3-venv || echo "FAILED: python3-venv"
-RUN apt install -y --no-install-recommends direnv || echo "FAILED: direnv"
-
 RUN <<EOF
 
 cd ${WORKING_DIRECTORY}
 
 apt update
 apt upgrade -y
-apt install -y --no-install-recommends \
-  iproute2 \
-  iputils-ping \
-  net-tools \
-  mtr-tiny \
-  traceroute \
-  fping \
-  telnet \
-  netcat-openbsd \
-  socat \
-  snmp \
-  snmp-mibs-downloader \
-  termshark \
-  openssh-client \
-  openssh-server \
-  less \
-  jq \
-  yq \
-  httpie \
-  procps \
-  dnsutils \
-  bash \
-  dhcping \
-  nmap
-  wget \
-  curl \
-  git \
-  vim \
-  nano \
-  ethtool \
-  python3 \
-  python3-pip \
-  python3-venv \
-  direnv
+
+# パッケージごとにインストールしてエラーを切り分け
+apt install -y --no-install-recommends iproute2 || echo "FAILED: iproute2"
+apt install -y --no-install-recommends iputils-ping || echo "FAILED: iputils-ping"
+apt install -y --no-install-recommends net-tools || echo "FAILED: net-tools"
+apt install -y --no-install-recommends mtr-tiny || echo "FAILED: mtr-tiny"
+apt install -y --no-install-recommends traceroute || echo "FAILED: traceroute"
+apt install -y --no-install-recommends fping || echo "FAILED: fping"
+apt install -y --no-install-recommends telnet || echo "FAILED: telnet"
+apt install -y --no-install-recommends netcat-openbsd || echo "FAILED: netcat-openbsd"
+apt install -y --no-install-recommends socat || echo "FAILED: socat"
+apt install -y --no-install-recommends snmp || echo "FAILED: snmp"
+apt install -y --no-install-recommends snmp-mibs-downloader || echo "FAILED: snmp-mibs-downloader"
+apt install -y --no-install-recommends termshark || echo "FAILED: termshark"
+apt install -y --no-install-recommends openssh-client || echo "FAILED: openssh-client"
+apt install -y --no-install-recommends openssh-server || echo "FAILED: openssh-server"
+apt install -y --no-install-recommends less || echo "FAILED: less"
+apt install -y --no-install-recommends jq || echo "FAILED: jq"
+apt install -y --no-install-recommends yq || echo "FAILED: yq"
+apt install -y --no-install-recommends httpie || echo "FAILED: httpie"
+apt install -y --no-install-recommends procps || echo "FAILED: procps"
+apt install -y --no-install-recommends dnsutils || echo "FAILED: dnsutils"
+apt install -y --no-install-recommends bash || echo "FAILED: bash"
+apt install -y --no-install-recommends dhcping || echo "FAILED: dhcping"
+apt install -y --no-install-recommends nmap || echo "FAILED: nmap"
+apt install -y --no-install-recommends wget || echo "FAILED: wget"
+apt install -y --no-install-recommends curl || echo "FAILED: curl"
+apt install -y --no-install-recommends git || echo "FAILED: git"
+apt install -y --no-install-recommends vim || echo "FAILED: vim"
+apt install -y --no-install-recommends nano || echo "FAILED: nano"
+apt install -y --no-install-recommends ethtool || echo "FAILED: ethtool"
+apt install -y --no-install-recommends python3 || echo "FAILED: python3"
+apt install -y --no-install-recommends python3-pip || echo "FAILED: python3-pip"
+apt install -y --no-install-recommends python3-venv || echo "FAILED: python3-venv"
+apt install -y --no-install-recommends direnv || echo "FAILED: direnv"
 
 pip3 install --upgrade pip
 pip3 install --no-cache-dir \
@@ -107,7 +71,7 @@ pip3 install --no-cache-dir \
     textfsm \
     jinja2 \
     ntc-templates \
-    virl2_client[pyats]==2.9 \
+    virl2_client[pyats]==2.9
 
 #
 # sshd (should run in start.sh)
@@ -133,6 +97,11 @@ echo '\n# direnv' >> /etc/bash.bashrc
 echo 'eval "$(direnv hook bash)"' >> /etc/bash.bashrc
 echo 'export EDITOR=vi' >> /etc/bash.bashrc
 
+#
+# install deadman
+#
+cd /root
+git clone https://github.com/upa/deadman.git
 
 # --- Clean up ---
 apt autoremove -y
@@ -144,8 +113,6 @@ rm -rf ${WORKING_DIRECTORY}
 
 unset WORKING_DIRECTORY
 
-cd /root
-git clone https://github.com/upa/deadman.git
 
 EOF
 

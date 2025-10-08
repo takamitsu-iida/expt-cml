@@ -562,17 +562,30 @@ if __name__ == '__main__':
                 return 1
 
 
-        if args.create or args.delete:
-
-            # 同名のラボが存在する場合はそれを削除する
-            logger.info(f"Deleting lab '{LAB_NAME}'")
-            lab.stop(wait=True)
-            lab.wipe()
-            lab.remove()
-
-            # -d で起動していたらここで処理終了
-            if args.delete:
+        if args.delete:
+            # 既存のラボがあれば削除する
+            if labs and len(labs) > 0:
+                lab = labs[0]
+                logger.info(f"Deleting lab '{LAB_NAME}'")
+                lab.stop(wait=True)
+                lab.wipe()
+                lab.remove()
+                logger.info(f"Lab '{LAB_NAME}' deleted")
                 return 0
+            else:
+                logger.info(f"Lab '{LAB_NAME}' not found")
+                return 1
+
+        if args.create:
+            # 既存のラボがあれば削除する
+            if labs and len(labs) > 0:
+                lab = labs[0]
+                logger.info(f"Lab '{LAB_NAME}' already exists")
+                logger.info(f"Deleting existing lab '{LAB_NAME}'")
+                lab.stop(wait=True)
+                lab.wipe()
+                lab.remove()
+                logger.info(f"Lab '{LAB_NAME}' deleted")
 
         #
         # 以下、ラボを新規作成
@@ -1156,6 +1169,8 @@ if __name__ == '__main__':
             'y2': 80.0,
             'z_index': 7
         })
+
+        logger.info(f"Lab '{LAB_NAME}' created")
 
         # start the lab
         # lab.start()

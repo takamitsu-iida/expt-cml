@@ -102,7 +102,7 @@ virl2_clientのマニュアルを見ると、インタフェースに `readpacke
 
 R1とR2はCSR1000vです。
 
-等コストマルチパスになっていますので、R1からR2へのICMP RequestはGig1かGig2のどちらかを通ります。
+イコールコストマルチパスになっていますので、R1からR2へのICMP RequestはGig1かGig2のどちらかを通ります。
 戻って来るICMP Responseもどっちで受信するかは分かりません。
 
 ターミナルを２つ開いて、一方で `intman.py` を実行、もう一方でpingを打ってみます。

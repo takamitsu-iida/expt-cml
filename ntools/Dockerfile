@@ -21,6 +21,8 @@ ENV WORKING_DIRECTORY=/var/tmp/build
 
 RUN <<EOF
 
+mkdir -p ${WORKING_DIRECTORY}
+
 cd ${WORKING_DIRECTORY}
 
 apt update
@@ -115,7 +117,7 @@ echo 'export EDITOR=vi' >> /etc/bash.bashrc
 # Resize terminal window
 #
 echo '\n# Resize terminal window' >> /etc/bash.bashrc
-echo 'rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf \'\e7\e[r\e[999;999H\e[6n\e8\'); IFS=\'[;\' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi' >> /etc/bash.bashrc
+echo 'rsz () { if [[ -t 0 ]]; then local escape r c prompt=$(printf "\\e7\\e[r\\e[999;999H\\e[6n\\e8"); IFS="[;" read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi; }' >> /etc/bash.bashrc
 echo 'export -f rsz' >> /etc/bash.bashrc
 
 #

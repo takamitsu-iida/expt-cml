@@ -17,13 +17,49 @@ ENV HOSTNAME=${HOSTNAME}
 
 ENV WORKING_DIRECTORY=/var/tmp/build
 
+
+# パッケージごとにインストールしてエラーを切り分け
+RUN apt update && apt upgrade -y
+RUN apt install -y --no-install-recommends iproute2 || echo "FAILED: iproute2"
+RUN apt install -y --no-install-recommends iputils-ping || echo "FAILED: iputils-ping"
+RUN apt install -y --no-install-recommends net-tools || echo "FAILED: net-tools"
+RUN apt install -y --no-install-recommends mtr-tiny || echo "FAILED: mtr-tiny"
+RUN apt install -y --no-install-recommends traceroute || echo "FAILED: traceroute"
+RUN apt install -y --no-install-recommends fping || echo "FAILED: fping"
+RUN apt install -y --no-install-recommends telnet || echo "FAILED: telnet"
+RUN apt install -y --no-install-recommends netcat-openbsd || echo "FAILED: netcat-openbsd"
+RUN apt install -y --no-install-recommends socat || echo "FAILED: socat"
+RUN apt install -y --no-install-recommends snmp || echo "FAILED: snmp"
+RUN apt install -y --no-install-recommends snmp-mibs-downloader || echo "FAILED: snmp-mibs-downloader"
+RUN apt install -y --no-install-recommends termshark || echo "FAILED: termshark"
+RUN apt install -y --no-install-recommends openssh-client || echo "FAILED: openssh-client"
+RUN apt install -y --no-install-recommends openssh-server || echo "FAILED: openssh-server"
+RUN apt install -y --no-install-recommends less || echo "FAILED: less"
+RUN apt install -y --no-install-recommends jq || echo "FAILED: jq"
+RUN apt install -y --no-install-recommends yq || echo "FAILED: yq"
+RUN apt install -y --no-install-recommends httpie || echo "FAILED: httpie"
+RUN apt install -y --no-install-recommends procps || echo "FAILED: procps"
+RUN apt install -y --no-install-recommends dnsutils || echo "FAILED: dnsutils"
+RUN apt install -y --no-install-recommends bash || echo "FAILED: bash"
+RUN apt install -y --no-install-recommends dhcping || echo "FAILED: dhcping"
+RUN apt install -y --no-install-recommends nmap || echo "FAILED: nmap"
+RUN apt install -y --no-install-recommends wget || echo "FAILED: wget"
+RUN apt install -y --no-install-recommends curl || echo "FAILED: curl"
+RUN apt install -y --no-install-recommends git || echo "FAILED: git"
+RUN apt install -y --no-install-recommends vim || echo "FAILED: vim"
+RUN apt install -y --no-install-recommends nano || echo "FAILED: nano"
+RUN apt install -y --no-install-recommends ethtool || echo "FAILED: ethtool"
+RUN apt install -y --no-install-recommends python3 || echo "FAILED: python3"
+RUN apt install -y --no-install-recommends python3-pip || echo "FAILED: python3-pip"
+RUN apt install -y --no-install-recommends python3-venv || echo "FAILED: python3-venv"
+RUN apt install -y --no-install-recommends direnv || echo "FAILED: direnv"
+
 RUN <<EOF
 
 cd ${WORKING_DIRECTORY}
 
 apt update
 apt upgrade -y
-
 apt install -y --no-install-recommends \
   iproute2 \
   iputils-ping \
@@ -59,7 +95,6 @@ apt install -y --no-install-recommends \
   python3-venv \
   direnv
 
-
 pip3 install --upgrade pip
 pip3 install --no-cache-dir \
     requests \
@@ -73,9 +108,6 @@ pip3 install --no-cache-dir \
     jinja2 \
     ntc-templates \
     virl2_client[pyats]==2.9 \
-
-
-
 
 #
 # sshd (should run in start.sh)

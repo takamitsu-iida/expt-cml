@@ -511,6 +511,10 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
+    def get_lab_by_title(client, title):
+        labs = client.find_labs_by_title(title)
+        return labs[0] if labs else None
+
 
     def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
         base_params = {
@@ -1059,7 +1063,7 @@ if __name__ == '__main__':
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
-        if len(sys.argv) == 1:
+        if not any(vars(args).values()):
             parser.print_help()
             return
 
@@ -1070,8 +1074,7 @@ if __name__ == '__main__':
         client.is_system_ready(wait=True)
 
         # 既存のラボがあれば取得する
-        labs = client.find_labs_by_title(LAB_NAME)
-        lab = labs[0] if labs and len(labs) > 0 else None
+        lab = get_lab_by_title(client, LAB_NAME)
 
         if args.start:
             start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
@@ -1086,8 +1089,8 @@ if __name__ == '__main__':
             return
 
         if args.create:
-            # 既存のラボがあれば削除する
             if lab:
+                # 既存のラボがあれば削除
                 logger.info(f"Lab '{LAB_NAME}' already exists")
                 delete_lab(lab)
             create_lab(client)

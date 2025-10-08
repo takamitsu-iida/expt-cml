@@ -2,7 +2,7 @@
 
 # CiscoのMIBファイルを追加したい
 
-FROM ubuntu22.04-minimal AS base
+FROM ubuntu22.04 AS base
 
 ENV TZ=Asia/Tokyo
 

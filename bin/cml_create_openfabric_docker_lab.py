@@ -195,6 +195,11 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
+    def get_lab_by_title(client, title):
+        labs = client.find_labs_by_title(title)
+        return labs[0] if labs else None
+
+
     def start_lab(lab: Lab) -> None:
         state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
         if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
@@ -479,9 +484,10 @@ if __name__ == '__main__':
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
-        if len(sys.argv) == 1:
+        if not any(vars(args).values()):
             parser.print_help()
             return
+
 
         # CMLを操作するvirl2_clientをインスタンス化
         client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
@@ -490,8 +496,7 @@ if __name__ == '__main__':
         client.is_system_ready(wait=True)
 
         # 既存のラボがあれば取得する
-        labs = client.find_labs_by_title(LAB_NAME)
-        lab = labs[0] if labs and len(labs) > 0 else None
+        lab = get_lab_by_title(client, LAB_NAME)
 
         if args.start:
             start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")

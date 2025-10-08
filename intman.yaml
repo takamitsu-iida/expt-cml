@@ -1,17 +1,57 @@
-title: intman.py demo
-id: d15dc959-6ea9-4b9c-b029-3868135e84f3
+title: Docker FRR SRv6
+id: f2ec1062-9109-4e51-b92f-542fb7517fb1
 nodes:
-- node_def: ubuntu
-  name: ubuntu
+- node_def: frr-10-4
+  name: P1
   interfaces:
-  - ens2
+  - eth0
+  - eth1
+  - eth2
+  - eth3
+- node_def: frr-10-4
+  name: P2
+  interfaces:
+  - eth0
+  - eth1
+  - eth2
+  - eth3
+- node_def: frr-10-4
+  name: PE11
+  interfaces:
+  - eth0
+  - eth1
+  - eth2
+- node_def: frr-10-4
+  name: PE12
+  interfaces:
+  - eth0
+  - eth1
+  - eth2
+- node_def: frr-10-4
+  name: PE13
+  interfaces:
+  - eth0
+  - eth1
+  - eth2
+- node_def: frr-10-4
+  name: PE14
+  interfaces:
+  - eth0
+  - eth1
+  - eth2
 - node_def: iol-xe
-  name: R1
+  name: CE101
   interfaces:
   - Ethernet0/0
-  - Ethernet0/1
-- node_def: iol-xe
-  name: R2
+- node_def: frr-10-4
+  name: CE102
   interfaces:
-  - Ethernet0/0
-  - Ethernet0/1
+  - eth0
+- node_def: frr-10-4
+  name: CE103
+  interfaces:
+  - eth0
+- node_def: frr-10-4
+  name: CE104
+  interfaces:
+  - eth0

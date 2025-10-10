@@ -25,6 +25,7 @@ from pathlib import Path
 # 外部ライブラリのインポート
 #
 try:
+    import yaml  # PyYAML
     from virl2_client import ClientLibrary
 except ImportError as e:
     logging.critical(str(e))
@@ -123,6 +124,23 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
+    def is_exist_image_def(client: ClientLibrary, image_def_name: str) -> bool:
+        image_defs = client.definitions.image_definitions()
+        image_def_ids = [img['id'] for img in image_defs]
+        if image_def_name not in image_def_ids:
+            logger.error(f"Specified image definition '{image_def_name}' not found in CML.")
+            return False
+        return True
+
+    def is_exist_node_def(client: ClientLibrary, node_def_name: str) -> bool:
+        node_defs = client.definitions.node_definitions()
+        node_def_ids = [node['id'] for node in node_defs]
+        if node_def_name not in node_def_ids:
+            logger.error(f"Specified node definition '{node_def_name}' not found in CML.")
+            return False
+        return True
+
+
     def main() -> int:
 
         # 引数処理
@@ -151,9 +169,14 @@ if __name__ == '__main__':
                 logger.error(f"ノード定義ファイルが見つかりません: {node_path}")
                 return 1
             with open(node_path, "r", encoding="utf-8") as f:
-                node_def = f.read()
+                node_def_text = f.read()
+            # YAMLに変換
+            node_def = yaml.safe_load(node_def_text)
+
+            need_update = is_exist_node_def(client, node_path.stem)
+
             logger.info(f"ノード定義ファイル {node_path} をアップロードします")
-            client.definitions.upload_node_definition(node_def, update=False)
+            client.definitions.upload_node_definition(node_def, update=need_update)
             logger.info(f"ノード定義ファイル {node_path} をアップロードしました")
 
 

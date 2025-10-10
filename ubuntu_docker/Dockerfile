@@ -28,39 +28,63 @@ cd ${WORKING_DIRECTORY}
 apt update
 apt upgrade -y
 
-# 途中でエラーが発生するので、パッケージごとにインストールして切り分け
+# 途中でエラーが発生するので、パッケージごとにインストールして切り分けできるようにする
+# サイズを小さくするときにまとめてインストールするように変更する
+
+# 基本ツール・ライブラリ
+apt install -y --no-install-recommends ca-certificates || echo "FAILED: ca-certificates"
+apt install -y --no-install-recommends build-essential || echo "FAILED: build-essential"
+apt install -y --no-install-recommends libpcap-dev || echo "FAILED: libpcap-dev"
+
+# ネットワーク系ツール
 apt install -y --no-install-recommends iproute2 || echo "FAILED: iproute2"
 apt install -y --no-install-recommends iputils-ping || echo "FAILED: iputils-ping"
 apt install -y --no-install-recommends net-tools || echo "FAILED: net-tools"
 apt install -y --no-install-recommends mtr-tiny || echo "FAILED: mtr-tiny"
 apt install -y --no-install-recommends traceroute || echo "FAILED: traceroute"
 apt install -y --no-install-recommends fping || echo "FAILED: fping"
+apt install -y --no-install-recommends dhcping || echo "FAILED: dhcping"
+apt install -y --no-install-recommends nmap || echo "FAILED: nmap"
+apt install -y --no-install-recommends ethtool || echo "FAILED: ethtool"
+
+# 通信・接続系
 apt install -y --no-install-recommends telnet || echo "FAILED: telnet"
 apt install -y --no-install-recommends netcat-openbsd || echo "FAILED: netcat-openbsd"
 apt install -y --no-install-recommends socat || echo "FAILED: socat"
+apt install -y --no-install-recommends openssh-client || echo "FAILED: openssh-client"
+apt install -y --no-install-recommends openssh-server || echo "FAILED: openssh-server"
+
+# SNMP・パケット解析
 apt install -y --no-install-recommends snmp || echo "FAILED: snmp"
 apt install -y --no-install-recommends snmp-mibs-downloader || echo "FAILED: snmp-mibs-downloader"
 apt install -y --no-install-recommends termshark || echo "FAILED: termshark"
-apt install -y --no-install-recommends openssh-client || echo "FAILED: openssh-client"
-apt install -y --no-install-recommends openssh-server || echo "FAILED: openssh-server"
-apt install -y --no-install-recommends less || echo "FAILED: less"
-apt install -y --no-install-recommends jq || echo "FAILED: jq"
-apt install -y --no-install-recommends yq || echo "FAILED: yq"
-apt install -y --no-install-recommends httpie || echo "FAILED: httpie"
-apt install -y --no-install-recommends procps || echo "FAILED: procps"
-apt install -y --no-install-recommends dnsutils || echo "FAILED: dnsutils"
-apt install -y --no-install-recommends bash || echo "FAILED: bash"
-apt install -y --no-install-recommends dhcping || echo "FAILED: dhcping"
-apt install -y --no-install-recommends nmap || echo "FAILED: nmap"
+
+# ファイル取得・操作
 apt install -y --no-install-recommends wget || echo "FAILED: wget"
 apt install -y --no-install-recommends curl || echo "FAILED: curl"
 apt install -y --no-install-recommends git || echo "FAILED: git"
+
+# テキスト処理・エディタ
 apt install -y --no-install-recommends vim || echo "FAILED: vim"
 apt install -y --no-install-recommends nano || echo "FAILED: nano"
-apt install -y --no-install-recommends ethtool || echo "FAILED: ethtool"
+apt install -y --no-install-recommends less || echo "FAILED: less"
+
+# データ処理
+apt install -y --no-install-recommends jq || echo "FAILED: jq"
+apt install -y --no-install-recommends yq || echo "FAILED: yq"
+apt install -y --no-install-recommends httpie || echo "FAILED: httpie"
+
+# システム管理
+apt install -y --no-install-recommends procps || echo "FAILED: procps"
+apt install -y --no-install-recommends dnsutils || echo "FAILED: dnsutils"
+apt install -y --no-install-recommends bash || echo "FAILED: bash"
+
+# Python関連
 apt install -y --no-install-recommends python3 || echo "FAILED: python3"
 apt install -y --no-install-recommends python3-pip || echo "FAILED: python3-pip"
 apt install -y --no-install-recommends python3-venv || echo "FAILED: python3-venv"
+
+# 環境管理
 apt install -y --no-install-recommends direnv || echo "FAILED: direnv"
 
 pip3 install --upgrade pip
@@ -73,6 +97,7 @@ pip3 install --no-cache-dir netaddr
 pip3 install --no-cache-dir paramiko
 pip3 install --no-cache-dir textfsm
 pip3 install --no-cache-dir jinja2
+pip3 install --no-cache-dir pyyaml
 pip3 install --no-cache-dir ntc-templates
 pip3 install --no-cache-dir pyats[full]
 pip3 install --no-cache-dir rest.connector

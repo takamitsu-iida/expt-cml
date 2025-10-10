@@ -179,10 +179,21 @@ if __name__ == '__main__':
                 logger.error(f"イメージ定義ファイルが見つかりません: {image_def_path}")
                 return 1
             with open(image_def_path, "r", encoding="utf-8") as f:
-                image_def = f.read()
+                image_def_text = f.read()
+            # YAMLに変換
+            image_def = yaml.safe_load(image_def_text)
+
+            image_def_id = image_def.get('id')
+            if not image_def_id:
+                logger.error(f"イメージ定義ファイルに'id'フィールドがありません: {image_def_path}")
+                return 1
+
+            need_update = is_exist_image_def(client, image_def_id)
+
             logger.info(f"イメージ定義ファイル {image_def_path} をアップロードします")
-            client.definitions.upload_image_definition(image_def, update=False)
+            client.definitions.upload_image_definition(image_def_text, update=need_update)
             logger.info(f"イメージ定義ファイル {image_def_path} をアップロードしました")
+
 
         # イメージファイル（tar.gzなど）のアップロード
         if args.image_file:
@@ -191,7 +202,10 @@ if __name__ == '__main__':
                 logger.error(f"イメージファイルが見つかりません: {image_file_path}")
                 return 1
             logger.info(f"イメージファイル {image_file_path} をアップロードします")
+
+            # どこにアップロードされる？
             client.definitions.upload_image_file(filename=image_file_path)
+
             logger.info(f"イメージファイル {image_file_path} をアップロードしました")
 
         return 0

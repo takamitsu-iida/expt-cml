@@ -76,7 +76,7 @@ configuration:
         content: |
           {
             "docker": {
-              "image": "tig:latest",
+              "image": "ubuntu24.04:iida",
               "mounts": [
                 "type=bind,source=cfg/boot.sh,target=/boot.sh"
                 ],

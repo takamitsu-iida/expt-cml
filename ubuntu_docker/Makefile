@@ -3,7 +3,7 @@
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-TAG ?= ubuntu_docker:latest
+TAG ?= ubuntu24.04:iida
 
 # 【事前準備】
 # CMLのadminユーザに対して公開鍵認証を設定しておく
@@ -27,12 +27,8 @@ INSTALL_SCRIPT = cml_install_image.sh
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = ntools-test
 
-# --build-argで渡す引数 (TOKENはランダムな32桁の文字列)
-BUILD_ARGS = --build-arg TOKEN=$$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)
-
-
 build: ## Dockerイメージを作成する
-	@docker build -t ${TAG} ${BUILD_ARGS} -f Dockerfile .
+	@docker build -t ${TAG} -f Dockerfile .
 
 
 inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlおよびnode_definition.yamlを生成する
@@ -67,9 +63,9 @@ inspect: ## DockerイメージのIDをインスペクトして、image_definitio
 
 
 save: ## Dockerイメージを保存する
-	@rm -f ubuntu_docker.tar.gz
-	@docker save -o ubuntu_docker.tar ${TAG}
-	@gzip ubuntu_docker.tar
+	@rm -f ubuntu24.04.tar.gz
+	@docker save -o ubuntu24.04.tar ${TAG}
+	@gzip ubuntu24.04.tar
 
 
 run: ## Dockerコンテナを起動する
@@ -90,7 +86,7 @@ prune: ## Dockerの不要なイメージを削除する
 
 clean: ## Dockerイメージを削除する
 	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
-	@rm -f ubuntu_docker.tar.gz
+	@rm -f ubuntu24.04.tar.gz
 	@rm -f image_definition.yaml
 	@rm -f node_definition.yaml
 

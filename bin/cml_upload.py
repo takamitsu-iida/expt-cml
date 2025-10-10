@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 #
-# virl2_clientを使ってノード定義ファイル、イメージ定義ファイルをCMLにアップロードするスクリプトです
+# virl2_clientを使ってノード定義ファイル、イメージ定義ファイル、イメージファイルをCMLにアップロードするスクリプトです
 #
+
 # 使い方の例:
 # python3 bin/cml_upload.py \
 #   --node-def ./data/node_definition.yaml \

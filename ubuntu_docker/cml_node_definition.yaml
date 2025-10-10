@@ -4,7 +4,7 @@
 
 # CAP_AUDIT_WRITE is needed to run sshd in the container
 
-id: ubuntu_docker
+id: ubuntu_24.04_docker
 
 schema_version: 0.0.1
 
@@ -57,7 +57,7 @@ pyats:
 
 ui:
   description: |
-    Telegraf Influxdb Grafana (Docker)
+    Ubuntu24.04 (Docker)
   group: Others
   icon: server
   label: UBUNTU_DOCKER

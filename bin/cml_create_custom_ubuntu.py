@@ -142,8 +142,7 @@ runcmd:
     EOS
 
   # Create SSH keys
-  - ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa
-  - chown {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
+  - sudo -u {{ UBUNTU_USERNAME}} ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa
   - chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
   - chmod 700 /home/{{ UBUNTU_USERNAME }}/.ssh
 

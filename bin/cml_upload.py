@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
         # ノード定義ファイルのアップロード
         if args.node_def:
-            node_path = Path(args.node)
+            node_path = Path(args.node_def)
             if not node_path.exists():
                 logger.error(f"ノード定義ファイルが見つかりません: {node_path}")
                 return 1

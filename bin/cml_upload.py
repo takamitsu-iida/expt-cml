@@ -125,21 +125,10 @@ logger.addHandler(file_handler)
 if __name__ == '__main__':
 
     def is_exist_image_def(client: ClientLibrary, image_def_name: str) -> bool:
-        image_defs = client.definitions.image_definitions()
-        image_def_ids = [img['id'] for img in image_defs]
-        if image_def_name not in image_def_ids:
-            logger.error(f"Specified image definition '{image_def_name}' not found in CML.")
-            return False
-        return True
+        return image_def_name in [img['id'] for img in client.definitions.image_definitions()]
 
     def is_exist_node_def(client: ClientLibrary, node_def_name: str) -> bool:
-        node_defs = client.definitions.node_definitions()
-        node_def_ids = [node['id'] for node in node_defs]
-        if node_def_name not in node_def_ids:
-            logger.error(f"Specified node definition '{node_def_name}' not found in CML.")
-            return False
-        return True
-
+        return node_def_name in [node['id'] for node in client.definitions.node_definitions()]
 
     def main() -> int:
 

@@ -4,7 +4,7 @@
 
 # CAP_AUDIT_WRITE is needed to run sshd in the container
 
-id: ubuntu_24.04_docker
+id: ubuntu-24-04-docker
 
 schema_version: 0.0.1
 
@@ -57,11 +57,11 @@ pyats:
 
 ui:
   description: |
-    Ubuntu24.04 (Docker)
+    Ubuntu 24.04 (Docker)
   group: Others
   icon: server
-  label: UBUNTU_DOCKER
-  label_prefix: ubuntu_docker-
+  label: ubuntu 24.04 docker
+  label_prefix: ubuntu-
   visible: true
 
 configuration:
@@ -76,7 +76,7 @@ configuration:
         content: |
           {
             "docker": {
-              "image": "ubuntu24.04:iida",
+              "image": "ubuntu24.04:20251010",
               "mounts": [
                 "type=bind,source=cfg/boot.sh,target=/boot.sh"
                 ],

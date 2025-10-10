@@ -1,8 +1,8 @@
-id: ubuntu_24.04_docker
+id: ubuntu-24-04-docker
 label: ubuntu 24.04 docker
 description: Ubuntu Docker Image
-node_definition_id: ubuntu_24.04_docker
-disk_image: ubuntu24.04.tar.gz
+node_definition_id: ubuntu-24-04-docker
+disk_image: ubuntu24.04.20251010.tar.gz
 read_only: true
 schema_version: 0.0.1
 sha256:

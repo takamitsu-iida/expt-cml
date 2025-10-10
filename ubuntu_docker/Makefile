@@ -3,11 +3,11 @@
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-TAG ?= ubuntu24.04:iida
+TAG ?= ubuntu24.04:20251010
 
 # ファイル名・パスの変数化
-IMAGE_TAR = ubuntu24.04.tar
-IMAGE_TAR_GZ = ubuntu24.04.tar.gz
+IMAGE_TAR    = ubuntu24.04.20251010.tar
+IMAGE_TAR_GZ = ubuntu24.04.20251010.tar.gz
 
 # CMLのIPアドレス
 CML_HOST = 192.168.122.212

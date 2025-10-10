@@ -1,0 +1,8 @@
+id: ubuntu_docker
+label: ubuntu_docker
+description: Ubuntu Docker Image
+node_definition_id: ubuntu_docker
+disk_image: ubuntu_docker.tar.gz
+read_only: true
+schema_version: 0.0.1
+sha256:

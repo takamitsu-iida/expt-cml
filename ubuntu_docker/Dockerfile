@@ -12,7 +12,7 @@ ENV LANG=en_US.UTF-8
 ENV TERM=linux
 
 # ARGは --build-arg で変更可能
-ARG HOSTNAME=ntools
+ARG HOSTNAME=ubuntu
 
 # start.shでホスト名を設定するための環境変数
 ENV HOSTNAME=${HOSTNAME}

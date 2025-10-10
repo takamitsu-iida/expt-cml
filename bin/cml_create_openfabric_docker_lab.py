@@ -6,7 +6,7 @@
 #
 
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
-LAB_DESCRIPTION = 'create openfabric docker lab'
+SCRIPT_DESCRIPTION = 'create openfabric docker lab'
 
 # ラボの名前（既存で同じタイトルのラボがあれば削除してから作成します）
 LAB_NAME = "Docker FRR OpenFabric"
@@ -476,7 +476,7 @@ if __name__ == '__main__':
     def main() -> None:
 
         # 引数処理
-        parser = argparse.ArgumentParser(description=LAB_DESCRIPTION)
+        parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
         parser.add_argument('-c', '--create', action='store_true', default=False, help='Create lab')
         parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
         parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')

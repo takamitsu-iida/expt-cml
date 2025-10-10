@@ -1,10 +1,10 @@
 #
-# Net-Tools node definition for CML 2.9 and later
+# Ubuntu Docker node definition for CML 2.9 and later
 #
 
 # CAP_AUDIT_WRITE is needed to run sshd in the container
 
-id: ntools
+id: ubuntu_docker
 
 schema_version: 0.0.1
 
@@ -32,7 +32,7 @@ inherited:
 
 general:
   nature: server
-  description: Net Tools (Docker)
+  description: Ubuntu Docker Image
   read_only: true
 
 device:
@@ -60,8 +60,8 @@ ui:
     Telegraf Influxdb Grafana (Docker)
   group: Others
   icon: server
-  label: NTOOLS
-  label_prefix: ntools-
+  label: UBUNTU_DOCKER
+  label_prefix: ubuntu_docker-
   visible: true
 
 configuration:

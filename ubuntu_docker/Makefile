@@ -3,7 +3,7 @@
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-TAG ?= ntools:latest
+TAG ?= ubuntu_docker:latest
 
 # 【事前準備】
 # CMLのadminユーザに対して公開鍵認証を設定しておく
@@ -67,9 +67,9 @@ inspect: ## DockerイメージのIDをインスペクトして、image_definitio
 
 
 save: ## Dockerイメージを保存する
-	@rm -f ntools.tar.gz
-	@docker save -o ntools.tar ${TAG}
-	@gzip ntools.tar
+	@rm -f ubuntu_docker.tar.gz
+	@docker save -o ubuntu_docker.tar ${TAG}
+	@gzip ubuntu_docker.tar
 
 
 run: ## Dockerコンテナを起動する
@@ -90,10 +90,10 @@ prune: ## Dockerの不要なイメージを削除する
 
 clean: ## Dockerイメージを削除する
 	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
-	@rm -f ntools.tar.gz
+	@rm -f ubuntu_docker.tar.gz
 	@rm -f image_definition.yaml
 	@rm -f node_definition.yaml
 
 
-upload: ## ntools.tar.gzおよびノード定義ファイルをCMLにアップロードする
-	@rsync -avz -e "ssh ${SSH_OPTS}" ntools.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}
+upload: ## ubuntu_docker.tar.gzおよびノード定義ファイルをCMLにアップロードする
+	@rsync -avz -e "ssh ${SSH_OPTS}" ubuntu_docker.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}

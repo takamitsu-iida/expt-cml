@@ -64,6 +64,8 @@ apt install -y --no-install-recommends python3-venv || echo "FAILED: python3-ven
 apt install -y --no-install-recommends direnv || echo "FAILED: direnv"
 
 pip3 install --upgrade pip
+pip3 install --no-cache-dir tabulate
+pip3 install --no-cache-dir tinydb
 pip3 install --no-cache-dir requests
 pip3 install --no-cache-dir flask
 pip3 install --no-cache-dir scapy
@@ -72,7 +74,12 @@ pip3 install --no-cache-dir paramiko
 pip3 install --no-cache-dir textfsm
 pip3 install --no-cache-dir jinja2
 pip3 install --no-cache-dir ntc-templates
+pip3 install --no-cache-dir pyats[full]
+pip3 install --no-cache-dir rest.connector
+pip3 install --no-cache-dir yang.connector
 pip3 install --no-cache-dir virl2_client[pyats]==2.9
+pip3 install --no-cache-dir websocket-client
+
 
 #
 # sshd (should run in start.sh)

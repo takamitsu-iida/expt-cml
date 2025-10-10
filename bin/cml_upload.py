@@ -7,8 +7,13 @@
 # 使い方の例:
 # python3 bin/cml_upload.py \
 #   --node-def ./data/node_definition.yaml \
-#   --image-def ./data/image_definition.yaml \
-#   --image-file ./data/image_file.tar.gz
+#   --image-file ./data/image_file.tar.gz \
+#   --image-def ./data/image_definition.yaml
+
+#
+# 注意:
+# 順番が重要です。ノード定義ファイル、イメージファイル、イメージ定義ファイル、の順でアップロードしてください。
+#
 
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
 SCRIPT_DESCRIPTION = 'create openfabric docker lab'
@@ -173,7 +178,20 @@ if __name__ == '__main__':
             logger.info(f"ノード定義ファイル {node_path} をアップロードしました")
 
 
+        # イメージファイル（tar.gzなど）を /var/local/virl2/dropfolder/ にアップロードする
+        if args.image_file:
+            image_file_path = Path(args.image_file)
+            if not image_file_path.exists():
+                logger.error(f"イメージファイルが見つかりません: {image_file_path}")
+                return 1
+            logger.info(f"イメージファイル {image_file_path} をアップロードします")
+            client.definitions.upload_image_file(filename=image_file_path)
+            logger.info(f"イメージファイル {image_file_path} をアップロードしました")
+
+
         # イメージ定義ファイルのアップロード
+        # イメージファイルを先にアップロードしておくこと
+        # イメージファイルは dropfolder から自動削除される
         if args.image_def:
             image_def_path = Path(args.image_def)
             if not image_def_path.exists():
@@ -194,20 +212,6 @@ if __name__ == '__main__':
             logger.info(f"イメージ定義ファイル {image_def_path} をアップロードします")
             client.definitions.upload_image_definition(image_def_text, update=need_update)
             logger.info(f"イメージ定義ファイル {image_def_path} をアップロードしました")
-
-
-        # イメージファイル（tar.gzなど）のアップロード
-        if args.image_file:
-            image_file_path = Path(args.image_file)
-            if not image_file_path.exists():
-                logger.error(f"イメージファイルが見つかりません: {image_file_path}")
-                return 1
-            logger.info(f"イメージファイル {image_file_path} をアップロードします")
-
-            # どこにアップロードされる？
-            client.definitions.upload_image_file(filename=image_file_path)
-
-            logger.info(f"イメージファイル {image_file_path} をアップロードしました")
 
         return 0
 

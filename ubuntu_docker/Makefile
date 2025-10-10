@@ -5,14 +5,9 @@ help:
 
 TAG ?= ubuntu24.04:iida
 
-# 【事前準備】
-# CMLのadminユーザに対して公開鍵認証を設定しておく
-#
-# 鍵を作っていない場合
-# ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
-#
-# 公開鍵をCMLに登録
-# ssh-copy-id -p 1122 admin@192.168.122.212
+# ファイル名・パスの変数化
+IMAGE_TAR = ubuntu24.04.tar
+IMAGE_TAR_GZ = ubuntu24.04.tar.gz
 
 # CMLのIPアドレス
 CML_HOST = 192.168.122.212
@@ -37,35 +32,11 @@ inspect: ## DockerイメージのIDをインスペクトして、image_definitio
 	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
 	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; echo $$SHA256
 
-	@INDENT='          '; \
-	sed "s/^/$$INDENT/" cfg/telegraf.conf > telegraf_conf_indented.txt; \
-	awk '/__TELEGRAF_CONF__/ {system("cat telegraf_conf_indented.txt"); next} {print}' node_definition.yaml > node_definition.yaml.tmp; \
-	mv node_definition.yaml.tmp node_definition.yaml; \
-	rm -f telegraf_conf_indented.txt;
-
-	@INDENT='          '; \
-	sed "s/^/$$INDENT/" cfg/influxdb.conf > influxdb_conf_indented.txt; \
-	awk '/__INFLUXDB_CONF__/ {system("cat influxdb_conf_indented.txt"); next} {print}' node_definition.yaml > node_definition.yaml.tmp; \
-	mv node_definition.yaml.tmp node_definition.yaml; \
-	rm -f influxdb_conf_indented.txt;
-
-	@INDENT='          '; \
-	sed "s/^/$$INDENT/" cfg/grafana.ini > grafana_ini_indented.txt; \
-	awk '/__GRAFANA_INI__/ {system("cat grafana_ini_indented.txt"); next} {print}' node_definition.yaml > node_definition.yaml.tmp; \
-	mv node_definition.yaml.tmp node_definition.yaml; \
-	rm -f grafana_ini_indented.txt;
-
-	@INDENT='          '; \
-	sed "s/^/$$INDENT/" cfg/supervisord.conf > supervisord_conf_indented.txt; \
-	awk '/__SUPERVISORD_CONF__/ {system("cat supervisord_conf_indented.txt"); next} {print}' node_definition.yaml > node_definition.yaml.tmp; \
-	mv node_definition.yaml.tmp node_definition.yaml; \
-	rm -f supervisord_conf_indented.txt;
-
 
 save: ## Dockerイメージを保存する
-	@rm -f ubuntu24.04.tar.gz
-	@docker save -o ubuntu24.04.tar ${TAG}
-	@gzip ubuntu24.04.tar
+	@rm -f $(IMAGE_TAR_GZ)
+	@docker save -o $(IMAGE_TAR) ${TAG}
+	@gzip $(IMAGE_TAR)
 
 
 run: ## Dockerコンテナを起動する
@@ -86,10 +57,10 @@ prune: ## Dockerの不要なイメージを削除する
 
 clean: ## Dockerイメージを削除する
 	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
-	@rm -f ubuntu24.04.tar.gz
+	@rm -f $(IMAGE_TAR_GZ)
 	@rm -f image_definition.yaml
 	@rm -f node_definition.yaml
 
 
 upload: ## ubuntu_docker.tar.gzおよびノード定義ファイルをCMLにアップロードする
-	@rsync -avz -e "ssh ${SSH_OPTS}" ubuntu_docker.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}
+	@rsync -avz -e "ssh ${SSH_OPTS}" $(IMAGE_TAR_GZ) image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}

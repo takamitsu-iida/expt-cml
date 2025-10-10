@@ -35,6 +35,8 @@ apt upgrade -y
 apt install -y --no-install-recommends ca-certificates || echo "FAILED: ca-certificates"
 apt install -y --no-install-recommends build-essential || echo "FAILED: build-essential"
 apt install -y --no-install-recommends libpcap-dev || echo "FAILED: libpcap-dev"
+apt install -y --no-install-recommends gnupg || echo "FAILED: gnupg"
+apt install -y --no-install-recommends make || echo "FAILED: make"
 
 # ネットワーク系ツール
 apt install -y --no-install-recommends iproute2 || echo "FAILED: iproute2"

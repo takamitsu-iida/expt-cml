@@ -137,7 +137,6 @@ if __name__ == '__main__':
         parser.add_argument('--node-def', type=str, help='ノード定義ファイルのパス')
         parser.add_argument('--image-def', type=str, help='イメージ定義ファイルのパス')
         parser.add_argument('--image-file', type=str, help='イメージファイル（tar.gzなど）のパス')
-
         args = parser.parse_args()
 
         # 引数が一つも指定されていない場合はヘルプを表示して終了
@@ -161,8 +160,12 @@ if __name__ == '__main__':
                 node_def_text = f.read()
             # YAMLに変換
             node_def = yaml.safe_load(node_def_text)
+            node_def_id = node_def.get('id')
+            if not node_def_id:
+                logger.error(f"ノード定義ファイルに'id'フィールドがありません: {node_path}")
+                return 1
 
-            need_update = is_exist_node_def(client, node_path.stem)
+            need_update = is_exist_node_def(client, node_def_id)
 
             logger.info(f"ノード定義ファイル {node_path} をアップロードします")
             client.definitions.upload_node_definition(node_def, update=need_update)

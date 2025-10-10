@@ -1042,15 +1042,6 @@ if __name__ == '__main__':
 
         logger.info(f"Lab '{LAB_NAME}' created")
 
-        # start the lab
-        # lab.start()
-
-        # print nodes and interfaces states:
-        #for node in lab.nodes():
-        #    print(node, node.state, node.cpu_usage)
-        #    for interface in node.interfaces():
-        #        print(interface, interface.readpackets, interface.writepackets)
-
 
     def main() -> None:
 

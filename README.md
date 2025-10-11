@@ -48,7 +48,7 @@ FRRをコンパイルして作成する方法は大事なので記録として�
 
 ## Dockerイメージの作り方
 
-CML2.9からDockerをサポートしています。Ubuntuをベースによく使うパッケージを詰め込んだDockerイメージを作成してみます。
+CML2.9からDockerをサポートしています。Ubuntuをベースにして、よく使うパッケージを詰め込んだDockerイメージを作成してみます。
 
 [README.create_custom_docker.md](/README.create_custom_docker.md)
 

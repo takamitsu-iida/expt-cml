@@ -10,11 +10,9 @@ CML2.9はDockerをサポートしています。
 
 ## DockerをインストールしたUbuntuを用意する
 
-Dockerイメージを作成する母艦が必要です。
+Dockerイメージをビルドする母艦が必要です。
 
-どの環境でやってもいいのですが、CMLの中にラボを立てて、そこでDockerイメージを構築してみます。
-
-インターネットに接続できるUbuntuがあればよいのですが、aptであれやこれやインストールしなければいけませんので、
+母艦となるUbuntuにはaptであれやこれやインストールしなければいけませんので、
 Pythonスクリプトで生成した方が簡単です。
 
 [bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を実行して作成します。
@@ -282,8 +280,6 @@ make build
 
 作成したdockerイメージをインスペクトしてIdの値をイメージ定義ファイルに反映します。
 
-実行例。
-
 ```bash
 make inspect
 ```
@@ -334,7 +330,7 @@ scp cml_install_image.sh        admin@192.168.122.212:
 
 > [!NOTE]
 >
-> scpの転送先は指定できません。dropfolderという特別な場所に保存されます。
+> scpで転送する場合、場所は指定できません。dropfolderという特別な場所に保存されます。
 >
 > dropfolderの実体は `/var/local/virl2/dropfolder` です。
 
@@ -466,7 +462,7 @@ frr           10.2.1-r1          1bd2e82159f1   6 months ago   39.8MB
 
 <br>
 
-# 【参考】CML2.9のDockerの挙動を調査してみる
+## 【参考】CML2.9のDockerの挙動を調査してみる
 
 CMLはDockerをラッパーで包みこんで利用しています。その動作を実際の挙動から調べてみます。
 
@@ -824,17 +820,6 @@ done
 
 <br>
 
-> [!NOTE]
->
-> このリポジトリに置いてある[start.sh](/frr/start.sh)は上記を少しだけ書き換えています。
->
-> - CMLのUIで初期設定するときのファイルをcfg/node.cfgからcfg/frr.confに変更
-> - 初期設定ファイルcfg/frr.confを/etc/frr/frr.confにバインド
->
-> このようにすることで、frrの設定を永続化しています。
-
-<br>
-
 コンテナの中の /config ディレクトリには確かにファイルが３個あります。
 
 ```bash
@@ -852,7 +837,7 @@ frr-0:/#
 
 <br>
 
-# 参考文献
+## 参考文献
 
 <br>
 

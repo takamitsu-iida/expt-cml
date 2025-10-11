@@ -1,34 +1,32 @@
-# Dockerイメージを作成してCMLに登録する
+# FRR(Docker)イメージを作成してCMLに登録する
 
-CML2.9はDockerをサポートしています。
+FRRをインストールしたDockerイメージを作成してCMLに登録します。
 
-もちろん自分で作成したDockerイメージをCMLに登録して動作させることもできます。
+<br>
 
-ここではFRRをインストールしたDockerイメージを作成してCMLに登録してみます。
+> [!NOTE]
+>
+> Dockerイメージを作ってCMLに登録する方法は [README.create_custom_docker.md](/README.create_custom_docker.md) を参考にしてください。
+>
+> FRRをコンパイルしてインストールする方法は [README.create_frr_ubuntu](/README.create_frr_ubuntu.md) を参考にしてください。
 
 <br><br>
 
-## CML2.9のFRR(Docker)について
+## CML2.9に含まれるFRR(Docker)について
 
 CML2.9に同梱のFRR(Docker)は次のような特徴を持っています。
 
 - Alpineをベースにしています
 - FRRのバージョンは10.2です
 - IPv6のルーティングはできません（CMLのノード定義ファイルの不備です）
-- FRRの設定は永続されません
-
-FRRの中でhostnameコマンドで名前を付けても、それは現在接続しているvtyshにしか反映されません。
-writeしてもhostname設定は保存されません（FRRのマニュアルにそう書いてあります）。
-
-CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコマンドが入っていたら、
-それを取り出して、Dockerのホスト名に反映させています(start.shを見ればわかります)
+- FRRの設定は永続されません（毎回初期化されます）
+- 起動時に node.cfg をチェックして hostname コマンドが入っていたらDockerのホスト名に反映させています(start.sh参照)
 
 <br>
 
 ## 作成するFRR(Docker)について
 
 - Ubuntu24をベースにDockerイメージを作成します
-- サイズは大きくなってしまいますが、一度Dockerイメージを登録すれば、以降のノード起動は高速かつ軽量です
 - FRRの設定(frr.conf)を永続できるようにします
 - IPv6中継できるようにします（sysctl net.ipv6.conf.all.forwarding=1を設定します）
 - FRR stable 10.4 をコンパイルして作成します
@@ -37,15 +35,18 @@ CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコ�
 - SNMPを有効にします
 - FRRバージョン8以降はvtyshからシェルコマンドを呼び出せませんので、対策としてSSHで外部から乗り込めるようにします(アカウントはroot)
 
-<br>
+Ubuntuをベースにすることでイメージのサイズは大きくなってしまいますが、Dockerイメージが登録されれば、以降のノード起動は高速かつ軽量なので気になることはないと思います。
 
-> [!NOTE]
->
-> 将来のCMLのバージョンアップでノード定義の名前が重複するかもしれませんが、どのみちCMLをインストールし直すので、そのときDockerイメージも作り直すことにします。
+将来のCMLのバージョンアップでノード定義の名前が重複するかもしれませんが、
+そのときはCMLをインストールし直すので、またDockerイメージも作り直せばいいかな、と思います。
 
 <br>
 
 ## CMLの母艦の設定
+
+FRRを使う主な動機はOpenFabricやSRv6を動かしたい、というところにありますので、IPv6の中継も必要になります。
+
+Dockerの仕様上、母艦となっているCMLでもIPv6中継が必要になります。
 
 CMLのコックピットにログインしてターミナルを開きます。
 
@@ -61,7 +62,7 @@ sudo -s -E
 vi /etc/sysctl.conf
 ```
 
-この部分のコメントを外します。
+`net.ipv6.ip_forward=1` と `net.ipv6.conf.all.forwarding=1` が有効になるように、コメントを外します。
 
 ```text
 # Uncomment the next line to enable packet forwarding for IPv4
@@ -73,11 +74,13 @@ net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 ```
 
-再起動します。
+CML自身を再起動します。
 
 ```bash
 reboot
 ```
+
+<br>
 
 > [!NOTE]
 >
@@ -88,65 +91,27 @@ reboot
 
 ## DockerをインストールしたUbuntuを用意する
 
-CML上にラボを作成してUbuntuと外部接続を用意します。
+Dockerイメージをビルドするための環境を作ります。
 
-そのくらい簡単なラボは手作業で作ってもよいのですが、[bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を実行すれば自動で作成できます。
+[bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を使ってCMLの中に環境を整えます。
 
 ```bash
-bin/cml_create_custom_docker.py
-```
+iida@s400win:~/git/expt-cml$ bin/cml_create_custom_docker.py
+usage: cml_create_custom_docker.py [-h] [-c] [-d] [-p] [-s]
 
-このスクリプトを再度実行すると同じ名前のものは消えてしまいますので、
-間違って消さないようにラボの名前を適当に変えておきます。
+create docker image lab
+
+options:
+  -h, --help    show this help message and exit
+  -c, --create  Create lab
+  -d, --delete  Delete lab
+  -p, --pause   Pause lab
+  -s, --start   Start lab
+```
 
 <br>
 
-## Dockerエンジンをインストール
-
-`bin/cml_create_custom_docker.py` を使ってラボを作成した場合、UbuntuにDockerエンジンがインストールされた状態で起動してきますので、この作業は不要です。
-
-手作業でUbuntuを作成した場合は、以下の手順でDockerエンジンをインストールします。
-
-UbuntuにDockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
-
-```bash
-sudo apt update
-sudo apt install -y ca-certificates curl gnupg
-```
-
-aptリポジトリを追加します。
-
-```bash
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-# Add the repository to Apt sources:
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-```
-
-dockerグループを作成してciscoアカウントをグループに所属させます（デフォルトのアカウントがciscoの場合）。
-
-```bash
-sudo groupadd docker
-sudo usermod -aG docker cisco
-```
-
-docker-engineをインストールします。
-
-```bash
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-```
-
-Ubuntuを再起動します。
-
-```bash
-sudo reboot
-```
+ラボを起動するとDockerエンジンがインストールされた状態のUbuntuが起動します。
 
 <br>
 
@@ -165,133 +130,11 @@ sudo reboot
 > - `docker exec -it ID bash`　シェルを起動
 > - `docker logs ID`　ログを見ます
 
-<br>
+<br><br><br><br><br>
 
-## FRRのDockerイメージをビルドします
-
-このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したので、それら利用してFRRのイメージを作っていきます。
-
-<br><br>
-
-### 事前準備１．CMLでSSHサーバを有効にする
-
-OpenSSHを有効にしていない場合のみ、コックピットで有効にしてください。ラジオボタンを有効にするだけです。
-
-CMLのSSHサーバはポート1122で待ち受けています（ポート22はコンソールサーバになっています）。
+---
 
 <br>
-
-### 事前準備２．SSHの公開鍵を送り込んでおく
-
-SSHの鍵が作成済みか、確認します。
-
-`~/.ssh/id_rsa` があれば作成済みです。
-
-```bash
-ls -al ~/.ssh
-```
-
-まだSSHの鍵を作っていない場合は新規で作成します。
-
-```bash
-ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
-```
-
-次に公開鍵をCMLに送り込みます。
-
-```bash
-ssh-copy-id -p 1122 admin@192.168.122.212
-```
-
-これでパスワードなしでCMLにログインできるようになります。
-
-<br>
-
-### 事前準備３．makeコマンドをインストールする
-
-Makefileの変数部分を適当に書き換えてから、makeコマンドを実行した方が簡単です。
-
-`bin/cml_create_custom_docker.py` でラボを作成した場合、makeコマンドはインストールされた状態で立ち上がります。
-
-手動でラボを作った場合、makeコマンドは標準で入っていませんのでインストールします。
-
-```bash
-apt install -y make
-```
-
-<br><br>
-
-[Makefile](/frr/Makefile)は以下のようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じですが、
-Dockerファイルを書き換えたり、FRRのコンパイルオプションを変えたり、いろいろ試行錯誤して何度も実行することになるので、makeコマンドを使ったほうが楽です。
-
-```Makefile
-.DEFAULT_GOAL := help
-.PHONY: help
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
-TAG ?= frr:10.4
-
-# CMLのIPアドレス
-CML_HOST = 192.168.122.212
-CML_UPLOAD_DIR = /var/tmp
-
-####################################################
-# 以下、変更不要
-####################################################
-
-SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
-SOURCE_NODE_DEFINITION = cml_node_definition.yaml
-INSTALL_SCRIPT = cml_install_image.sh
-SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-CONTAINER_NAME = frr-test
-
-build: ## Dockerイメージを作成する
-	@docker build -t ${TAG} -f Dockerfile .
-
-
-inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlのsha256を更新する
-	@cp -f ${SOURCE_IMAGE_DEFINITION} image_definition.yaml
-	@cp -f ${SOURCE_NODE_DEFINITION} node_definition.yaml
-	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
-	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; \
-	echo $$SHA256
-
-
-save: ## Dockerイメージを保存する
-	@rm -f frr.tar.gz
-	@docker save -o frr.tar ${TAG}
-	@gzip frr.tar
-
-
-run: ## Dockerコンテナを起動する
-	@docker run -d --rm --init --privileged --name ${CONTAINER_NAME} ${TAG}
-
-
-shell: ## Dockerコンテナにシェルで入る
-	@docker exec -it ${CONTAINER_NAME} bash
-
-
-stop: ## Dockerコンテナを停止する
-	@if [ -n "$$(docker ps -q -f name=${CONTAINER_NAME})" ]; then docker stop ${CONTAINER_NAME}; fi
-
-
-prune: ## Dockerの不要なイメージを削除する
-	@docker system prune -f --all
-
-
-clean: ## Dockerイメージを削除する
-	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
-	@rm -f frr.tar.gz
-	@rm -f image_definition.yaml
-	@rm -f node_definition.yaml
-
-
-upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする
-	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}
-```
-
-<br><br><br>
 
 ## Dockerイメージを作成してCMLに登録します
 
@@ -335,8 +178,6 @@ root@ubuntu-0:~/expt-cml/frr# make inspect
 dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71
 ```
 
-~~IDの文字列はこのあと使いますのでどこかにメモしておきます。~~
-
 `make inspect` を実行すると、image_definition.yamlを作成して、SHA256: の部分にこの文字列を埋め込みます。
 
 次にイメージをtar.gz形式で保存します。ファイルサイズが大きいため、この処理も長い時間かかります。
@@ -355,22 +196,6 @@ CMLでSSHサーバ(ポート1122番）を有効にしている場合、次のコ
 make upload
 ```
 
-もしCMLでSSHサーバを有効にしていない場合、面倒ですが手作業で3個のファイルをアップロードします。
-
-```bash
-scp frr.tar.gz admin@192.168.122.212:
-scp image_definition.yaml admin@192.168.122.212:
-scp node_definition.yaml admin@192.168.122.212:
-```
-
-<br>
-
-> [!NOTE]
->
-> scpの転送先は指定できません。dropfolderという特別な場所に保存されます。
->
-> dropfolderの実体は `/var/local/virl2/dropfolder` です。このディレクトリから適宜移動してください。
-
 <br><br><br>
 
 ここからはコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHで接続した方が快適です）。
@@ -381,60 +206,11 @@ scp node_definition.yaml admin@192.168.122.212:
 sudo -s -E
 ```
 
-ノード定義ファイルの格納場所に移動します。
+`make upload` でファイルをCMLにアップロードすると、/var/tmpにインストール用のシェルスクリプトがありますので、以下のように実行します。
 
 ```bash
-cd /var/lib/libvirt/images/node-definitions
+bash /var/tmp/cml_install_image.sh
 ```
-
-/var/tmpからファイルを移動しつつ、名前を変更します。
-
-```bash
-mv /var/tmp/node_definition.yaml frr-10-4.yaml
-```
-
-ファイルのオーナーを変更します。
-
-```bash
-chown libvirt-qemu:virl2 frr-10-4.yaml
-```
-
-<br><br>
-
-続いてイメージ定義ファイルの場所に移動します。
-
-```bash
-cd /var/lib/libvirt/images/virl-base-images
-```
-
-ディレクトリを作ります。
-
-```bash
-mkdir frr-10-4
-chown libvirt-qemu:virl2 frr-10-4
-```
-
-作成したディレクトリに移動します。
-
-```bash
-cd frr-10-4
-```
-
-make uploadで転送したファイルをこの場所に移動します。
-
-```bash
-mv /var/tmp/frr.tar.gz .
-chown libvirt-qemu:virl2 frr.tar.gz
-
-mv /var/tmp/image_definition.yaml frr-10-4.yaml
-chown libvirt-qemu:virl2 frr-10-4.yaml
-```
-
-<br>
-
-> [!NOTE]
->
-> 上記は手作業でやる方法を書きましたが、make uploadすると `/var/tmp/cml_install_image.sh` というファイルがCMLに転送されますので、これを実行するだけでノード定義、イメージ定義、ともに正しい場所に配置されます。
 
 <br>
 
@@ -444,546 +220,12 @@ virl2を再起動します。
 systemctl restart virl2.target
 ```
 
-dockerのイメージを確認します。
-
-```bash
-root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-4# docker images
-REPOSITORY   TAG         IMAGE ID       CREATED        SIZE
-frr          10.2.1-r1   1bd2e82159f1   4 months ago   39.8MB
-```
-
-この時点では登録されていません（10.2.1-r1はCML2.9に同梱のものです）。
-
-CMLのダッシュボードに移ります。
-
-FRR-10-4をドラッグしてイメージを一つ作ってみます。
-
-STARTで起動します。
-
-コックピットでdockerのイメージを確認します。
-
-```bash
-root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-4# docker images
-REPOSITORY   TAG         IMAGE ID       CREATED         SIZE
-frr          10.4        dcb26c9c1ba6   8 minutes ago   1.06GB
-frr          10.2.1-r1   1bd2e82159f1   4 months ago    39.8MB
-```
-
-イメージが一つ、増えました。
-
-> [!NOTE]
->
-> ラボでイメージをドラッグドロップした時点では何も起きていません。
-> `/usr/local/virl2/images/{{ラボのUUID}}` に実体化されたイメージが格納されますが、ドラッグドロップしただけでは作られません。
-> STARTで起動して初めてイメージが実体化されます。
 
 <br><br><br><br><br><br>
 
-# 【参考】CML2.9のDockerの挙動を調査してみる
-
-CMLで適当なラボを作って、CML2.9に同梱されているFRRをインスタンス化して起動してみます。
-
-コックピットのターミナルでイメージの置かれているディレクトリを確認すると、いくつかファイルが作られています。
-
-```bash
-root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11/894b8a48-3a9f-46d9-bf9f-c3d649dac49c/cfg# ls -l
-total 16
--rw-r--r-- 1 virl2 virl2  99 Aug 15 06:44 boot.sh
--rw-r--r-- 1 virl2 virl2 734 Aug 15 06:44 config.json
--rw-r--r-- 1 virl2 virl2 665 Aug 15 06:44 node.cfg
--rw-r--r-- 1 virl2 virl2 249 Aug 15 06:44 protocols
-```
-
-`boot.sh`　と　`node.cfg`　と　`protocols`　はCMLのウェブ画面で指定する設定ファイルです。
-
-`config.json`　はdockerの設定ファイルのようで、中身はこんな感じになっています。
-
-```bash
-root@cml-controller:/var/local/virl2/images/5ae0eb2d-ec7f-4ef4-a610-1a22f854cd11/894b8a48-3a9f-46d9-bf9f-c3d649dac49c/cfg# cat config.json
-{
-  "docker": {
-    "image": "frr:10.2.1-r1",
-    "mounts": [
-      "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
-      "type=bind,source=cfg/node.cfg,target=/config/node.cfg",
-      "type=bind,source=cfg/protocols,target=/config/protocols"
-    ],
-    "caps": [
-      "CAP_CHOWN",
-      "CAP_DAC_OVERRIDE",
-      "CAP_FOWNER",
-      "CAP_FSETID",
-      "CAP_KILL",
-      "CAP_MKNOD",
-      "CAP_NET_BIND_SERVICE",
-      "CAP_NET_RAW",
-      "CAP_SETFCAP",
-      "CAP_SETGID",
-      "CAP_SETPCAP",
-      "CAP_SETUID",
-      "CAP_SYS_CHROOT",
-      "NET_ADMIN",
-      "SYS_ADMIN"
-    ],
-    "env": [
-      "MAX_FDS=100000"
-    ]
-  },
-  "shell": "/bin/bash",
-  "day0cmd": [ "/bin/bash", "/config/boot.sh" ],
-  "busybox": true
-}
-```
+---
 
 <br>
-
-ラボ内にイメージを作成するたびにこれらファイルが作られるということは、
-どこかでこれらファイルを作成するように指示してはずです。それはどこでしょう？
-
-ノード定義ファイルを覗いてみます。
-
-```bash
-root@cml-controller:/var/lib/libvirt/images/node-definitions# cat frr.yaml
-#
-# Free Range Routing node definition
-# generated 2025-05-27
-# part of VIRL^2
-#
-
-id: frr
-configuration:
-  generator:
-    driver: iosv
-  provisioning:
-    volume_name: cfg
-    media_type: raw
-    files:
-      - name: config.json
-        editable: false
-        content: |
-          {
-            "docker": {
-              "image": "frr:10.2.1-r1",
-              "mounts": [
-                "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
-                "type=bind,source=cfg/node.cfg,target=/config/node.cfg",
-                "type=bind,source=cfg/protocols,target=/config/protocols"
-              ],
-              "caps": [
-                "CAP_CHOWN",
-                "CAP_DAC_OVERRIDE",
-                "CAP_FOWNER",
-                "CAP_FSETID",
-                "CAP_KILL",
-                "CAP_MKNOD",
-                "CAP_NET_BIND_SERVICE",
-                "CAP_NET_RAW",
-                "CAP_SETFCAP",
-                "CAP_SETGID",
-                "CAP_SETPCAP",
-                "CAP_SETUID",
-                "CAP_SYS_CHROOT",
-                "NET_ADMIN",
-                "SYS_ADMIN"
-              ],
-              "env": [
-                "MAX_FDS=100000"
-              ]
-            },
-            "shell": "/bin/bash",
-            "day0cmd": [ "/bin/bash", "/config/boot.sh" ],
-            "busybox": true
-          }
-      - name: node.cfg
-        editable: true
-        content: |
-          ! FRR Config generated on 2025-01-22 17:55
-          ! just an example -- You need to need to change it
-          !
-          hostname frr-0
-          !
-          interface lo
-              ip address 10.0.0.1/32
-              ip ospf passive
-          !
-          interface eth0
-              description to eth0.frr-1
-              ip address 172.16.128.2/30
-              no shutdown
-          interface eth1
-              description to eth0.frr-2
-              ip address 172.16.128.9/30
-              no shutdown
-          interface eth2
-              description not connected
-              !no ip address
-              shutdown
-          interface eth3
-              description not connected
-              !no ip address
-              shutdown
-          !
-          router ospf
-              ospf router-id 10.0.0.1
-              network 10.0.0.1/32 area 10
-              network 172.16.128.0/30 area 10
-              network 172.16.128.8/30 area 10
-          !
-          end
-      - name: boot.sh
-        editable: true
-        content: |
-          # insert more commands here
-          # ip address add dev eth1 10.0.0.1/24
-          # ip link set dev eth1 up
-          exit 0
-      - name: protocols
-        editable: true
-        content: |
-          # enable / disable needed routing protocols by adding / removing
-          # the hashmark in front of the lines below
-          #
-          # bgpd
-          ospfd
-          # ospf6d
-          # ripd
-          ripngd
-          # isisd
-          # pimd
-          # pim6d
-          # ldpd
-          # nhrpd
-          eigrpd
-          # babeld
-          # sharpd
-          # pbrd
-          # bfdd
-          # fabricd
-          # vrrpd
-          # pathd
-device:
-  interfaces:
-    has_loopback_zero: false
-    min_count: 1
-    default_count: 4
-    management:
-      - eth0
-    physical:
-      - eth0
-      - eth1
-      - eth2
-      - eth3
-      - eth4
-      - eth5
-      - eth6
-      - eth7
-      - eth8
-      - eth9
-      - eth10
-      - eth11
-      - eth12
-      - eth13
-      - eth14
-      - eth15
-      - eth16
-      - eth17
-      - eth18
-      - eth19
-      - eth20
-      - eth21
-      - eth22
-      - eth23
-      - eth24
-      - eth25
-      - eth26
-      - eth27
-      - eth28
-      - eth29
-      - eth30
-      - eth31
-    serial_ports: 2
-inherited:
-  image:
-    ram: true
-    cpus: true
-    cpu_limit: true
-    data_volume: false
-    boot_disk_size: false
-  node:
-    ram: true
-    cpus: true
-    cpu_limit: true
-    data_volume: false
-    boot_disk_size: false
-general:
-  description: Free Range Routing (Docker)
-  nature: router
-  read_only: true
-schema_version: 0.0.1
-sim:
-  linux_native:
-    cpus: 1
-    ram: 256
-    driver: server
-    libvirt_domain_driver: docker
-    cpu_limit: 100
-boot:
-  timeout: 30
-  completed:
-    - READY
-pyats:
-  os: ios
-  series: iosv
-  config_extract_command: show run
-ui:
-  description: |
-    Free Range Routing (frr) 10.2.1-r1
-  group: Others
-  icon: router
-  label: FRR
-  label_prefix: frr-
-  visible: true
-```
-
-なるほど、疑問解消です。先ほど確認したファイルの内容がノード定義ファイルの中に書かれてます。
-
-ラボ内にイメージを作成したときにはノード定義ファイルにある `files:` で指定したファイルが生成されます。
-
-そのうちの一つが `config.json` で、Dockerに対する指示はここに書かれています。
-
-```YAML
-    files:
-      - name: config.json
-        editable: false
-        content: |
-          {
-            "docker": {
-              "image": "frr:10.2.1-r1",
-              "mounts": [
-                "type=bind,source=cfg/boot.sh,target=/config/boot.sh",
-                "type=bind,source=cfg/node.cfg,target=/config/node.cfg",
-                "type=bind,source=cfg/protocols,target=/config/protocols"
-              ],
-```
-
-上記のように config.json では起動するイメージ名を指定していますので、
-同じノード定義ファイルでイメージ定義だけ差し替える、ということはできないことになります
-（実際にやってみたら、できませんでした）。
-
-<br>
-
-> [!NOTE]
->
-> ノード定義ファイルの中にある image: の部分はdockerのイメージ名です。イメージ定義のIDではありません。
-
-<br>
-
-独自で作成したdockerイメージをCMLに登録するには、ノード定義とイメージ定義の両方を作らないといけません。
-
-<br><br><br>
-
-今度は起動中のFRRイメージにシェルで接続してみます。
-
-```bash
-root@cml-controller:~# docker ps
-CONTAINER ID   IMAGE           COMMAND       CREATED         STATUS         PORTS     NAMES
-5038c95009ce   frr:10.2.1-r1   "/start.sh"   3 minutes ago   Up 3 minutes             894b8a48-3a9f-46d9-bf9f-c3d649dac49c
-
-root@cml-controller:~# docker exec -it 5038c95009ce bash
-
-frr-0:/# cat /etc/os-release
-NAME="Alpine Linux"
-ID=alpine
-VERSION_ID=3.21.3
-PRETTY_NAME="Alpine Linux v3.21"
-HOME_URL="https://alpinelinux.org/"
-BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
-```
-
-CML2.9に同梱されているFRRのイメージはAlpineをベースにしていることがわかります。
-
-`/start.sh` が実行されているので、その中身を確認してみます。
-
-このファイルはコンテナの中に焼かれていますので、ビルド時にコピーして渡しているはずです。
-
-このファイルは流用したいので、取り出して保存しておきます。
-
-中身はこの通りです。
-
-```bash
-#!/bin/bash
-
-CONFIG=/config/node.cfg
-BOOT=/config/boot.sh
-PROTOCOLS=/config/protocols
-
-# Not needed for Docker
-# for iface in /sys/class/net/*; do
-#   iface_name=$(basename "$iface")
-#   if /usr/sbin/ethtool "$iface_name" &>/dev/null; then
-#     /usr/sbin/ethtool -K "$iface_name" tx off
-#   fi
-# done
-
-# enable the requested protocols
-while IFS= read -r line; do
-    line=$(echo "$line" | xargs) # no whitespace
-    if [[ -n "$line" && ! "$line" =~ ^# ]]; then
-        sed -r -e "s/^(${line}=)no$/\1yes/" -i /etc/frr/daemons
-    fi
-done <"$PROTOCOLS"
-
-# day0 config for the router
-if [ -f $CONFIG ]; then
-    cp $CONFIG /etc/frr/frr.conf
-fi
-
-# set the hostname from the provided config if it's there
-hostname_value="router"
-if grep -q "^hostname" $CONFIG; then
-    hostname_value=$(awk '/^hostname/ {print $2}' $CONFIG)
-fi
-hostname $hostname_value
-
-/usr/lib/frr/frrinit.sh start
-
-echo "READY" >/dev/console
-
-trap '' INT TSTP
-while true; do
-    /usr/bin/vtysh
-done
-```
-
-<br>
-
-> [!NOTE]
->
-> このリポジトリに置いてある[start.sh](/frr/start.sh)は上記を少しだけ書き換えています。
->
-> - CMLのUIで初期設定するときのファイルをcfg/node.cfgからcfg/frr.confに変更
-> - 初期設定ファイルcfg/frr.confを/etc/frr/frr.confにバインド
->
-> このようにすることで、frrの設定を永続化しています。
-
-<br>
-
-コンテナの中の /config ディレクトリには確かにファイルが３個あります。
-
-```bash
-frr-0:/# ls /config
-boot.sh    node.cfg   protocols
-frr-0:/#
-```
-
-これらファイルはdocker起動時にマウントされて渡されたもので、
-イメージをインスタンス化したときに作られるディレクトリ、
-すなわちCML本体の `/var/local/virl2/images/{{ラボのUUID}}/{{イメージのUUID}}/cfg` に実物が置かれています。
-
-<br><br>
-
-以上のことから、Ubuntu24ベースでコンテナをビルドするには、以下のようなDockerfileを作ればよさそうです。
-
-```dockerfile
-# Dockerfile for building FRRouting (FRR) on Ubuntu 24.04
-
-ARG UBUNTU_VERSION=24.04
-FROM ubuntu:$UBUNTU_VERSION
-
-# Based on the official FRR documentation for building on Ubuntu 24.04
-# https://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu2404.html
-
-ENV TZ Asia/Tokyo
-ENV LANG ja_JP.UTF-8
-ENV WORKING_DIRECTORY /root
-
-ENV DATE 20250817
-
-WORKDIR $WORKING_DIRECTORY
-
-USER root
-
-RUN apt update \
-    && apt upgrade -y \
-    && apt install -y \
-            git autoconf automake libtool make libreadline-dev texinfo \
-            pkg-config libpam0g-dev libjson-c-dev bison flex \
-            libc-ares-dev python3-dev python3-sphinx \
-            install-info build-essential libsnmp-dev perl \
-            libcap-dev libelf-dev libunwind-dev \
-            protobuf-c-compiler libprotobuf-c-dev \
-    # Install libyang build requirements
-    && apt install -y cmake libpcre2-dev \
-    # Install libyang
-    && git clone https://github.com/CESNET/libyang.git \
-    && cd libyang \
-    && git checkout v2.1.128 \
-    && mkdir build; cd build \
-    && cmake --install-prefix /usr -D CMAKE_BUILD_TYPE:String="Release" .. \
-    && make \
-    && make install \
-    && cd ${WORKING_DIRECTORY} \
-    # Install GRPC
-    && apt install -y libgrpc++-dev protobuf-compiler-grpc \
-    # Install Config Rollbacks
-    && apt install -y libsqlite3-dev \
-    # ZeroMQ
-    && apt install -y libzmq5 libzmq3-dev \
-    # utilities
-    && apt install -y vim \
-    # Add FRR user and groups
-    && groupadd -r -g 92 frr \
-    && groupadd -r -g 85 frrvty \
-    && adduser --system --ingroup frr --home /var/run/frr/ --gecos "FRR suite" --shell /sbin/nologin frr \
-    && usermod -a -G frrvty frr \
-    # Compile
-    && export GIT_SSL_NO_VERIFY=true \
-    && cd ${WORKING_DIRECTORY} \
-    && git clone https://github.com/frrouting/frr.git frr \
-    && cd frr \
-    && ./bootstrap.sh \
-    && ./configure \
-            --includedir=/usr/include \
-            --bindir=/usr/bin \
-            --sbindir=/usr/lib/frr \
-            --libdir=/usr/lib/frr \
-            --libexecdir=/usr/lib/frr \
-            --sysconfdir=/etc \
-            --localstatedir=/var \
-            --with-moduledir=/usr/lib/frr/modules \
-            --enable-configfile-mask=0640 \
-            --enable-logfile-mask=0640 \
-            --enable-snmp \
-            --enable-multipath=64 \
-            --enable-user=frr \
-            --enable-group=frr \
-            --enable-vty-group=frrvty \
-            --with-pkg-git-version \
-            --with-pkg-extra-version=-${DATE} \
-            --disable-doc \
-    && make \
-    && make install \
-    && install -m 775 -o frr -g frr -d /var/log/frr \
-    && install -m 775 -o frr -g frr -d /etc/frr \
-    && install -m 640 -o frr -g frr tools/etc/frr/vtysh.conf /etc/frr/vtysh.conf \
-    && install -m 640 -o frr -g frr tools/etc/frr/frr.conf /etc/frr/frr.conf \
-    && install -m 640 -o frr -g frr tools/etc/frr/daemons.conf /etc/frr/daemons.conf \
-    && install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons \
-    && install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf \
-    # Clean up
-    && apt remove -y \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /var/lib/cache/* \
-    && rm -rf ${WORKING_DIRECTORY}/frr \
-    && rm -rf ${WORKING_DIRECTORY}/libyang
-
-COPY --chmod=0755 start.sh /
-
-CMD ["/start.sh"]
-```
-
-<br><br><br><br><br><br>
 
 # 【参考】コンテナ内でIPv6中継を有効にする試み
 
@@ -1398,35 +640,3 @@ systemctl restart virl2.target
 ですが、Alpineベースのイメージはバージョン10.4でも挙動不審です。
 
 サイズは大きくてもUbuntuベースでビルドした方が良さそうです。
-
-
-<br><br><br><br><br><br>
-
-# 参考文献
-
-<br>
-
-[Docker Engine version 28 release notes](https://docs.docker.com/engine/release-notes/28/)
-
-DockerでのIPv6まわりの挙動は頻繁に更新されています。リリースノートのページを開いてIPv6で検索するとよいでしょう。
-
-<br>
-
-[Docker privileged オプションについて](https://qiita.com/muddydixon/items/d2982ab0846002bf3ea8)
-
-Dockerイメージのノード定義ファイルで作成するconfig.jsonでは、
-"caps"という項目でコンテナに割り当てる権限を列挙します。
-
-どんな権限があるのか、は上記に記載されています。
-
-<br>
-
-[Docker on a router](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-on-a-router)
-
-Dockerの公式マニュアルです。コンテナがルータとして振る舞うときの動作について説明があります。
-
-<br>
-
-[https://docs.docker.com/reference/cli/dockerd/](https://docs.docker.com/reference/cli/dockerd/)
-
-Dockerの公式マニュアルです。dockerdに与える引数の一覧です。

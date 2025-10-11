@@ -81,7 +81,7 @@ virl2_clientのマニュアルを見ると、インタフェースに `readpacke
 
 > [!NOTE]
 >
-> マニュアルはこちら。
+> readpacketsおよびwritepacketsプロパティのマニュアルはこちらを参照。
 >
 > https://pubhub.devnetcloud.com/media/virl2-client/docs/latest/api/virl2_client.models.html#module-virl2_client.models.interface
 
@@ -186,11 +186,11 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 >
 > [cml_create_intman_demo.py](bin/cml_create_intman_demo.py) を実行すると、intman.pyを動かすラボ環境が整います。
 
-<br>
+<br><br>
 
 > [!NOTE]
 >
-> CMLでUbuntuを作成した場合、環境変数の設定が原因でcursesアプリは動きません。
+> CMLの中にUbuntuを作成した場合、環境変数の設定が原因でcursesアプリは動きません。
 >
 > 以下を試してください。
 >
@@ -199,7 +199,7 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 > export TERM="linux"
 > ```
 
-<br>
+<br><br>
 
 > [!NOTE]
 >

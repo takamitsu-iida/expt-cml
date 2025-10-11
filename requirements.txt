@@ -1,7 +1,15 @@
-jinja2
-
 # バージョンはCMLにあわせること！
 virl2-client==2.9
 
-# YAMLファイルを読み書きするためのライブラリ
+# Jinja2テンプレートエンジン コンフィグ生成に利用
+jinja2
+
+# YAMLファイルを読み書きするためのライブラリ ノード定義ファイル等、YAML形式を扱うために利用
 pyyaml
+
+# pyATS関連
+pyats[full]
+
+# MCP関連
+mcp
+pydantic

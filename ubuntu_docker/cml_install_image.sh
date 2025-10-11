@@ -1,12 +1,12 @@
 #!/bin/bash
 
 NODE_DEF_ROOT=/var/lib/libvirt/images/node-definitions
-NODE_DEF_FILENAME=tig.yaml
+NODE_DEF_FILENAME=ubuntu-24-04-docker.yaml
 
 IMAGE_DEF_ROOT=/var/lib/libvirt/images/virl-base-images
-IMAGE_DEF_DIR=ubuntu_docker
-IMAGE_DEF_FILENAME=ubuntu_docker.yaml
-IMAGE_NAME=ubuntu_docker.tar.gz
+IMAGE_DEF_DIR=ubuntu-24-04-docker
+IMAGE_DEF_FILENAME=ubuntu-24-04-docker.yaml
+IMAGE_NAME=ubuntu24.04.20251010.tar.gz
 
 if [ -f /var/tmp/node_definition.yaml ]; then
     mv /var/tmp/node_definition.yaml ${NODE_DEF_ROOT}/${NODE_DEF_FILENAME}

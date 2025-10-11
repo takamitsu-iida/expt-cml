@@ -5,18 +5,16 @@
 #
 
 # 使い方の例:
-# python3 bin/cml_upload.py \
-#   --node-def ./data/node_definition.yaml \
-#   --image-file ./data/image_file.tar.gz \
-#   --image-def ./data/image_definition.yaml
-
+# python3 bin/cml_upload.py --node-def ./data/node_definition.yaml
+# python3 bin/cml_upload.py --image-file ./data/image_file.tar.gz
+# python3 bin/cml_upload.py --image-def ./data/image_definition.yaml
 #
-# 注意:
-# 順番が重要です。ノード定義ファイル、イメージファイル、イメージ定義ファイル、の順でアップロードしてください。
+# 注意: 順番が重要です。
+# ノード定義ファイル、イメージファイル、イメージ定義ファイル、の順でアップロードしてください。
 #
 
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
-SCRIPT_DESCRIPTION = 'create openfabric docker lab'
+SCRIPT_DESCRIPTION = 'upload node definition, image definition, and image file to CML'
 
 #
 # 標準ライブラリのインポート
@@ -190,8 +188,8 @@ if __name__ == '__main__':
 
 
         # イメージ定義ファイルのアップロード
-        # イメージファイルを先にアップロードしておくこと
-        # イメージファイルは dropfolder から自動削除される
+        # /var/local/virl2/dropfolder/ にイメージファイルがあることが前提
+        # イメージ定義ファイルの登録に成功するとイメージファイルは dropfolder から削除される
         if args.image_def:
             image_def_path = Path(args.image_def)
             if not image_def_path.exists():

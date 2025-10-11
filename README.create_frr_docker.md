@@ -4,48 +4,110 @@ CML2.9はDockerをサポートしています。
 
 もちろん自分で作成したDockerイメージをCMLに登録して動作させることもできます。
 
-ここではUbuntuをベースによく使うアプリをインストールしたDockerイメージを作成してCMLに登録してみます。
+ここではFRRをインストールしたDockerイメージを作成してCMLに登録してみます。
 
 <br><br>
 
+## CML2.9のFRR(Docker)について
+
+CML2.9に同梱のFRR(Docker)は次のような特徴を持っています。
+
+- Alpineをベースにしています
+- FRRのバージョンは10.2です
+- IPv6のルーティングはできません（CMLのノード定義ファイルの不備です）
+- FRRの設定は永続されません
+
+FRRの中でhostnameコマンドで名前を付けても、それは現在接続しているvtyshにしか反映されません。
+writeしてもhostname設定は保存されません（FRRのマニュアルにそう書いてあります）。
+
+CMLのFRR(Docker)はその点を工夫をしていて、node.cfgにhostnameコマンドが入っていたら、
+それを取り出して、Dockerのホスト名に反映させています(start.shを見ればわかります)
+
+<br>
+
+## 作成するFRR(Docker)について
+
+- Ubuntu24をベースにDockerイメージを作成します
+- サイズは大きくなってしまいますが、一度Dockerイメージを登録すれば、以降のノード起動は高速かつ軽量です
+- FRRの設定(frr.conf)を永続できるようにします
+- IPv6中継できるようにします（sysctl net.ipv6.conf.all.forwarding=1を設定します）
+- FRR stable 10.4 をコンパイルして作成します
+- dockerイメージのタグ名はfrr:10.4とします
+- CMLのノード定義名はfrr-10-4とします
+- SNMPを有効にします
+- FRRバージョン8以降はvtyshからシェルコマンドを呼び出せませんので、対策としてSSHで外部から乗り込めるようにします(アカウントはroot)
+
+<br>
+
+> [!NOTE]
+>
+> 将来のCMLのバージョンアップでノード定義の名前が重複するかもしれませんが、どのみちCMLをインストールし直すので、そのときDockerイメージも作り直すことにします。
+
+<br>
+
+## CMLの母艦の設定
+
+CMLのコックピットにログインしてターミナルを開きます。
+
+root特権を取ります。
+
+```bash
+sudo -s -E
+```
+
+`/etc/sysctl.conf` を編集します。
+
+```bash
+vi /etc/sysctl.conf
+```
+
+この部分のコメントを外します。
+
+```text
+# Uncomment the next line to enable packet forwarding for IPv4
+net.ipv4.ip_forward=1
+
+# Uncomment the next line to enable packet forwarding for IPv6
+#  Enabling this option disables Stateless Address Autoconfiguration
+#  based on Router Advertisements for this host
+net.ipv6.conf.all.forwarding=1
+```
+
+再起動します。
+
+```bash
+reboot
+```
+
+> [!NOTE]
+>
+> dockerdは起動時にホストがIPv6中継可能かどうかをチェックしていますので、`sysctl -p` で反映させただけではだめです。
+> CMLそのものを再起動したほうが早いです。
+
+<br>
+
 ## DockerをインストールしたUbuntuを用意する
 
-Dockerイメージを作成する母艦が必要です。
+CML上にラボを作成してUbuntuと外部接続を用意します。
 
-どの環境でやってもいいのですが、CMLの中にラボを立てて、そこでDockerイメージを構築してみます。
-
-インターネットに接続できるUbuntuがあればよいのですが、aptであれやこれやインストールしなければいけませんので、
-Pythonスクリプトで生成した方が簡単です。
-
-[bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を実行して作成します。
+そのくらい簡単なラボは手作業で作ってもよいのですが、[bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を実行すれば自動で作成できます。
 
 ```bash
 bin/cml_create_custom_docker.py
-usage: cml_create_custom_docker.py [-h] [-c] [-d] [-p] [-s]
-
-create docker image lab
-
-options:
-  -h, --help    show this help message and exit
-  -c, --create  Create lab
-  -d, --delete  Delete lab
-  -p, --pause   Pause lab
-  -s, --start   Start lab
 ```
 
-ラボを作るときは `bin/cml_create_custom_docker.py -c` です。
-
-初回起動時はcloud-initで必要なパッケージをまとめてインストールしますので、Ubuntuのセットアップに少々時間がかかります。
+このスクリプトを再度実行すると同じ名前のものは消えてしまいますので、
+間違って消さないようにラボの名前を適当に変えておきます。
 
 <br>
 
 ## Dockerエンジンをインストール
 
-`bin/cml_create_custom_docker.py` を使ってラボを作成した場合、UbuntuにDockerエンジンがインストールされた状態で起動しますので、この作業は不要です。
+`bin/cml_create_custom_docker.py` を使ってラボを作成した場合、UbuntuにDockerエンジンがインストールされた状態で起動してきますので、この作業は不要です。
 
-別の環境で作業する場合は、以下の手順でDockerエンジンをインストールします。
+手作業でUbuntuを作成した場合は、以下の手順でDockerエンジンをインストールします。
 
-Dockerのインストールに必要なツールをインストールします。
+UbuntuにDockerのインストールが必要ですので、事前準備として必要なツールをインストールします。
 
 ```bash
 sudo apt update
@@ -105,29 +167,9 @@ sudo reboot
 
 <br>
 
----
+## FRRのDockerイメージをビルドします
 
-<br>
-
-# Dockerイメージを作ってCMLに登録する流れ
-
-以下の手番で作業します。
-
-1. Dockerfileを作ります
-1. docker build します
-1. 動作確認して気にいったイメージになるまでビルドを繰り返します
-1. docker inspectで完成したイメージのIDを調べます
-1. イメージ定義ファイルにそのIDを転記します
-1. ノード定義ファイルを作ります
-1. docker saveでイメージをtar形式にまとめます
-1. scpでノード定義、イメージ定義、イメージファイルをCMLに転送します
-1. ノード定義を所定の場所に移します(/var/lib/libvirt/images/node-definitions の直下)
-1. イメージ定義ファイルを格納するディレクトリを作成します(/var/lib/libvirt/images/virl-base-images の配下に作成)
-1. イメージ定義ファイルを作成したディレクトリに格納します
-1. イメージファイルを作成したディレクトリに格納します
-1. virl2サービスを再起動します(systemctl restart virl2.target)
-
-少々手番が多いので、できるだけ簡単に作業できるように環境やツールを整えます。
+このリポジトリの `frr` ディレクトリに Dockerfile と Makefile を作成したので、それら利用してFRRのイメージを作っていきます。
 
 <br><br>
 
@@ -161,16 +203,15 @@ ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
 ssh-copy-id -p 1122 admin@192.168.122.212
 ```
 
-これでパスワードなしでCMLにログインできるようになり、
-SCPでファイルを転送する際もパスワードを聞かれずにすみますので自動化が進みます。
+これでパスワードなしでCMLにログインできるようになります。
 
 <br>
 
 ### 事前準備３．makeコマンドをインストールする
 
-Dockerファイルを調整しながら繰り返しdocker buildを実行することになりますので、Makefileを作成の上、makeコマンドを使った方が楽です。
+Makefileの変数部分を適当に書き換えてから、makeコマンドを実行した方が簡単です。
 
-`bin/cml_create_custom_docker.py` でラボを作成した場合、makeコマンドはすでにインストールされています。
+`bin/cml_create_custom_docker.py` でラボを作成した場合、makeコマンドはインストールされた状態で立ち上がります。
 
 手動でラボを作った場合、makeコマンドは標準で入っていませんのでインストールします。
 
@@ -180,7 +221,8 @@ apt install -y make
 
 <br><br>
 
-[Makefile](/ubuntu_docker/Makefile)は以下のようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じです。
+[Makefile](/frr/Makefile)は以下のようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じですが、
+Dockerファイルを書き換えたり、FRRのコンパイルオプションを変えたり、いろいろ試行錯誤して何度も実行することになるので、makeコマンドを使ったほうが楽です。
 
 ```Makefile
 .DEFAULT_GOAL := help
@@ -188,11 +230,7 @@ apt install -y make
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-TAG ?= ubuntu24.04:20251010
-
-# ファイル名・パスの変数化
-IMAGE_TAR    = ubuntu24.04.20251010.tar
-IMAGE_TAR_GZ = ubuntu24.04.20251010.tar.gz
+TAG ?= frr:10.4
 
 # CMLのIPアドレス
 CML_HOST = 192.168.122.212
@@ -201,27 +239,29 @@ CML_UPLOAD_DIR = /var/tmp
 ####################################################
 # 以下、変更不要
 ####################################################
+
 SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
 SOURCE_NODE_DEFINITION = cml_node_definition.yaml
 INSTALL_SCRIPT = cml_install_image.sh
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-CONTAINER_NAME = ntools-test
+CONTAINER_NAME = frr-test
 
 build: ## Dockerイメージを作成する
 	@docker build -t ${TAG} -f Dockerfile .
 
 
-inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlおよびnode_definition.yamlを生成する
+inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlのsha256を更新する
 	@cp -f ${SOURCE_IMAGE_DEFINITION} image_definition.yaml
 	@cp -f ${SOURCE_NODE_DEFINITION} node_definition.yaml
 	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
-	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; echo $$SHA256
+	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; \
+	echo $$SHA256
 
 
 save: ## Dockerイメージを保存する
-	@rm -f $(IMAGE_TAR_GZ)
-	@docker save -o $(IMAGE_TAR) ${TAG}
-	@gzip $(IMAGE_TAR)
+	@rm -f frr.tar.gz
+	@docker save -o frr.tar ${TAG}
+	@gzip frr.tar
 
 
 run: ## Dockerコンテナを起動する
@@ -242,20 +282,18 @@ prune: ## Dockerの不要なイメージを削除する
 
 clean: ## Dockerイメージを削除する
 	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
-	@rm -f $(IMAGE_TAR_GZ)
+	@rm -f frr.tar.gz
 	@rm -f image_definition.yaml
 	@rm -f node_definition.yaml
 
 
-upload: ## ubuntu_docker.tar.gzおよびノード定義ファイルをCMLにアップロードする
-	@rsync -avz -e "ssh ${SSH_OPTS}" $(IMAGE_TAR_GZ) image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}
+upload: ## frr.tar.gzおよびノード定義ファイルをCMLにアップロードする
+	@rsync -avz -e "ssh ${SSH_OPTS}" frr.tar.gz image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}
 ```
 
 <br><br><br>
 
-## Dockerイメージを作成する
-
-ゼロからDockerfileを作成するのは茨の道です。すでに作成したものがありますので、それを使いましょう。
+## Dockerイメージを作成してCMLに登録します
 
 このリポジトリをクローンします。
 
@@ -267,14 +305,16 @@ git clone https://github.com/takamitsu-iida/expt-cml.git
 
 ```bash
 cd expt-cml
-cd ubuntu_docker
+cd frr
 ```
 
-[Dockerfile](/ubuntu_docker/Dockerfile) を確認して、追加したいパッケージがあれば追加、不要なものは削除します。
+繰り返しdockerイメージを作るときにはキャッシュが悪さをするかもしれませんので削除します（dockerインストール直後の場合は省略して構いません）。
 
-<br>
+```bash
+docker system prune --all
+```
 
-ビルドします。長い時間かかります。
+Dockerfileの内容に従ってビルドします。長い時間かかります。10分以上かかります。
 
 ```bash
 make build
@@ -291,15 +331,13 @@ make inspect
 実行例。
 
 ```bash
-cisco@ubuntu:~/expt-cml/ubuntu_docker$ make inspect
-850be02d0660af16fb83eb1ba6f44aa346f3cf445bf80ef82fec40c3589b6adc
+root@ubuntu-0:~/expt-cml/frr# make inspect
+dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71
 ```
 
+~~IDの文字列はこのあと使いますのでどこかにメモしておきます。~~
+
 `make inspect` を実行すると、image_definition.yamlを作成して、SHA256: の部分にこの文字列を埋め込みます。
-
-`make inspect` することでイメージ定義ファイルとノード定義ファイルが完成します。
-
-<br>
 
 次にイメージをtar.gz形式で保存します。ファイルサイズが大きいため、この処理も長い時間かかります。
 
@@ -307,27 +345,22 @@ cisco@ubuntu:~/expt-cml/ubuntu_docker$ make inspect
 make save
 ```
 
-`make save` することでイメージファイルが完成します。
+ファイルfrr.tar.gzが生成されます。
 
-<br>
+このfrr.tar.gzおよび作成したイメージ定義ファイル、ノード定義ファイルをまとめてCMLに転送します。
 
-あとは、ノード定義, イメージ定義, イメージファイルの３点セットをCMLに送り込んで適切な場所に格納します。
-
-前述の事前準備を済ませてあるなら、CMLはSSHサーバ(ポート1122番）が有効になっているはずです。
-
-次のコマンドでCMLの/var/tmpにファイルを送り込みます。
+CMLでSSHサーバ(ポート1122番）を有効にしている場合、次のコマンドでCMLの/var/tmpに送り込みます。
 
 ```bash
 make upload
 ```
 
-もしCMLでSSHサーバを有効にしていない場合、手作業で以下の4個のファイルをアップロードします。
+もしCMLでSSHサーバを有効にしていない場合、面倒ですが手作業で3個のファイルをアップロードします。
 
 ```bash
-scp node_definition.yaml        admin@192.168.122.212:
-scp image_definition.yaml       admin@192.168.122.212:
-scp ubuntu24.04.20251010.tar.gz admin@192.168.122.212:
-scp cml_install_image.sh        admin@192.168.122.212:
+scp frr.tar.gz admin@192.168.122.212:
+scp image_definition.yaml admin@192.168.122.212:
+scp node_definition.yaml admin@192.168.122.212:
 ```
 
 <br>
@@ -336,9 +369,9 @@ scp cml_install_image.sh        admin@192.168.122.212:
 >
 > scpの転送先は指定できません。dropfolderという特別な場所に保存されます。
 >
-> dropfolderの実体は `/var/local/virl2/dropfolder` です。
+> dropfolderの実体は `/var/local/virl2/dropfolder` です。このディレクトリから適宜移動してください。
 
-<br><br>
+<br><br><br>
 
 ここからはコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHで接続した方が快適です）。
 
@@ -348,73 +381,70 @@ scp cml_install_image.sh        admin@192.168.122.212:
 sudo -s -E
 ```
 
-先程送り込んだファイル `cml_install_image.sh` を実行します。
-
-`make upload` でファイルをCMLにアップロードした場合は、/var/tmpにファイルがありますので、以下のように実行します。
+ノード定義ファイルの格納場所に移動します。
 
 ```bash
-bash /var/tmp/cml_install_image.sh
+cd /var/lib/libvirt/images/node-definitions
 ```
 
-個別にファイルをアップロードした場合は dropfolder にファイルがありますので、以下のように実行します。
+/var/tmpからファイルを移動しつつ、名前を変更します。
 
 ```bash
-bash /var/local/virl2/dropfolder/cml_install_image.sh
+mv /var/tmp/node_definition.yaml frr-10-4.yaml
 ```
 
-これでノード定義、イメージ定義、イメージファイルが適切な場所に格納され、実行したスクリプト自身も消去されます。
-
-`cml_install_image.sh` の中身は以下のようになっていますので、これを見ながら手作業で作業しても構いません。
+ファイルのオーナーを変更します。
 
 ```bash
-#!/bin/bash
+chown libvirt-qemu:virl2 frr-10-4.yaml
+```
 
-NODE_DEF_ROOT=/var/lib/libvirt/images/node-definitions
-NODE_DEF_FILENAME=ubuntu-24-04-docker.yaml
+<br><br>
 
-IMAGE_DEF_ROOT=/var/lib/libvirt/images/virl-base-images
-IMAGE_DEF_DIR=ubuntu-24-04-docker
-IMAGE_DEF_FILENAME=ubuntu-24-04-docker.yaml
-IMAGE_NAME=ubuntu24.04.20251010.tar.gz
+続いてイメージ定義ファイルの場所に移動します。
 
-if [ -f /var/tmp/node_definition.yaml ]; then
-    mv /var/tmp/node_definition.yaml ${NODE_DEF_ROOT}/${NODE_DEF_FILENAME}
-    chown libvirt-qemu:virl2 ${NODE_DEF_ROOT}/${NODE_DEF_FILENAME}
-else
-    echo "node_definition.yaml not found."
-fi
+```bash
+cd /var/lib/libvirt/images/virl-base-images
+```
 
-mkdir -p ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}
+ディレクトリを作ります。
 
-if [ -f /var/tmp/image_definition.yaml ]; then
-    mv /var/tmp/image_definition.yaml ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}/${IMAGE_DEF_FILENAME}
-else
-    echo "image_definition.yaml not found."
-fi
+```bash
+mkdir frr-10-4
+chown libvirt-qemu:virl2 frr-10-4
+```
 
-if [ -f /var/tmp/${IMAGE_NAME} ]; then
-    mv /var/tmp/${IMAGE_NAME} ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}/${IMAGE_NAME}
-else
-    echo "${IMAGE_NAME} not found."
-fi
+作成したディレクトリに移動します。
 
-chown -R libvirt-qemu:virl2 ${IMAGE_DEF_ROOT}/${IMAGE_DEF_DIR}
+```bash
+cd frr-10-4
+```
 
-# スクリプト自身を削除
-rm -- "$0"
+make uploadで転送したファイルをこの場所に移動します。
+
+```bash
+mv /var/tmp/frr.tar.gz .
+chown libvirt-qemu:virl2 frr.tar.gz
+
+mv /var/tmp/image_definition.yaml frr-10-4.yaml
+chown libvirt-qemu:virl2 frr-10-4.yaml
 ```
 
 <br>
 
-最後にサービスを再起動します。
+> [!NOTE]
+>
+> 上記は手作業でやる方法を書きましたが、make uploadすると `/var/tmp/cml_install_image.sh` というファイルがCMLに転送されますので、これを実行するだけでノード定義、イメージ定義、ともに正しい場所に配置されます。
+
+<br>
+
+virl2を再起動します。
 
 ```
 systemctl restart virl2.target
 ```
 
-<br><br><br>
-
-dockerのイメージがCMLに登録されているか、確認します。
+dockerのイメージを確認します。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/frr-10-4# docker images

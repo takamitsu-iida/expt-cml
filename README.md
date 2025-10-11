@@ -16,7 +16,7 @@ Windows Terminal使いの方にオススメしたい使い方です。
 
 ## Python virl2-clientを使ったラボの作り方
 
-Pythonスクリプトの中に機器の設定を埋め込んでラボを作った方が楽です。
+手作業でラボを作るよりも、Pythonスクリプトで作った方が圧倒的に楽です。
 
 [README.create_lab.md](/README.create_lab.md)
 
@@ -32,7 +32,7 @@ Ubuntuはよく使うので、自分用にカスタマイズしたものを用�
 
 ## FRRをインストールしたUbuntuの作り方
 
-カスタムイメージの作り方は大事なので記録として残していますが、**実用上はDockerがオススメ**です。
+Ubuntuのカスタムイメージの作り方は大事なので記録として残していますが、**実用上はDockerがオススメ**です。
 
 [README.create_frr_ubuntu.md](/README.create_frr_ubuntu.md)
 
@@ -44,11 +44,27 @@ FRRをコンパイルして作成する方法は大事なので記録として�
 
 [README.openfabric.md](/README.openfabric.md)
 
+<br><br><br>
+
+## Dockerイメージの作り方
+
+CML2.9からDockerをサポートしています。Ubuntuをベースによく使うパッケージを詰め込んだDockerイメージを作成してみます。
+
+[README.create_custom_docker.md](/README.create_custom_docker.md)
+
+<br>
+
+## TIG(Docker)の作り方
+
+Telegraf/InfluxDB/Grafanaを詰め込んだコンテナイメージを作ります。
+
+[README.tig.md](/README.tig.md)
+
 <br>
 
 ## FRR(Docker)イメージの作り方
 
-Dockerイメージを作ってCMLに登録する方法です。できるだけ自動化できるようにしています。
+FRRを使うときはVRFやIPv6中継も必要になることが多いです。CMLのDockerではノード定義ファイルでsysctlを設定します。
 
 [README.create_custom_docker.md](/README.create_custom_docker.md)
 
@@ -64,13 +80,6 @@ Dockerイメージを作ってCMLに登録する方法です。できるだけ�
 
 [README.srv6.md](/README.srv6.md)
 
-<br>
-
-## TIG(Docker)の作り方
-
-Telegraf/InfluxDB/Grafanaを詰め込んだコンテナイメージを作ります。
-
-[README.tig.md](/README.tig.md)
 
 
 <!--

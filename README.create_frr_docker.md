@@ -227,7 +227,7 @@ systemctl restart virl2.target
 
 <br>
 
-# 【参考】コンテナ内でIPv6中継を有効にする試み
+## 【参考】コンテナ内でIPv6中継を有効にする試み
 
 CML2.9に同梱のFRRを起動しても、IPv6中継機能が動作しません。
 

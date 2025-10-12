@@ -22,6 +22,8 @@ CMLについての個人的メモです。
 
 毎年年末になるとCMLのライセンスがセールになるので、その機を逃さずに購入します。
 
+[The Cisco Learning Network Store](https://learningnetworkstore.cisco.com/)
+
 <br><br>
 
 ## インストール
@@ -331,7 +333,7 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub -p 1122 192.168.122.212ssh-copy-id -i ~/.ssh/id
 
 <br>
 
-さらに `~/.ssh/config` を編集しておきます。
+普段使う端末の `~/.ssh/config` を編集しておきます。
 
 このような設定にしておけば、`ssh cml` でログインできます。
 
@@ -348,7 +350,9 @@ Host cml
 
 ### IPv6中継
 
-/etc/sysctl.confのパラメータを書き換えます。
+CMLの/etc/sysctl.confのパラメータを書き換えます。
+
+DockerイメージでIPv6中継するのに必要です。
 
 ```text
 net.ipv4.ip_forward=1
@@ -359,7 +363,7 @@ net.ipv6.conf.all.forwarding=1
 
 ## CML追加設定（オプション）
 
-個人的な好みで設定を変更します。
+以下、個人的な好みで設定を変更します。
 
 <br>
 
@@ -406,10 +410,9 @@ stringsでバイナリファイルの中身を覗いてみたいので、binutil
 sudo apt install -y binutils unzip zip
 ```
 
-
 <br><br><br>
 
-## コックピットのターミナル
+## コックピットのターミナル操作いろいろ
 
 - コックピットのターミナルでroot特権を取る
 
@@ -480,4 +483,4 @@ PATtyの使い方はこのページが参考になります。firewalldの停止
 [The Cisco Learning Network](https://learningnetwork.cisco.com/s/)
 
 CMLってどこからダウンロードするんだっけ？　ライセンスはなんだっけ？　となりがち。
-まずはここにアクセスして　`Store`　に飛んで、ログインします。
+まずはここにアクセスして　`Store`　に飛んでログインします。

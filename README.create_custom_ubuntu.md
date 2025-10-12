@@ -41,7 +41,7 @@ It is available at https://192.168.122.212:9090 (opens in a new Tab/Window).
 
 <br>
 
-もしくはCMLでOpenSSHを有効にしているなら、好きなターミナルでsshします。こちらの方がおすすめです。
+もしくはCMLでSSHを有効にしているなら、好きなターミナルでポート1122にSSHします。こちらの方がおすすめです。
 
 <br>
 
@@ -109,7 +109,7 @@ drwxrwxr-x 2 libvirt-qemu virl2 4096 Aug 12 07:41 ubuntu-24-04-20250503
 
 ### Ubuntuのイメージをコピーする
 
-改造して使いたいのは `ubuntu-24-04-20250503` のイメージです。このディレクトリを属性付きでコピーします。
+改造して使いたいのは `ubuntu-24-04-20250503` のイメージです。このディレクトリをコピーします。
 
 名前は何でも良いのですが、ここでは分かりやすく `-iida` を後ろに追加します。
 
@@ -117,7 +117,7 @@ drwxrwxr-x 2 libvirt-qemu virl2 4096 Aug 12 07:41 ubuntu-24-04-20250503
 cp -a ubuntu-24-04-20250503 ubuntu-24-04-20250503-iida
 ```
 
-念の為、オーナーとグループをvirl2にします（-a付きのコピーなので、オーナーとグループも引き継いでいるはずです）。
+オーナーとグループをvirl2にします。
 
 ```bash
 chown virl2:virl2 ubuntu-24-04-20250503-iida
@@ -165,13 +165,13 @@ read_only: true
 schema_version: 0.0.1
 ```
 
-- idの値はユニークである必要があるので必ず変更します。ディレクトリ名と一致させます。
+- idの値はユニークである必要があるので必ず変更、**ディレクトリ名と一致させます**
 
 - labelの値はGUIでOS選択するときにドロップダウンに表示されるので、分かりやすいものに変えます
 
 - descriptionはlabelに合わせておきます
 
-- node_definition_idの値はそのままにしておきます
+- node_definition_idの値はそのままにしておきます(GUIでubuntuとして作成して、起動イメージを切り替えて使います)
 
 - disk_imageの値はそのままにしておきます
 
@@ -214,6 +214,10 @@ systemctl restart virl2.target
 実験中は試行錯誤しながらUbuntuのイメージを何度も作り変えますので、ここまでのコックピットでの作業をシェルスクリプトにしました。
 
 スクリプトの中身は以下の通りです。
+
+[copy_image_definition_iida.sh](/bin/copy_image_definition_iida.sh)
+
+<br>
 
 ```bash
 #!/bin/bash
@@ -263,7 +267,8 @@ cat ${COPY_DST}.yaml
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
 ```
 
-シェルスクリプトをダウンロードして、編集してから実行してもいいでしょう。curlでダウンロードするにはこうします。
+中身を書き換える場合はシェルスクリプトをダウンロードして編集してください。
+curlでダウンロードするにはこうします。
 
 ```bash
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh --output copy_image_definition.sh
@@ -273,19 +278,21 @@ curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamits
 
 ## 手順２．カスタマイズしたUbuntuを作成する
 
-ここからはCMLのダッシュボードで作業します。
+ここからはCMLのダッシュボードのGUIで作業します。
 
 適当なラボを作り、インターネットに出ていける外部接続とUbuntuを作成します。
 
-UbuntuのSETTINGSタブの `Image Definition` のドロップダウンから、**上記で作成したラベルのものを選んでから起動**します。
+このときUbuntuのSETTINGSタブの `Image Definition` のドロップダウンから、**上記で作成したラベルのものを選んで起動**します。
 
 起動したらアップデート、FRRのインストール、などなどを実行して好みのUbuntuに仕上げます。
 
-最後に `/var/lib/cloud` ディレクトリを丸ごと消去して、次に起動したときにcloud-initが走るようにします。
+最後に `/var/lib/cloud` ディレクトリを丸ごと消去します。これは次に起動したときにcloud-initが走るようにするためです。
 
 ```bash
 sudo rm -rf /var/lib/cloud
 ```
+
+Ubuntuをshutdownして停止してください。
 
 <br><br>
 
@@ -379,18 +386,29 @@ sudo qemu-img commit node0.img
 これで変更が確定しますので、次回以降このイメージ定義を使えば、カスタマイズされた状態のUbuntuが起動します。
 
 
-<br><br><br><br>
+<br><br><br>
 
 # 手順まとめ
 
 <br>
 
-- コックピットのターミナルでUbuntuのイメージをコピーするシェルスクリプトを実行する
+- CMLのコックピットのターミナルでUbuntuのイメージをコピーするシェルスクリプト(copy_image_definition_iida.sh)を実行する
 
 - bin/cml_create_custom_ubuntu.py を実行してラボを作る
 
-- ラボの中のUbuntuをいじる
+- ラボの中のUbuntuを好きなようにいじる
 
 - `/var/lib/cloud` ディレクトリを丸ごと消去する
 
-- コックピットのターミナルでqemu-img commit node0.imgを実行する（実行場所はラボを作ったときに表示される）
+- Ubuntuを停止する
+
+- コックピットのターミナルでqemu-img commit node0.imgを実行する（ラボ作成時に表示された場所で実行する）
+
+
+<br><br>
+
+> [!NOTE]
+>
+> 慣れてきたら、CMLに同梱されているUbuntuを直接書き換えてもいいと思います。
+>
+> 要はイメージ定義ファイルのreadonlyを外してから `sudo qemu-img commit node0.img` するだけです。

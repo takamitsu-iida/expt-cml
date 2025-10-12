@@ -334,9 +334,37 @@ scp cml_install_image.sh        admin@192.168.122.212:
 >
 > dropfolderの実体は `/var/local/virl2/dropfolder` です。
 
+<br>
+
+> [!NOTE]
+>
+> CMLにファイルをアップロードする方法は他にもあります。
+>
+> CMLのAPIをcurlで叩いてもいいのですが、
+> 新規に送り込むときはPOST、すでに存在しているものを更新する場合はPUT、というようにメソッドを使い分けるのがめんどくさいです。
+>
+> Pythonのvirl2_clientを使ってもできます。
+> スクリプト [cml_upload.py](/bin/cml_upload.py) を使えばノード定義、イメージ定義、イメージファイルをCMLに送り込めます。
+>
+> ```bash
+> iida@s400win:~/git/expt-cml$ source /home/iida/git/expt-cml/.venv/bin/activate
+> $ bin/cml_upload.py
+> usage: cml_upload.py [-h] [--node-def NODE_DEF] [--image-def IMAGE_DEF] [--image-file IMAGE_FILE]
+>
+> upload node definition, image definition, and image file to CML
+>
+> options:
+>   -h, --help            show this help message and exit
+>   --node-def NODE_DEF     ノード定義ファイルのパス
+>   --image-def IMAGE_DEF   イメージ定義ファイルのパス
+>   --image-file IMAGE_FILE イメージファイル（tar.gzなど）のパス
+> ```
+>
+> ですが、Pythonの環境を整えるのがめんどくさいので、前述の通り `make upload` で送り込むのが簡単です。
+
 <br><br>
 
-ここからはコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHで接続した方が快適です）。
+ここからはCMLのコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHでポート1122に接続した方が快適です）。
 
 ルート特権を取ります。
 

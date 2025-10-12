@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-###########################################################
+#
+# FRRインストール済みのUbuntuを作成するためのラボを生成するスクリプトです
+#
 
-#
-# カスタマイズしたUbuntuを作成するためのCMLラボを作成するスクリプトです
-#
+# スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
+SCRIPT_DESCRIPTION = 'create lab to customize ubuntu(with frr)'
 
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
 LAB_NAME = "frr_ubuntu"
@@ -176,6 +177,7 @@ from pathlib import Path
 try:
     from jinja2 import Template
     from virl2_client import ClientLibrary
+    from virl2_client.models.lab import Lab
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -273,44 +275,47 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
-    def read_template_config(filename='') -> str:
-        p = data_dir.joinpath(filename)
-        try:
-            with p.open() as f:
-                return f.read()
-        except FileNotFoundError:
-            logger.error(f"{filename} not found")
-            sys.exit(1)
+    def get_lab_by_title(client, title):
+        labs = client.find_labs_by_title(title)
+        return labs[0] if labs else None
 
 
-    def main():
+    def start_lab(lab: Lab) -> None:
+        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+        if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
+            logger.info(f"Starting lab '{LAB_NAME}'")
+            lab.start(wait=True)
+            logger.info(f"Lab '{LAB_NAME}' started")
+        else:
+            logger.info(f"Lab '{LAB_NAME}' is already running")
 
-        # 引数処理
-        parser = argparse.ArgumentParser(description='create frr lab')
-        parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
-        args = parser.parse_args()
 
-        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
-
-        # 接続を待機する
-        client.is_system_ready(wait=True)
-
-        # 同タイトルのラボを消す
-        for lab in client.find_labs_by_title(LAB_NAME):
+    def stop_lab(lab: Lab) -> None:
+        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+        if state == 'STARTED':
+            logger.info(f"Stopping lab '{LAB_NAME}'")
             lab.stop(wait=True)
-            lab.wipe()
-            lab.remove()
+            logger.info(f"Lab '{LAB_NAME}' stopped")
+        else:
+            logger.info(f"Lab '{LAB_NAME}' is not running")
 
-        # -d で起動していたらここで処理終了
-        if args.delete:
-            return 0
+
+    def delete_lab(lab: Lab) -> None:
+        logger.info(f"Deleting lab '{LAB_NAME}'")
+        stop_lab(lab)
+        lab.wipe()
+        lab.remove()
+        logger.info(f"Lab '{LAB_NAME}' deleted")
+
+
+    def create_lab(client: ClientLibrary) -> None:
 
         # 指定されたimage_definitionが存在するか確認して、なければ終了する
         image_defs = client.definitions.image_definitions()
         image_def_ids = [img['id'] for img in image_defs]
         if IMAGE_DEFINITION not in image_def_ids:
             logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
-            return 1
+            return
 
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
@@ -365,17 +370,58 @@ if __name__ == '__main__':
         # "serial:6000"
         ubuntu_node.add_tag(tag=NODE_TAG)
 
-        # start the lab
-        lab.start()
-
-        command_text = f"""\n
+        command_text = \
+f"""\n
 cd /var/local/virl2/images/{lab.id}/{ubuntu_node.id}
 sudo qemu-img commit node0.img
 """
-
         logger.info("To commit changes, execute following commands in cml cockpit terminal." + command_text)
 
-        return 0
 
+    def main() -> None:
+
+        # 引数処理
+        parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
+        parser.add_argument('-c', '--create', action='store_true', default=False, help='Create lab')
+        parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
+        parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
+        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
+        args = parser.parse_args()
+
+        # 引数が何も指定されていない場合はhelpを表示して終了
+        if not any(vars(args).values()):
+            parser.print_help()
+            return
+
+        # CMLを操作するvirl2_clientをインスタンス化
+        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+
+        # 接続を待機する
+        client.is_system_ready(wait=True)
+
+        # 既存のラボがあれば取得する
+        lab = get_lab_by_title(client, LAB_NAME)
+
+        if args.start:
+            start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.pause:
+            stop_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.delete:
+            delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.create:
+            if lab:
+                # 既存のラボがあれば削除
+                logger.info(f"Lab '{LAB_NAME}' already exists")
+                delete_lab(lab)
+            create_lab(client)
+
+    #
     # 実行
-    sys.exit(main())
+    #
+    main()

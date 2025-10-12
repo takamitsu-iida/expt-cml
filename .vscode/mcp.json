@@ -1,0 +1,17 @@
+{
+	"servers": {
+		"my-mcp-server": {
+			"type": "stdio",
+            "command": "python3",
+			"args": [],
+            "cwd": "${workspaceFolder}",
+		},
+        "mcp-ex1": {
+            "type": "stdio",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["${workspaceFolder}/mcp/mcp_tenki.py"],
+            "cwd": "${workspaceFolder}"
+        }
+	},
+	"inputs": []
+}

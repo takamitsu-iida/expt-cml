@@ -1,0 +1,6 @@
+# pyATS関連
+pyats[full]
+
+# MCP関連
+mcp
+pydantic

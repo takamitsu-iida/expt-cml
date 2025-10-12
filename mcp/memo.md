@@ -1,19 +1,24 @@
 # MCPメモ
 
-<br>
+PythonでMCPサーバを作成して、VSCodeのCopilotで利用できるようにします。
 
-## Visual Studio Codeで使う
+<br><br>
 
+## Visual Studio CodeでMCPを使う
 
-`.vscode` ディレクトリを作成
+独自のMCPサーバを使うには、設定が必要です。
+
+`.vscode` ディレクトリを作成します。
 
 ```bash
-mkdir .vscode
+mkdir -p .vscode
 ```
 
-新しいファイル `mcp.json` を作成する
+新しいファイル `mcp.json` を作成します。
 
-エディタの右下に「サーバの追加」とうボタンが登場するので、それをクリック
+エディタの右下に「サーバの追加」というボタンが登場するので、それをクリックします。
+
+vscodeが一気に補完してくれますので、必要な部分を変更します。
 
 <br>
 
@@ -24,31 +29,42 @@ mkdir .vscode
 
 ```json
 {
-	"servers": {
-		"my-mcp-server": {
-			"type": "stdio",
-			"command": "/usr/bin/env python",
-			"args": ["${workspaceFolder}/mcp/mcp_server.py"]
-		}
-	},
-	"inputs": []
+    "servers": {
+        "mcp-ex1": {
+            "type": "stdio",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": [
+                "${workspaceFolder}/mcp/mcp_tenki.py"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    }
 }
 ```
 
-- type は接続のタイプ `stdio` or `sse`
+type は `stdio` or `sse` を指定します。
+ローカル環境で動かすときは `stdio` です。リモートサーバを使うなら `sse` にします。
 
-ローカル環境で動かすときは `stdio` でよい。リモートサーバを使うなら `sse` にする。
-
-Dockerイメージを走らせるならこんな感じ
+commandとargsは、Dockerイメージを走らせるならこんな感じになります。
 
 ```json
 "command": "docker",
 "args": ["run", "-i", "--rm", "..."]
 ```
 
-vscodeでgithub copilotのチャットを開く
+Pythonスクリプトを走らせるならこんな感じになります。
 
-右下のチャットを入力する部分で、「モードの設定」のドロップダウンからエージェントに切り替える
+```json
+"command": "${workspaceFolder}/.venv/bin/python",
+"args": [${workspaceFolder/mcp/mcp_tenki.py}]
+```
+
+グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っているので、このような指定になります。
+
+
+次に、vscodeでgithub copilotのチャットを開きます。
+
+右下のチャットを入力する部分で「モードの設定」のドロップダウンからエージェントモードに切り替えます。
 
 <br>
 
@@ -56,10 +72,7 @@ vscodeでgithub copilotのチャットを開く
 
 <br>
 
-
-この時点ではまだ自作のMCPサーバは有効になっていない
-
-画面右下のスパナのマークのツールボタンをクリックして、MCPサーバを有効にする。
+画面右下のスパナのマークのツールボタンをクリックして、MCPサーバを有効にします。
 
 <br>
 
@@ -67,8 +80,8 @@ vscodeでgithub copilotのチャットを開く
 
 <br>
 
-これでチャット画面で「my_mcp_serverを実行してください」といった具合で指示を出せるようになる。
+これでチャット画面で「my_mcp_serverを実行してください」といった具合で指示を出せるようになります。
 
-起動時に　実行しますか？　と聞かれるので、常に許可しておくと手間が省ける。
+起動時に　実行しますか？　と聞かれるので、常に許可しておくと手間が省けます。
 
-Ctrl-Shift-Pでコマンドパレットを開いて、mcpと入力して、サーバの一覧表示、からサーバの開始停止を指示できる。
+Ctrl-Shift-Pでコマンドパレットを開いて、mcpと入力して、サーバの一覧表示、からサーバの開始停止を指示できます。

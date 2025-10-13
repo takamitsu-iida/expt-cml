@@ -1,22 +1,22 @@
 # MCPメモ
 
-PythonでMCPサーバを作成して、VSCodeのCopilotで利用できるようにします。
+PythonでMCPサーバを作成して、Visual Studio CodeのCopilotで利用できるようにします。
 
 <br>
 
 > [!NOTE]
 >
-> copilotの契約によってはvscodeでのMCP利用に制限がかかっていることがあります。
+> Copilotの契約によってはvscodeでのMCP利用に制限がかかっていることがあります。
 >
 > ![vscode](/assets/mcp_vscode_organization.png)
-
-<br>
 
 <br><br>
 
 ## Visual Studio CodeでMCPを使う
 
-独自のMCPサーバを使うには、設定が必要です。
+独自のMCPサーバを使うには、vscodeに設定が必要です。
+
+ここではワークスペースの中だけで利用できるように設定します。
 
 `.vscode` ディレクトリを作成します。
 
@@ -39,7 +39,7 @@ vscodeが一気に補完してくれますので、必要な部分を変更し�
 ```json
 {
     "servers": {
-        "mcp-ex1": {
+        "mcp_tenki": {
             "type": "stdio",
             "command": "${workspaceFolder}/.venv/bin/python",
             "args": [
@@ -52,13 +52,14 @@ vscodeが一気に補完してくれますので、必要な部分を変更し�
 ```
 
 type は `stdio` or `sse` を指定します。
+
 ローカル環境で動かすときは `stdio` です。
-個人で動かすにはこれでいいのですが、他の利用者に公開したいときはどこかにサーバを立てて、そこでMCPサーバを動かしたほうがいいです。
-その場合は `sse` にします。
 
-PythonのFastMCPで作るMCPサーバなら、`mcp.run(transport="stdio)` を `mcp.run(transport="streamable-http)` にします。
+個人で動かすにはこれでいいのですが、他の利用者に公開したいときはどこかにサーバを立てて、そこでMCPサーバを動かしたほうがいいので、その場合は `sse` にします。
 
-commandとargsは、Dockerイメージを走らせるならこんな感じになります。
+PythonのFastMCPで作るMCPサーバは、`mcp.run(transport="stdio)` もしくは `mcp.run(transport="streamable-http)` として起動しますので、これにあわせます。
+
+commandとargsの設定は、Dockerイメージとして走らせるならこんな感じになります。
 
 ```json
 "command": "docker",
@@ -72,8 +73,7 @@ Pythonスクリプトを走らせるならこんな感じになります。
 "args": [${workspaceFolder/mcp/mcp_tenki.py}]
 ```
 
-グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っているので、このような指定になります。
-
+グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っている場合はこのような指定になります。
 
 次に、vscodeでgithub copilotのチャットを開きます。
 
@@ -85,7 +85,7 @@ Pythonスクリプトを走らせるならこんな感じになります。
 
 <br>
 
-画面右下のスパナのマークのツールボタンをクリックして、MCPサーバを有効にします。
+画面右下のスパナのマークのツールボタンをクリックしてMCPサーバを有効にします。
 
 <br>
 
@@ -95,6 +95,6 @@ Pythonスクリプトを走らせるならこんな感じになります。
 
 これでチャット画面で「my_mcp_serverを実行してください」といった具合で指示を出せるようになります。
 
-起動時に　実行しますか？　と聞かれるので、常に許可しておくと手間が省けます。
+MCPサーバ起動時には「実行しますか？」と聞かれるので、常に許可しておくと手間が省けます。
 
 Ctrl-Shift-Pでコマンドパレットを開いて、mcpと入力して、サーバの一覧表示、からサーバの開始停止を指示できます。

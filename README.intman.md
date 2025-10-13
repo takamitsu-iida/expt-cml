@@ -185,6 +185,16 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 > [!NOTE]
 >
 > [cml_create_intman_demo.py](bin/cml_create_intman_demo.py) を実行すると、intman.pyを動かすラボ環境が整います。
+>
+> ルータ2台とubuntuが一つ作られます。ubuntuのコンソールから cisco/cisco でログインして、以下を実行してください。
+>
+> ```bash
+> cd expt-cml
+> direnv allow
+> ```
+> CMLに接続するためのアカウント情報を bin/cml_config.py に書いてください。
+>
+> `bin/intman.py intman.yaml` で実行できます。
 
 <br><br>
 

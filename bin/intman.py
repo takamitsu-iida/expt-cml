@@ -521,23 +521,25 @@ if __name__ == "__main__":
     parser.add_argument("configfile", nargs='?', default=None, help="config yaml file for CML Intman")
     args = parser.parse_args()
 
+    # 引数が何も指定されていない場合はhelpを表示して終了
+    if not any(vars(args).values()):
+        parser.print_help()
+        sys.exit(-1)
+
+    # CMLを操作するvirl2_clientをインスタンス化
     try:
         client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
-        # 接続を待機する
-        client.is_system_ready(wait=True)
-        client.get_lab_list
     except Exception as e:
-        logger.critical(f"{e}")
+        logger.critical(f"Failed to connect to CML at {CML_ADDRESS}")
+        logger.critical(str(e))
         sys.exit(-1)
+
+    # 接続を待機する
+    client.is_system_ready(wait=True)
 
     if args.dump:
         dump_lab(client)
         sys.exit(0)
-
-    # 以降の処理は configfile の指定が必要
-    if args.configfile is None:
-        parser.print_help()
-        sys.exit(-1)
 
     conf_dict = parse_config(args.configfile)
     if not conf_dict or 'title' not in conf_dict:

@@ -394,7 +394,12 @@ sudo qemu-img commit node0.img
             return
 
         # CMLを操作するvirl2_clientをインスタンス化
-        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+        try:
+            client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+        except Exception as e:
+            logger.critical(f"Failed to connect to CML at {CML_ADDRESS}")
+            logger.critical(str(e))
+            return
 
         # 接続を待機する
         client.is_system_ready(wait=True)

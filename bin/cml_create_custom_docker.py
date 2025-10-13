@@ -296,6 +296,7 @@ if __name__ == '__main__':
         labs = client.find_labs_by_title(title)
         return labs[0] if labs else None
 
+
     def start_lab(lab: Lab) -> None:
         state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
         if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
@@ -399,6 +400,7 @@ if __name__ == '__main__':
         parser.add_argument('--delete', action='store_true', default=False, help='Delete lab')
         parser.add_argument('--stop', action='store_true', default=False, help='Stop lab')
         parser.add_argument('--start', action='store_true', default=False, help='Start lab')
+        parser.add_argument('--testbed', action='store_true', default=False, help='Show pyATS testbed')  # --- IGNORE ---
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -407,7 +409,12 @@ if __name__ == '__main__':
             return
 
         # CMLを操作するvirl2_clientをインスタンス化
-        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+        try:
+            client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+        except Exception as e:
+            logger.critical(f"Failed to connect to CML at {CML_ADDRESS}")
+            logger.critical(str(e))
+            return
 
         # 接続を待機する
         client.is_system_ready(wait=True)
@@ -425,6 +432,10 @@ if __name__ == '__main__':
 
         if args.delete:
             delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.testbed:
+            print(lab.get_pyats_testbed()) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
             return
 
         if args.create:

@@ -97,16 +97,16 @@ Dockerイメージをビルドするための環境を作ります。
 
 ```bash
 iida@s400win:~/git/expt-cml$ bin/cml_create_custom_docker.py
-usage: cml_create_custom_docker.py [-h] [-c] [-d] [-p] [-s]
+usage: cml_create_custom_docker.py [-h] [--create] [--delete] [--stop] [--start]
 
 create docker image lab
 
 options:
-  -h, --help    show this help message and exit
-  -c, --create  Create lab
-  -d, --delete  Delete lab
-  -p, --pause   Pause lab
-  -s, --start   Start lab
+  -h, --help  show this help message and exit
+  --create    Create lab
+  --delete    Delete lab
+  --stop      Stop lab
+  --start     Start lab
 ```
 
 <br>

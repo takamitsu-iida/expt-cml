@@ -380,10 +380,10 @@ sudo qemu-img commit node0.img
 
         # 引数処理
         parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
-        parser.add_argument('-c', '--create', action='store_true', default=False, help='Create lab')
-        parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
-        parser.add_argument('-p', '--pause', action='store_true', default=False, help='Pause lab')
-        parser.add_argument('-s', '--start', action='store_true', default=False, help='Start lab')
+        parser.add_argument('--create', action='store_true', default=False, help='Create lab')
+        parser.add_argument('--delete', action='store_true', default=False, help='Delete lab')
+        parser.add_argument('--stop', action='store_true', default=False, help='Stop lab')
+        parser.add_argument('--start', action='store_true', default=False, help='Start lab')
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -404,7 +404,7 @@ sudo qemu-img commit node0.img
             start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
             return
 
-        if args.pause:
+        if args.stop:
             stop_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
             return
 

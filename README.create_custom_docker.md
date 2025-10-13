@@ -19,19 +19,19 @@ Pythonスクリプトで生成した方が簡単です。
 
 ```bash
 bin/cml_create_custom_docker.py
-usage: cml_create_custom_docker.py [-h] [-c] [-d] [-p] [-s]
+usage: cml_create_custom_docker.py [-h] [--create] [--delete] [--stop] [--start]
 
 create docker image lab
 
 options:
-  -h, --help    show this help message and exit
-  -c, --create  Create lab
-  -d, --delete  Delete lab
-  -p, --pause   Pause lab
-  -s, --start   Start lab
+  -h, --help  show this help message and exit
+  --create    Create lab
+  --delete    Delete lab
+  --stop      Stop lab
+  --start     Start lab
 ```
 
-ラボを作るときは `bin/cml_create_custom_docker.py -c` です。
+ラボを作るときは `bin/cml_create_custom_docker.py --create` です。
 
 初回起動時はcloud-initで必要なパッケージをまとめてインストールしますので、Ubuntuのセットアップに少々時間がかかります。
 

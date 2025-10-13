@@ -4,6 +4,9 @@
 # intman.pyの動作をデモするためのスクリプトです
 #
 
+# スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
+SCRIPT_DESCRIPTION = 'create lab to demonstrate intman.py'
+
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
 LAB_NAME = "intman.py demo"
 
@@ -233,6 +236,7 @@ from pathlib import Path
 try:
     from jinja2 import Template
     from virl2_client import ClientLibrary
+    from virl2_client.models.lab import Lab
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -330,27 +334,40 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
-    def main():
+    def get_lab_by_title(client, title):
+        labs = client.find_labs_by_title(title)
+        return labs[0] if labs else None
 
-        # 引数処理
-        parser = argparse.ArgumentParser(description='create lab')
-        parser.add_argument('-d', '--delete', action='store_true', default=False, help='Delete lab')
-        args = parser.parse_args()
 
-        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+    def start_lab(lab: Lab) -> None:
+        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+        if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
+            logger.info(f"Starting lab '{LAB_NAME}'")
+            lab.start(wait=True)
+            logger.info(f"Lab '{LAB_NAME}' started")
+        else:
+            logger.info(f"Lab '{LAB_NAME}' is already running")
 
-        # 接続を待機する
-        client.is_system_ready(wait=True)
 
-        # 同タイトルのラボを消す
-        for lab in client.find_labs_by_title(LAB_NAME):
-            lab.stop()
-            lab.wipe()
-            lab.remove()
+    def stop_lab(lab: Lab) -> None:
+        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+        if state == 'STARTED':
+            logger.info(f"Stopping lab '{LAB_NAME}'")
+            lab.stop(wait=True)
+            logger.info(f"Lab '{LAB_NAME}' stopped")
+        else:
+            logger.info(f"Lab '{LAB_NAME}' is not running")
 
-        # -d で起動していたらここで処理終了
-        if args.delete:
-            return 0
+
+    def delete_lab(lab: Lab) -> None:
+        logger.info(f"Deleting lab '{LAB_NAME}'")
+        stop_lab(lab)
+        lab.wipe()
+        lab.remove()
+        logger.info(f"Lab '{LAB_NAME}' deleted")
+
+
+    def create_lab(client: ClientLibrary) -> None:
 
         # 指定されたimage_definitionが存在するか確認して、なければ終了する
         image_defs = client.definitions.image_definitions()
@@ -452,10 +469,52 @@ if __name__ == '__main__':
         r1_node.add_tag("serial:5001")
         r2_node.add_tag("serial:5002")
 
-        # start the lab
-        lab.start()
 
-        return 0
 
+    def main() -> None:
+
+        # 引数処理
+        parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
+        parser.add_argument('--create', action='store_true', default=False, help='Create lab')
+        parser.add_argument('--delete', action='store_true', default=False, help='Delete lab')
+        parser.add_argument('--stop', action='store_true', default=False, help='Stop lab')
+        parser.add_argument('--start', action='store_true', default=False, help='Start lab')
+        args = parser.parse_args()
+
+        # 引数が何も指定されていない場合はhelpを表示して終了
+        if not any(vars(args).values()):
+            parser.print_help()
+            return
+
+        # CMLを操作するvirl2_clientをインスタンス化
+        client = ClientLibrary(f"https://{CML_ADDRESS}/", CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+
+        # 接続を待機する
+        client.is_system_ready(wait=True)
+
+        # 既存のラボがあれば取得する
+        lab = get_lab_by_title(client, LAB_NAME)
+
+        if args.start:
+            start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.stop:
+            stop_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.delete:
+            delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.create:
+            if lab:
+                # 既存のラボがあれば削除
+                logger.info(f"Lab '{LAB_NAME}' already exists")
+                delete_lab(lab)
+            create_lab(client)
+
+    #
     # 実行
-    sys.exit(main())
+    #
+    main()

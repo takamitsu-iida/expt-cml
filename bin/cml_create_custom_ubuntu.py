@@ -384,6 +384,7 @@ sudo qemu-img commit node0.img
         parser.add_argument('--delete', action='store_true', default=False, help='Delete lab')
         parser.add_argument('--stop', action='store_true', default=False, help='Stop lab')
         parser.add_argument('--start', action='store_true', default=False, help='Start lab')
+        parser.add_argument('--testbed', action='store_true', default=False, help='Show pyATS testbed')  # --- IGNORE ---
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -415,6 +416,10 @@ sudo qemu-img commit node0.img
 
         if args.delete:
             delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
+        if args.testbed:
+            print(lab.get_pyats_testbed()) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
             return
 
         if args.create:

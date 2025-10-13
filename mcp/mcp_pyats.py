@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import asyncio
 import json
 import logging
@@ -84,5 +85,20 @@ async def pyats_configure_device(device_name: str, config_commands: str) -> str:
 
 
 if __name__ == "__main__":
-    logger.info("MCPサーバを起動します")
-    mcp.run(transport="stdio")
+
+    parser = argparse.ArgumentParser(description="pyATS MCP サーバ/クライアント")
+    parser.add_argument("--show", nargs=2, metavar=("DEVICE", "COMMAND"), help="指定デバイスでshowコマンド実行")
+    parser.add_argument("--config", nargs=2, metavar=("DEVICE", "CONFIG"), help="指定デバイスにコンフィグ投入")
+    args = parser.parse_args()
+
+    if args.show:
+        device_name, command = args.show
+        result = asyncio.run(run_show_command_async(device_name, command))
+        print(json.dumps(result, indent=2))
+    elif args.config:
+        device_name, config_commands = args.config
+        result = asyncio.run(configure_device_async(device_name, config_commands))
+        print(json.dumps(result, indent=2))
+    else:
+        logger.info("MCPサーバを起動します")
+        mcp.run(transport="stdio")

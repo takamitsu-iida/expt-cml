@@ -8,4 +8,4 @@ jinja2
 pyyaml
 
 # pyATS関連
-# pyats[full]
+# pyats[full]==25.2.0

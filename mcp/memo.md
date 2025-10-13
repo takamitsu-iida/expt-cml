@@ -2,6 +2,16 @@
 
 PythonでMCPサーバを作成して、VSCodeのCopilotで利用できるようにします。
 
+<br>
+
+> [!NOTE]
+>
+> copilotの契約によってはvscodeでのMCP利用に制限がかかっていることがあります。
+>
+> ![vscode](/assets/mcp_vscode_organization.png)
+
+<br>
+
 <br><br>
 
 ## Visual Studio CodeでMCPを使う
@@ -26,7 +36,6 @@ vscodeが一気に補完してくれますので、必要な部分を変更し�
 
 <br>
 
-
 ```json
 {
     "servers": {
@@ -43,7 +52,11 @@ vscodeが一気に補完してくれますので、必要な部分を変更し�
 ```
 
 type は `stdio` or `sse` を指定します。
-ローカル環境で動かすときは `stdio` です。リモートサーバを使うなら `sse` にします。
+ローカル環境で動かすときは `stdio` です。
+個人で動かすにはこれでいいのですが、他の利用者に公開したいときはどこかにサーバを立てて、そこでMCPサーバを動かしたほうがいいです。
+その場合は `sse` にします。
+
+PythonのFastMCPで作るMCPサーバなら、`mcp.run(transport="stdio)` を `mcp.run(transport="streamable-http)` にします。
 
 commandとargsは、Dockerイメージを走らせるならこんな感じになります。
 

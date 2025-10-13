@@ -6,8 +6,19 @@ import logging
 import os
 import sys
 
-from pyats.topology import loader
-from mcp.server.fastmcp import FastMCP
+
+#
+# 外部ライブラリのインポート
+#
+try:
+    from virl2_client import ClientLibrary
+    from virl2_client.models.lab import Lab
+    from pyats.topology import loader
+    from mcp.server.fastmcp import FastMCP
+except ImportError as e:
+    logging.critical(str(e))
+    sys.exit(-1)
+
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)

@@ -2,21 +2,84 @@
 
 PythonでMCPサーバを作成して、Visual Studio CodeのCopilotで利用できるようにします。
 
+
+<br><br>
+
+## MCPサーバ
+
+ラボの操作にvirl2_clientモジュールを使いたいので、PythonでMCPサーバを作ります。
+
+[FastMCP](https://gofastmcp.com/getting-started/welcome)を使うと簡単にMCPサーバを実装できます。
+
+FastMCPはpipでインストールできます。
+
 <br>
 
-> [!NOTE]
->
-> Copilotの契約によってはvscodeでのMCP利用に制限がかかっていることがあります。
->
-> 設定画面が以下のようになっている場合、MCPサーバを利用できません。
->
-> ![vscode](/assets/mcp_vscode_organization.png)
+```bash
+pip install -r mcp/requirements.txt
+```
+
+<br>
+
+FastMCPの使い方は簡単です。
+
+ラボ内のノードにコマンドを送り込む関数を作ったら、こんな感じでデコレータを被せるだけでMCPサーバのツールになります。
+
+```python
+if __name__ == "__main__":
+    #
+    # MCPサーバ初期化
+    #
+    mcp = FastMCP(SCRIPT_DESCRIPTION)
+
+    # グローバルなスレッドプールを1つだけ用意
+    thread_pool_executor = concurrent.futures.ThreadPoolExecutor()
+
+    @mcp.tool()
+    async def run_command_on_cml_async(lab_title: str, node_label: str, command: str) -> str | None:
+        """
+        指定したCMLラボのノードでコマンドを実行します。
+
+        Args:
+            lab_title: ラボのタイトル
+            node_label: ノードのラベル
+            command: 実行するコマンド
+
+        Returns:
+            コマンドの実行結果（str）またはNone
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            run_command_on_cml,
+            lab_title,
+            node_label,
+            command
+        )
+```
+
+<br>
+
+[mcp_pyats.py](/mcp/mcp_pyats.py) はわずか300行にも満たない短いスクリプトですが、
+これをGithub Copilotのエージェントモードから利用すると、驚くような効果を発揮します。
 
 <br><br>
 
 ## Visual Studio CodeのMCP設定
 
 独自のMCPサーバを使うには、vscodeに設定が必要です。
+
+<br>
+
+> [!NOTE]
+>
+> Copilotの契約によってはvscodeでのMCP利用に制限がかかっていることがあります。
+>
+> 設定画面が以下のようになっている場合、MCPサーバを利用できませんので、別のツールを使ってください。
+>
+> ![vscode](/assets/mcp_vscode_organization.png)
+
+<br>
 
 ここでは特定のワークスペースの中だけで利用できるように設定します。
 
@@ -74,7 +137,7 @@ Pythonスクリプトを走らせるならこんな感じになります。
 
 ```json
 "command": "${workspaceFolder}/.venv/bin/python",
-"args": [${workspaceFolder/mcp/mcp_tenki.py}]
+"args": [${workspaceFolder}/mcp/mcp_tenki.py]
 ```
 
 グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っている場合は上記のような指定になります。

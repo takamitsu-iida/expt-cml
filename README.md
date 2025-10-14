@@ -81,6 +81,14 @@ FRRを使うときはVRFやIPv6中継も必要になることが多いです。C
 [README.srv6.md](/README.srv6.md)
 
 
+<br><br><br>
+
+## Visual Studio CodeからMCPでラボを操作
+
+Github Copilotのエージェントモードを使ってCMLのラボを操作できます。
+
+[README.mcp.md](/README.mcp.md)
+
 
 <!--
 アニメーションGIFの作り方

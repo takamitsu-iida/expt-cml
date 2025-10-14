@@ -124,7 +124,8 @@ def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
 
 
 def run_command_on_cml(lab_title: str, node_label: str, command: str) -> str | None:
-    """Run a command on the device in exec mode"""
+    """Run a command on the device in exec mode.
+    """
 
     try:
         client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
@@ -156,7 +157,9 @@ def run_command_on_cml(lab_title: str, node_label: str, command: str) -> str | N
 
 
 def run_config_command_on_cml(lab_title: str, node_label: str, command: str) -> str | None:
-    """Run a command on the device in configure mode"""
+    """Run a command on the device in configure mode.
+    """
+
     try:
         client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
     except Exception as e:
@@ -181,7 +184,7 @@ def run_config_command_on_cml(lab_title: str, node_label: str, command: str) -> 
 
     lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
 
-    result = node.run_pyats_config_commands(command)
+    result = node.run_pyats_config_command(command)
 
     return result
 
@@ -197,15 +200,50 @@ if __name__ == "__main__":
     thread_pool_executor = concurrent.futures.ThreadPoolExecutor()
 
     @mcp.tool()
-    async def run_command_on_cml_async(lab_name: str, node_name: str, command: str) -> str | None:
+    async def run_command_on_cml_async(lab_title: str, node_label: str, command: str) -> str | None:
+        """
+        指定したCMLラボのノードでコマンドを実行します。
+
+        Args:
+            lab_title: ラボのタイトル
+            node_label: ノードのラベル
+            command: 実行するコマンド
+
+        Returns:
+            コマンドの実行結果（str）またはNone
+        """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             thread_pool_executor,
             run_command_on_cml,
-            lab_name,
-            node_name,
+            lab_title,
+            node_label,
             command
         )
+
+
+    @mcp.tool()
+    async def run_config_command_on_cml_async(lab_title: str, node_label: str, command: str) -> str | None:
+        """
+        指定したCMLラボのノードでコンフィグコマンドを実行します。
+
+        Args:
+            lab_title: ラボのタイトル
+            node_label: ノードのラベル
+            command: 実行するコンフィグコマンド
+
+        Returns:
+            コマンドの実行結果（str）またはNone
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            run_config_command_on_cml,
+            lab_title,
+            node_label,
+            command
+        )
+
 
     def main() -> int:
         # 引数処理
@@ -215,8 +253,8 @@ if __name__ == "__main__":
 
         # テスト用
         if args.show:
-            lab_name, device_name, command = args.show
-            result = run_command_on_cml(lab_name, device_name, command)
+            lab_title, node_label, command = args.show
+            result = run_command_on_cml(lab_title, node_label, command)
             print(result)
             sys.exit(0)
 

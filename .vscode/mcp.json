@@ -1,6 +1,6 @@
 {
     "servers": {
-        "my-mcp-server": {
+        "mcp_pyats": {
             "type": "stdio",
             "command": "${workspaceFolder}/.venv/bin/python",
             "args": [

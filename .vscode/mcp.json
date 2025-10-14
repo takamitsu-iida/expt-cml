@@ -4,15 +4,7 @@
             "type": "stdio",
             "command": "${workspaceFolder}/.venv/bin/python",
             "args": [
-                "${workspaceFolder}/mcp/mcp_server.py"
-            ],
-            "cwd": "${workspaceFolder}"
-        },
-        "mcp-ex1": {
-            "type": "stdio",
-            "command": "${workspaceFolder}/.venv/bin/python",
-            "args": [
-                "${workspaceFolder}/mcp/mcp_tenki.py"
+                "${workspaceFolder}/mcp/mcp_pyats.py"
             ],
             "cwd": "${workspaceFolder}"
         }

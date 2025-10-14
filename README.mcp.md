@@ -290,6 +290,7 @@ Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/2 ms
 R2のアドレス（192.168.255.2）は、
 R2のルーティングテーブルの出力から「C 192.168.255.2 is directly connected, Loopback0」と記載されていたため、
 Loopback0インターフェースのIPアドレスとして把握しました。
+
 この情報をもとにpingコマンドの宛先としました。
 ```
 
@@ -324,6 +325,7 @@ R1の設定を変更してください。CDPを停止してください。
 
 ```text
 R1の設定を変更し、CDPを停止しました（no cdp run を投入しました）。
+
 これでR1上でCDPは無効化されています。
 ```
 

@@ -89,26 +89,12 @@ except ModuleNotFoundError:
 # 外部ライブラリのインポート
 #
 try:
+    import yaml
+    from dotenv import load_dotenv
     from virl2_client import ClientLibrary
     from virl2_client.models.node import Node
 except ImportError as e:
-    message = """
-virl2_client module not found.
-  pip install --upgrade pip
-  pip install virl2-client==2.9
-    """.strip()
-    logging.critical(str(e) + "\n" + message)
-    sys.exit(-1)
-
-try:
-    import yaml
-except ImportError as e:
-    message = """
-yaml module not found.
-  pip install --upgrade pip
-  pip install pyyaml
-    """.strip()
-    logging.critical(str(e) + "\n" + message)
+    logging.critical(str(e))
     sys.exit(-1)
 
 #
@@ -118,11 +104,31 @@ yaml module not found.
 # このファイルへのPathオブジェクト
 app_path = Path(__file__)
 
+# このファイルがあるディレクトリ
+app_dir = app_path.parent
+
 # このファイルの名前から拡張子を除いてプログラム名を得る
 app_name = app_path.stem
 
 # アプリケーションのホームディレクトリはこのファイルからみて一つ上
 app_home = app_path.parent.joinpath('..').resolve()
+
+#
+# CMLに接続するための情報を取得する
+#
+
+# 同じ場所に 'cml_env' ファイルがあればそれを優先する
+env_path = app_dir.joinpath('cml_env')
+if os.path.exists(env_path):
+    load_dotenv(dotenv_path=env_path)
+
+CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
+CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
+CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
+
+if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
+    logging.critical("CML connection info not found in environment variables or cml_env file")
+    sys.exit(-1)
 
 # ログファイルの名前
 log_file = app_path.with_suffix('.log').name
@@ -160,24 +166,6 @@ file_handler = logging.FileHandler(log_path, 'a+')
 file_handler.setFormatter(formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
-
-#
-# CMLに接続するための情報を取得する
-#
-
-# 環境変数が設定されている場合はそれを使用し、設定されていない場合はローカルファイルから読み込む
-CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
-CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
-CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
-
-if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
-    # ローカルファイルから読み込み
-    try:
-        from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
-    except ImportError as e:
-        logger.critical("CML connection info not found")
-        logger.critical("Please set environment variables or create cml_config.py")
-        sys.exit(-1)
 
 # ノードから情報を取得したあと、次のノードの情報を取得するまでの待ち時間（秒）
 NODE_INTERVAL: float = 0.1

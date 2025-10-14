@@ -173,6 +173,7 @@ from pathlib import Path
 # 外部ライブラリのインポート
 #
 try:
+    from dotenv import load_dotenv
     from jinja2 import Template
     from virl2_client import ClientLibrary
     from virl2_client.models.lab import Lab
@@ -180,27 +181,11 @@ except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
 
-#
-# CMLに接続するための情報を取得する
-#
-
-# 環境変数が設定されている場合はそれを使用し、設定されていない場合はローカルファイルから読み込む
-CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
-CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
-CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
-
-if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
-    # ローカルファイルから読み込み
-    try:
-        from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
-    except ImportError as e:
-        logging.critical("CML connection info not found")
-        logging.critical("Please set environment variables or create cml_config.py")
-        sys.exit(-1)
-
-
 # このファイルへのPathオブジェクト
 app_path = Path(__file__)
+
+# このファイルがあるディレクトリ
+app_dir = app_path.parent
 
 # このファイルの名前から拡張子を除いてプログラム名を得る
 app_name = app_path.stem
@@ -208,8 +193,22 @@ app_name = app_path.stem
 # アプリケーションのホームディレクトリはこのファイルからみて一つ上
 app_home = app_path.parent.joinpath('..').resolve()
 
-# データ用ディレクトリ
-data_dir = app_home.joinpath('data')
+#
+# CMLに接続するための情報を取得する
+#
+
+# 同じ場所に 'cml_env' ファイルがあればそれを優先する
+env_path = app_dir.joinpath('cml_env')
+if os.path.exists(env_path):
+    load_dotenv(dotenv_path=env_path)
+
+CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
+CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
+CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
+
+if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
+    logging.critical("CML connection info not found in environment variables or cml_env file")
+    sys.exit(-1)
 
 #
 # ログ設定

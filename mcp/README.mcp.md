@@ -8,6 +8,8 @@ PythonでMCPサーバを作成して、Visual Studio CodeのCopilotで利用で�
 >
 > Copilotの契約によってはvscodeでのMCP利用に制限がかかっていることがあります。
 >
+> 設定画面が以下のようになっている場合、MCPサーバを利用できません。
+>
 > ![vscode](/assets/mcp_vscode_organization.png)
 
 <br><br>
@@ -16,7 +18,7 @@ PythonでMCPサーバを作成して、Visual Studio CodeのCopilotで利用で�
 
 独自のMCPサーバを使うには、vscodeに設定が必要です。
 
-ここではワークスペースの中だけで利用できるように設定します。
+ここでは特定のワークスペースの中だけで利用できるように設定します。
 
 `.vscode` ディレクトリを作成します。
 
@@ -55,11 +57,13 @@ type は `stdio` or `sse` を指定します。
 
 ローカル環境で動かすときは `stdio` です。
 
-個人で動かすにはこれでいいのですが、他の利用者に公開したいときはどこかにサーバを立てて、そこでMCPサーバを動かしたほうがいいので、その場合は `sse` にします。
+個人で動かすにはこれでいいのですが、他のユーザにも利用して欲しいときはどこかにサーバを立てて、そこでMCPサーバを動かしたほうがいいので、その場合は `sse` にします。
 
 PythonのFastMCPで作るMCPサーバは、`mcp.run(transport="stdio)` もしくは `mcp.run(transport="streamable-http)` として起動しますので、これにあわせます。
 
-commandとargsの設定は、Dockerイメージとして走らせるならこんな感じになります。
+commandとargsで実行方法を指定します。
+
+Dockerイメージとして走らせるならこんな感じになります。
 
 ```json
 "command": "docker",
@@ -73,7 +77,9 @@ Pythonスクリプトを走らせるならこんな感じになります。
 "args": [${workspaceFolder/mcp/mcp_tenki.py}]
 ```
 
-グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っている場合はこのような指定になります。
+グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っている場合は上記のような指定になります。
+
+<br>
 
 次に、vscodeでgithub copilotのチャットを開きます。
 
@@ -209,13 +215,8 @@ Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/2 ms
 <br>
 
 ```text
-R2のアドレス（192.168.255.2）は、R2のルーティングテーブルの出力から「C 192.168.255.2 is directly connected, Loopback0」と記載されていたため、Loopback0インターフェースのIPアドレスとして把握しました。この情報をもとにpingコマンドの宛先としました。
-```
-
-<br>
-
-例：複数のコマンドを実行するように指示した場合
-
-```text
-R1のルーティングテーブルと、R2のルーティングテーブルを比較してください
+R2のアドレス（192.168.255.2）は、
+R2のルーティングテーブルの出力から「C 192.168.255.2 is directly connected, Loopback0」と記載されていたため、
+Loopback0インターフェースのIPアドレスとして把握しました。
+この情報をもとにpingコマンドの宛先としました。
 ```

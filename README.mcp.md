@@ -137,7 +137,7 @@ Pythonスクリプトを走らせるならこんな感じになります。
 
 ```json
 "command": "${workspaceFolder}/.venv/bin/python",
-"args": [${workspaceFolder}/mcp/mcp_tenki.py]
+"args": [ "${workspaceFolder}/mcp/mcp_tenki.py" ]
 ```
 
 グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っている場合は上記のような指定になります。

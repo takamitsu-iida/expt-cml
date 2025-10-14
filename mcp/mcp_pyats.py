@@ -123,34 +123,65 @@ def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
     return labs[0] if labs else None
 
 
-def run_command_on_cml(lab_name: str, node_name: str, command: str) -> str | None:
+def run_command_on_cml(lab_title: str, node_label: str, command: str) -> str | None:
+    """Run a command on the device in exec mode"""
+
     try:
         client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
     except Exception as e:
         logger.error(f"CMLへの接続に失敗しました: {e}")
         return None
 
-    lab = get_lab_by_title(client, lab_name)
+    lab = get_lab_by_title(client, lab_title)
     if not lab:
-        logger.error(f"ラボ '{lab_name}' が見つかりません")
+        logger.error(f"ラボ '{lab_title}' が見つかりません")
         return None
 
     state = lab.state()
     if state != 'STARTED':
-        logger.error(f"ラボ '{lab_name}' は起動していません")
+        logger.error(f"ラボ '{lab_title}' は起動していません")
         return None
 
     try:
-        node = lab.get_node_by_label(node_name)
+        node = lab.get_node_by_label(node_label)
     except Exception as e:
-        logger.error(f"ノード '{node_name}' が見つかりません: {e}")
+        logger.error(f"ノード '{node_label}' が見つかりません: {e}")
         return None
 
     lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
 
     result = node.run_pyats_command(command)
 
-    print(result)
+    return result
+
+
+def run_config_command_on_cml(lab_title: str, node_label: str, command: str) -> str | None:
+    """Run a command on the device in configure mode"""
+    try:
+        client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+    except Exception as e:
+        logging.error(f"CMLへの接続に失敗しました: {e}")
+        return None
+
+    lab = get_lab_by_title(client, lab_title)
+    if not lab:
+        logger.error(f"ラボ '{lab_title}' が見つかりません")
+        return None
+
+    state = lab.state()
+    if state != 'STARTED':
+        logger.error(f"ラボ '{lab_title}' は起動していません")
+        return None
+
+    try:
+        node = lab.get_node_by_label(node_label)
+    except Exception as e:
+        logger.error(f"ノード '{node_label}' が見つかりません: {e}")
+        return None
+
+    lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
+
+    result = node.run_pyats_config_commands(command)
 
     return result
 

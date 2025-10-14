@@ -1,168 +1,17 @@
 #!/usr/bin/env python
 
 #
-# intman.pyの動作をデモするためのスクリプトです
+# virl2_clientを使ってラボを作成するスクリプトです
+# テスト用のラボを作成するのに使います
 #
 
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
-SCRIPT_DESCRIPTION = 'create lab to demonstrate intman.py'
+SCRIPT_DESCRIPTION = 'create test lab'
 
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
-LAB_NAME = "intman.py demo"
+LAB_NAME = "test lab"
 
-# ノード定義
-NODE_DEFINITION = "ubuntu"
-
-# イメージ定義
-IMAGE_DEFINITION = "ubuntu-24-04-20250503"
-
-# ノードにつけるタグ
-NODE_TAG = "serial:6000"
-
-# Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うホスト名
-UBUNTU_HOSTNAME = "ubuntu"
-
-# Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うユーザ名
-UBUNTU_USERNAME = "cisco"
-
-# Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うパスワード
-UBUNTU_PASSWORD = "cisco"
-
-# id_rsa.pubの中身をそのまま貼り付けます
-# SSH_PUBLIC_KEY = "YOUR_SSH_PUBLIC_KEY_HERE"
-SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
-
-# Ubuntuノードに設定するcloud-initのJinja2テンプレート
-UBUNTU_CONFIG = """
-#cloud-config
-hostname: {{ UBUNTU_HOSTNAME }}
-manage_etc_hosts: True
-system_info:
-  default_user:
-    name: {{ UBUNTU_USERNAME }}
-password: {{ UBUNTU_PASSWORD }}
-chpasswd: { expire: False }
-ssh_pwauth: True
-ssh_authorized_keys:
-  - ssh-rsa {{ SSH_PUBLIC_KEY }}
-
-timezone: Asia/Tokyo
-
-# LC_ALL LANG
-# locale: ja_JP.UTF-8
-locale: en_US.UTF-8
-
-# run apt-get update
-# default false
-package_update: true
-
-# default false
-package_upgrade: true
-
-# reboot if required
-package_reboot_if_required: true
-
-# packages
-packages:
-  - curl
-  - git
-  - zip
-  - unzip
-  - python3-venv
-  - direnv
-
-write_files:
-  #
-  # refer to netplan document
-  # https://netplan.readthedocs.io/en/latest/netplan-yaml/
-  #
-  - path: /etc/netplan/60-cloud-init.yaml
-    permissions: '0600'
-    owner: root:root
-    content: |
-      network:
-        version: 2
-        renderer: networkd
-        ethernets:
-          ens2:
-            dhcp4: true
-            dhcp6: false
-            link-local: []
-
-  - path: /var/tmp/setup_intman.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      #!/bin/bash
-      cd /home/{{ UBUNTU_USERNAME }}
-      git clone https://github.com/takamitsu-iida/expt-cml.git
-      cd expt-cml
-      python3 -m venv .venv
-      source .venv/bin/activate
-      pip install --upgrade pip
-      pip install -r requirements.txt
-
-runcmd:
-
-  # add /etc/hosts
-  - |
-    cat - << 'EOS' >> /etc/hosts
-    #
-    {{ CML_ADDRESS }} cml
-    EOS
-
-  # Resize terminal window
-  - |
-    cat - << 'EOS' >> /etc/bash.bashrc
-    #
-    rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf '\\e7\\e[r\\e[999;999H\\e[6n\\e8'); IFS='[;' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi
-    rsz
-    EOS
-
-  # TERM
-  - |
-    cat - << 'EOS' >> /etc/bash.bashrc
-    #
-    export TERM="linux"
-    EOS
-
-  # direnv
-  - |
-    cat - << 'EOS' >> /etc/bash.bashrc
-    # direnv
-    eval "$(direnv hook bash)"
-    export EDITOR=vi
-    EOS
-
-  # Disable SSH client warnings
-  - |
-    cat << 'EOS' > /etc/ssh/ssh_config.d/99_lab_env.conf
-    KexAlgorithms +diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
-    Ciphers +aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc,aes128-ctr,aes192-ctr,aes256-ctr
-    StrictHostKeyChecking no
-    UserKnownHostsFile=/dev/null
-    EOS
-
-  # Create SSH keys
-  - sudo -u {{ UBUNTU_USERNAME}} ssh-keygen -t rsa -b 4096 -N "" -f /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa
-  - chmod 600 /home/{{ UBUNTU_USERNAME }}/.ssh/id_rsa*
-  - chmod 700 /home/{{ UBUNTU_USERNAME }}/.ssh
-
-  # Disable systemd-networkd-wait-online.service to speed up boot time
-  - systemctl stop     systemd-networkd-wait-online.service
-  - systemctl disable systemd-networkd-wait-online.service
-  - systemctl mask    systemd-networkd-wait-online.service
-  - netplan apply
-
-  # Disable AppArmor
-  - systemctl stop apparmor.service
-  - systemctl disable apparmor.service
-
-  # clone expt_cml and setup intman.py
-  - su {{ UBUNTU_USERNAME }} -c "/var/tmp/setup_intman.sh"
-
-""".strip()
-
+###########################################################
 
 r1_config = """
 !
@@ -218,7 +67,6 @@ router isis 1
 !
 """.strip()
 
-
 ###########################################################
 
 #
@@ -234,34 +82,18 @@ from pathlib import Path
 # 外部ライブラリのインポート
 #
 try:
-    from jinja2 import Template
+    from dotenv import load_dotenv
     from virl2_client import ClientLibrary
     from virl2_client.models.lab import Lab
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
 
-#
-# CMLに接続するための情報を取得する
-#
-
-# 環境変数が設定されている場合はそれを使用し、設定されていない場合はローカルファイルから読み込む
-CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
-CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
-CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
-
-if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
-    # ローカルファイルから読み込み
-    try:
-        from cml_config import CML_ADDRESS, CML_USERNAME, CML_PASSWORD
-    except ImportError as e:
-        logging.critical("CML connection info not found")
-        logging.critical("Please set environment variables or create cml_config.py")
-        sys.exit(-1)
-
-
 # このファイルへのPathオブジェクト
 app_path = Path(__file__)
+
+# このファイルがあるディレクトリ
+app_dir = app_path.parent
 
 # このファイルの名前から拡張子を除いてプログラム名を得る
 app_name = app_path.stem
@@ -269,8 +101,22 @@ app_name = app_path.stem
 # アプリケーションのホームディレクトリはこのファイルからみて一つ上
 app_home = app_path.parent.joinpath('..').resolve()
 
-# データ用ディレクトリ
-data_dir = app_home.joinpath('data')
+#
+# CMLに接続するための情報を取得する
+#
+
+# 同じ場所に 'cml_env' ファイルがあればそれを優先する
+env_path = app_dir.joinpath('cml_env')
+if os.path.exists(env_path):
+    load_dotenv(dotenv_path=env_path)
+
+CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
+CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
+CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
+
+if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
+    logging.critical("CML connection info not found in environment variables or cml_env file")
+    sys.exit(-1)
 
 #
 # ログ設定
@@ -341,12 +187,13 @@ if __name__ == '__main__':
 
     def start_lab(lab: Lab) -> None:
         state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-        if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
+        if state == 'STARTED':
+            logger.info(f"Lab '{LAB_NAME}' is already running")
+            return
+        else:
             logger.info(f"Starting lab '{LAB_NAME}'")
             lab.start(wait=True)
             logger.info(f"Lab '{LAB_NAME}' started")
-        else:
-            logger.info(f"Lab '{LAB_NAME}' is already running")
 
 
     def stop_lab(lab: Lab) -> None:
@@ -374,67 +221,12 @@ if __name__ == '__main__':
         image_def_ids = [img['id'] for img in image_defs]
         if IMAGE_DEFINITION not in image_def_ids:
             logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
-            return 1
+            return
 
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
 
-        #
-        # 外部接続用のNATを作る
-        #
-
-        # external_connectorを作成する
-        ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=-680, y=-160)
-
-        #
-        # ubuntuを作る
-        #
-
-        ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=-680, y=-40)
-
-        # 起動イメージを指定する
-        ubuntu_node.image_definition = IMAGE_DEFINITION
-
-        # 初期状態はインタフェースが存在しないので、追加する
-        ubuntu_node.create_interface(0, wait=True)
-
-        # NATとubuntuを接続する
-        lab.connect_two_nodes(ext_conn_node, ubuntu_node)
-
-        # Jinja2のTemplateをインスタンス化する
-        template = Template(UBUNTU_CONFIG)
-
-        # templateに渡すコンテキストオブジェクト
-        context = {
-            "CML_ADDRESS": CML_ADDRESS,
-            "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
-            "UBUNTU_USERNAME": UBUNTU_USERNAME,
-            "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
-            "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY
-        }
-
-        # Ubuntuに設定するcloud-init.yamlのテキストを作る
-        config_text = template.render(context)
-
-        # ノードのconfigにcloud-init.yamlのテキストを設定する
-        ubuntu_node.configuration = [
-            {
-                'name': 'user-data',
-                'content': config_text
-            },
-            {
-                'name': 'network-config',
-                'content': '#network-config'
-            }
-        ]
-
-        # タグを設定する
-        ubuntu_node.add_tag(tag=NODE_TAG)
-
-        #
         # R1とR2を作成する
-        #
-
         r1_node = lab.create_node(label="R1", node_definition="iol-xe", x=-560, y=-40)
         r2_node = lab.create_node(label="R2", node_definition="iol-xe", x=-360, y=-40)
 
@@ -470,7 +262,6 @@ if __name__ == '__main__':
         r2_node.add_tag("serial:5002")
 
 
-
     def main() -> None:
 
         # 引数処理
@@ -479,6 +270,7 @@ if __name__ == '__main__':
         parser.add_argument('--delete', action='store_true', default=False, help='Delete lab')
         parser.add_argument('--stop', action='store_true', default=False, help='Stop lab')
         parser.add_argument('--start', action='store_true', default=False, help='Start lab')
+        parser.add_argument('--testbed', action='store_true', default=False, help='Show pyATS testbed')  # --- IGNORE ---
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -512,9 +304,13 @@ if __name__ == '__main__':
             delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
             return
 
+        if args.testbed:
+            print(lab.get_pyats_testbed()) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            return
+
         if args.create:
+            # 既存のラボがあれば削除する
             if lab:
-                # 既存のラボがあれば削除
                 logger.info(f"Lab '{LAB_NAME}' already exists")
                 delete_lab(lab)
             create_lab(client)

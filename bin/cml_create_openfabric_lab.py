@@ -185,7 +185,7 @@ except ImportError as e:
 #
 
 # 環境変数が設定されている場合はそれを使用し、設定されていない場合はローカルファイルから読み込む
-CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL2_HOST")
+CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
 CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
 CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
 
@@ -280,7 +280,7 @@ if __name__ == '__main__':
         return "\n".join(indented_lines)  # 改行で連結して返す
 
 
-    def get_lab_by_title(client, title):
+    def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
         labs = client.find_labs_by_title(title)
         return labs[0] if labs else None
 

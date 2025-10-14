@@ -1,3 +1,6 @@
+# 環境変数
+python-dotenv
+
 # バージョンはCMLにあわせること！
 virl2-client==2.9
 

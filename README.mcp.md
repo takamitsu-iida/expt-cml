@@ -174,6 +174,12 @@ MCPサーバを使う時には「実行しますか？」と聞かれるので�
 
 ## 動作例
 
+このラボ（ラボタイトルはtest lab）を使って実験してみます。
+
+<br>
+
+![lab](/assets/intman-lab.png)
+
 <br>
 
 ### コマンドを実行して
@@ -334,4 +340,25 @@ R1の隣接ルータの情報を表示してください。
 ```text
 R1でCDPは無効化されているため、隣接ルータ情報は表示できません（% CDP is not enabled）。
 CDPを再度有効化することで隣接情報の取得が可能になります。必要であればお知らせください。
+```
+
+<br>
+
+### ISISの隣接状態を取得して
+
+```text
+R1の隣接ルータの情報をISISの情報から取得してください
+```
+
+<br>
+
+```text
+R1のIS-IS隣接ルータ情報は以下の通りです。
+
+
+System Id   Type  Interface  IP Address      State  Holdtime  Circuit Id
+R2          L1L2  Et0/0      192.168.255.2   UP     24        01
+R2          L1L2  Et0/1      192.168.255.2   UP     29        02
+
+R1はR2とEthernet0/0およびEthernet0/1でIS-IS隣接関係を確立しています。
 ```

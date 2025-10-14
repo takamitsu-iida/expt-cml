@@ -3,4 +3,3 @@ pyats[full]==25.2.0
 
 # MCP関連
 mcp
-pydantic

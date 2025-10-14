@@ -8,8 +8,9 @@ SCRIPT_DESCRIPTION = "Simple pyATS MCP Server"
 #
 import argparse
 import asyncio
-import json
+import concurrent.futures
 import logging
+import os
 import sys
 
 from pathlib import Path
@@ -21,7 +22,6 @@ try:
     from dotenv import load_dotenv
     from virl2_client import ClientLibrary
     from virl2_client.models.lab import Lab
-    from pyats.topology import loader
     from mcp.server.fastmcp import FastMCP
 except ImportError as e:
     logging.critical(str(e))
@@ -30,11 +30,31 @@ except ImportError as e:
 # このファイルへのPathオブジェクト
 app_path = Path(__file__)
 
+# このファイルがあるディレクトリ
+app_dir = app_path.parent
+
 # このファイルの名前から拡張子を除いてプログラム名を得る
 app_name = app_path.stem
 
 # アプリケーションのホームディレクトリはこのファイルからみて一つ上
 app_home = app_path.parent.joinpath('..').resolve()
+
+#
+# CMLに接続するための情報を取得する
+#
+
+# 同じ場所に 'cml_env' ファイルがあればそれを優先する
+env_path = app_dir.joinpath('cml_env')
+if os.path.exists(env_path):
+    load_dotenv(dotenv_path=env_path)
+
+CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
+CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
+CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
+
+if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
+    logging.critical("CML connection info not found in environment variables or cml_env file")
+    sys.exit(-1)
 
 #
 # ログ設定
@@ -98,78 +118,80 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("SimpleMCPServer")
 
 
-# デバイス取得
-def get_device(device_name):
-    testbed = loader.load(TESTBED_PATH)
-    device = testbed.devices.get(device_name)
-    if not device:
-        raise ValueError(f"デバイスが見つかりません: {device_name}")
-    if not device.is_connected():
-        device.connect()
-    return device
+def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
+    labs = client.find_labs_by_title(title)
+    return labs[0] if labs else None
 
 
-# showコマンド実行（非同期版）
-async def run_show_command_async(device_name, command):
-    loop = asyncio.get_event_loop()
+def run_command_on_cml(lab_name: str, node_name: str, command: str) -> str | None:
     try:
-        device = await loop.run_in_executor(None, get_device, device_name)
-        output = await loop.run_in_executor(None, device.execute, command)
-        await loop.run_in_executor(None, device.disconnect)
-        return {"status": "success", "output": output}
+        client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        logger.error(f"CMLへの接続に失敗しました: {e}")
+        return None
 
+    lab = get_lab_by_title(client, lab_name)
+    if not lab:
+        logger.error(f"ラボ '{lab_name}' が見つかりません")
+        return None
 
-# コンフィグ投入（非同期版）
-async def configure_device_async(device_name, config_commands):
-    loop = asyncio.get_event_loop()
+    state = lab.state()
+    if state != 'STARTED':
+        logger.error(f"ラボ '{lab_name}' は起動していません")
+        return None
+
     try:
-        device = await loop.run_in_executor(None, get_device, device_name)
-        output = await loop.run_in_executor(None, device.configure, config_commands)
-        await loop.run_in_executor(None, device.disconnect)
-        return {"status": "success", "output": output}
+        node = lab.get_node_by_label(node_name)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        logger.error(f"ノード '{node_name}' が見つかりません: {e}")
+        return None
 
-#
-# MCPサーバ初期化
-#
-mcp = FastMCP(SCRIPT_DESCRIPTION)
+    lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
 
-@mcp.tool()
-async def pyats_run_show_command(device_name: str, command: str) -> str:
-    """指定したデバイスでshowコマンドを非同期実行"""
-    result = await run_show_command_async(device_name, command)
-    return json.dumps(result, indent=2)
+    result = node.run_pyats_command(command)
 
+    print(result)
 
-@mcp.tool()
-async def pyats_configure_device(device_name: str, config_commands: str) -> str:
-    """指定したデバイスにコンフィグを非同期投入"""
-    result = await configure_device_async(device_name, config_commands)
-    return json.dumps(result, indent=2)
+    return result
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
-    parser.add_argument("--show", nargs=3, metavar=("DEVICE", "COMMAND"), help="指定デバイスでshowコマンド実行")
-    parser.add_argument("--config", nargs=2, metavar=("DEVICE", "CONFIG"), help="指定デバイスにコンフィグ投入")
-    args = parser.parse_args()
 
-    load_dotenv('env')
+    #
+    # MCPサーバ初期化
+    #
+    mcp = FastMCP(SCRIPT_DESCRIPTION)
 
-    if args.show:
-        device_name, command = args.show
-        result = asyncio.run(run_show_command_async(device_name, command))
-        print(json.dumps(result, indent=2))
-        sys.exit(0)
+    # グローバルなスレッドプールを1つだけ用意
+    thread_pool_executor = concurrent.futures.ThreadPoolExecutor()
 
-    if args.config:
-        device_name, config_commands = args.config
-        result = asyncio.run(configure_device_async(device_name, config_commands))
-        print(json.dumps(result, indent=2))
-        sys.exit(0)
+    @mcp.tool()
+    async def run_command_on_cml_async(lab_name: str, node_name: str, command: str) -> str | None:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            run_command_on_cml,
+            lab_name,
+            node_name,
+            command
+        )
 
-    logger.info("MCPサーバを起動します")
-    mcp.run(transport="stdio")
+    def main() -> int:
+        # 引数処理
+        parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
+        parser.add_argument("--show", nargs=3, metavar=("LAB", "DEVICE", "COMMAND"), help="指定デバイスでshowコマンド実行")
+        args = parser.parse_args()
+
+        # テスト用
+        if args.show:
+            lab_name, device_name, command = args.show
+            result = run_command_on_cml(lab_name, device_name, command)
+            print(result)
+            sys.exit(0)
+
+        logger.info("MCPサーバを起動します")
+        mcp.run(transport="stdio")
+
+
+    # 実行
+    main()

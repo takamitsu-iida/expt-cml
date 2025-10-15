@@ -117,15 +117,21 @@ app_home = app_path.parent.joinpath('..').resolve()
 # CMLに接続するための情報を取得する
 #
 
-# 同じ場所に 'cml_env' ファイルがあればそれを優先する
-env_path = app_dir.joinpath('cml_env')
-if os.path.exists(env_path):
-    load_dotenv(dotenv_path=env_path)
-
+# まず環境変数を取得
 CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
 CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
 CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
 
+# 環境変数が未設定ならcml_envファイルから読み取る
+if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
+    env_path = app_dir.joinpath('cml_env')
+    if os.path.exists(env_path):
+        load_dotenv(dotenv_path=env_path)
+        CML_ADDRESS = os.getenv("VIRL2_URL") or os.getenv("VIRL_HOST")
+        CML_USERNAME = os.getenv("VIRL2_USER") or os.getenv("VIRL_USERNAME")
+        CML_PASSWORD = os.getenv("VIRL2_PASS") or os.getenv("VIRL_PASSWORD")
+
+# 接続情報を得られなかったら終了
 if not all([CML_ADDRESS, CML_USERNAME, CML_PASSWORD]):
     logging.critical("CML connection info not found in environment variables or cml_env file")
     sys.exit(-1)

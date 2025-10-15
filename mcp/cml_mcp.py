@@ -131,8 +131,8 @@ def get_lab_titles() -> list[str]:
     except Exception as e:
         logger.error(f"CMLへの接続に失敗しました: {e}")
         return []
-    labs = client.find_labs()
-    return [lab.title() for lab in labs] if labs else []
+    labs = client.all_labs()
+    return [lab.title for lab in labs] if labs else []
 
 
 def get_lab_by_title(lab_title: str) -> Lab | None:
@@ -154,6 +154,15 @@ def get_lab_status_by_title(lab_title: str) -> str:
     if not lab:
         return "NOT FOUND"
     return lab.state()
+
+
+def get_node_labels(lab_title: str) -> list[str]:
+    lab = get_lab_by_title(lab_title)
+    if not lab:
+        return None
+
+    nodes = lab.nodes()
+    return [node.label for node in nodes] if nodes else []
 
 
 def get_node_by_label(lab: Lab, node_label: str):
@@ -248,6 +257,23 @@ if __name__ == "__main__":
 
 
     @mcp.tool()
+    async def get_node_labels_async(lab_title: str) -> list[str] | None:
+        """
+        指定したCMLラボの全てのノードのラベルを取得します。 ラボが見つからない場合はNoneを返します。
+        Args:
+            lab_title: ラボのタイトル
+        Returns:
+            ノードのラベルのリスト（list）またはNone
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            get_node_labels,
+            lab_title
+        )
+
+
+    @mcp.tool()
     async def get_lab_status_async(lab_title: str) -> str:
         """
         指定したCMLラボの状態を取得します。
@@ -315,15 +341,21 @@ if __name__ == "__main__":
     def main() -> int:
         # 引数処理
         parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
-        parser.add_argument("--show", nargs=3, metavar=("LAB", "DEVICE", "COMMAND"), help="指定デバイスでshowコマンド実行")
+        parser.add_argument("--run", nargs=3, metavar=("LAB", "DEVICE", "COMMAND"), help="指定デバイスでコマンドを実行")
+        parser.add_argument("--titles", action='store_true', default=False, help="ラボタイトル一覧を表示")
         args = parser.parse_args()
 
         # テスト用
-        if args.show:
+        if args.run:
             lab_title, node_label, command = args.show
             result = run_command_on_device(lab_title, node_label, command)
             print(result)
             sys.exit(0)
+        if args.titles:
+            titles = get_lab_titles()
+            print(titles)
+            sys.exit(0)
+
 
         logger.info("MCPサーバを起動します")
         mcp.run(transport="stdio")

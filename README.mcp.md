@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
 <br>
 
-[mcp_pyats.py](/mcp/mcp_pyats.py) はわずか300行にも満たない短いスクリプトですが、
+[cml_mcp.py](/mcp/cml_mcp.py) は短いスクリプトですが、
 これをGithub Copilotのエージェントモードから利用すると、驚くような効果を発揮します。
 
 <br><br>
@@ -138,7 +138,7 @@ Pythonスクリプトを走らせるならこんな感じになります。
 
 ```json
 "command": "${workspaceFolder}/.venv/bin/python",
-"args": [ "${workspaceFolder}/mcp/mcp_tenki.py" ]
+"args": [ "${workspaceFolder}/mcp/cml_mcp.py" ]
 ```
 
 グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っている場合は上記のような指定になります。
@@ -186,7 +186,7 @@ MCPサーバを使う時には「実行しますか？」と聞かれるので�
 ### コマンドを実行して
 
 ```text
-#file:mcp_pyats.py
+#file:cml_mcp.py
 
 ラボ名 "test lab"
 ノード名 "R1"

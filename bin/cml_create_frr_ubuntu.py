@@ -371,8 +371,7 @@ if __name__ == '__main__':
         # 起動イメージを指定する
         ubuntu_node.image_definition = IMAGE_DEFINITION
 
-        # タグを設定（cml_config.pyで定義）
-        # "serial:6000"
+        # タグを設定
         ubuntu_node.add_tag(tag=NODE_TAG)
 
         command_text = \

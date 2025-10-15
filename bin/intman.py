@@ -3,16 +3,17 @@
 """
 CML Intman
 
-Cisco Modeling Labs (CML) のラボ・ノード・インターフェースのトラフィック量を可視化するツールです。
+Cisco Modeling Labs (CML) で動作しているラボののトラフィック量を可視化するツールです。
 
 【事前準備】
+必要なモジュールをインストールしてください。
   pip install virl2-client==2.9
 
 【使い方】
   bin/intman.py intman.yaml
 
 【設定ファイルの例】
-
+---
 title: cml_lab1
 id: 2fb9f009-c9b2-4c61-8b84-31dae42b3853
 nodes:
@@ -40,7 +41,7 @@ titleとnodesとinterfacesは必須です。
   VIRL2_URL
   VIRL2_USER
   VIRL2_PASS
-設定されていない場合はローカルファイルcml_config.pyから読み込みます。
+設定されていない場合はintman.pyと同じ場所にあるファイルcml_envから読み込みます。
 
 """
 

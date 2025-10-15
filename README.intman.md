@@ -192,7 +192,8 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 > cd expt-cml
 > direnv allow
 > ```
-> CMLに接続するためのアカウント情報を bin/cml_config.py に書いてください。
+>
+> CMLに接続するためのアカウント情報を bin/cml_env に書いてください。
 >
 > `bin/intman.py intman.yaml` で実行できます。
 

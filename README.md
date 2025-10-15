@@ -2,6 +2,8 @@
 
 ## CMLのインストール
 
+Windows11のHyper-Vの上にCMLを入れています。いまのところこの構成が一番いいように思います。
+
 [README.install_cml.md](/README.install_cml.md)
 
 <br>

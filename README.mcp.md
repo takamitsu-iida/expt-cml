@@ -104,15 +104,16 @@ vscodeが一気に補完してくれますので、必要な部分を変更し�
 ```json
 {
     "servers": {
-        "mcp_tenki": {
+        "mcp_pyats": {
             "type": "stdio",
             "command": "${workspaceFolder}/.venv/bin/python",
             "args": [
-                "${workspaceFolder}/mcp/mcp_tenki.py"
+                "${workspaceFolder}/mcp/cml_mcp.py"
             ],
             "cwd": "${workspaceFolder}"
         }
-    }
+    },
+    "inputs": []
 }
 ```
 

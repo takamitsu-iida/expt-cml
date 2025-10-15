@@ -8,7 +8,19 @@
 
 Pythonを使いますので環境を整えます。
 
+direnvをインストールしておくと楽できます。
+
 ```bash
+sudo apt install direnv
+echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc
+source ~/.bashrc```
+```
+
+venvを使います。
+
+```bash
+sudo apt install python3-venv
+
 python3 -m venv .venv
 direnv allow
 pip install --upgrade pip
@@ -23,20 +35,35 @@ pip install -r requirements.txt
 
 <br>
 
-`bin/cml_config.py` にCMLの環境情報を設定します。
+<br><br>
 
-```python
-# CMLのIPアドレス
-CML_ADDRESS = "192.168.122.212"
+## CMLに接続するための情報を設定する
 
-# CMLのユーザ名
-CML_USERNAME = "admin"
+virl2_clientは以下の環境変数から接続に必要な情報を読み取ります。
 
-# CMLのパスワード
-CML_PASSWORD = "Cisco123"
+- VIRL2_URL もしくは VIRL_HOST
+
+- VIRL2_USER もしくは VIRL_USERNAME
+
+- VIRL2_PASS もしくは VIRL_PASSWORD
+
+<br>
+
+binディレクトリにあるPythonスクリプトは、
+環境変数が設定されてなかった場合、同じ場所にある `cml_env` ファイルから情報を読み取ります。
+
+環境変数を設定するか `cml_env` ファイルを書き換えます。私の環境は以下のように設定されています。
+
+```bash
+VIRL_HOST="192.168.122.212"
+# or VIRL2_URL
+
+VIRL2_USER="admin"
+# or VIRL_USERNAME
+
+VIRL2_PASS="Cisco123"
+# or VIRL_PASSWORD
 ```
-
-アカウント情報は `.env` に環境変数として記述した方が安全ですが、ここでは簡単のためこのようにしています。
 
 <br>
 
@@ -50,13 +77,13 @@ CML_PASSWORD = "Cisco123"
 >
 > It’s also possible to pass the URL as an environment variable VIRL2_URL or VIRL_HOST.
 
-<br>
+<br><br>
 
 ## 事前準備
 
-Pythonスクリプトで作成するにあたって、手作業で簡単なラボを作って、必要な情報を確認します。
+Pythonスクリプトでラボを作成するにあたって、手作業で簡単なラボを作って、必要な情報を確認します。
 
-必要になるノードを適当に散りばめてラボを作成します。どうせすぐに消すのでラボの名前は何でも構いません。
+使いたいノードを適当に散りばめてラボを作成します。情報確認のために使うだけなのでラボの名前は設定しなくて構いません。
 
 このときノードの設定で `Image Definition` は `Automatic` ではなく手作業で選択します。
 
@@ -70,7 +97,7 @@ Pythonスクリプトで作成するにあたって、手作業で簡単なラ�
 
 抜粋すると、こんな感じです。
 
-`node_definition`　および　`image_definition`　が重要なパラメータで、これらでノードの種類と起動するイメージを識別しています。
+`node_definition`　および　`image_definition`　が重要なパラメータで、これらでノードの種類と起動するイメージを識別しています。欲しい情報はこの２つです。
 
 ```YAML
 nodes:
@@ -114,13 +141,15 @@ Ubuntuを作りたければ、node_definitionは `ubuntu` を、image_definition
 
 それさえ分かれば、このラボおよびダウンロードしたYAMLは破棄して構いません。
 
-<br>
+<br><br>
 
 ## ubuntuを含むラボを作ってみる
 
-`bin/cml_create_lab1.py` を使います。
+スクリプト [bin/cml_create_lab1.py](/bin/cml_create_lab1.py) がたたき台となるサンプルです。
 
-削除するには `-d` を引数に与えます。
+Ubuntuイメージはcloud-initで初回起動時に初期化処理を実行します。
+
+よく使う設定を埋め込んでおくと楽できます。
 
 <br>
 
@@ -133,12 +162,31 @@ Ubuntuを作りたければ、node_definitionは `ubuntu` を、image_definition
 > というメッセージを消すには証明書の検証を有効にするしかありません。
 > virl2_clientのソースコード virl2_client.py をみればわかります。
 
-<br>
+<br><br>
 
 ## frr(Docker)を含むラボを作ってみる
 
-`bin/cml_create_lab2.py`
+スクリプト [bin/cml_create_lab2.py](/bin/cml_create_lab2.py) がたたき台となるサンプルです。
 
-CML2.9からサポートされたDockerのイメージも同じように作れます。
+CML2.9からサポートされたDockerのイメージも同じようにPythonで作れます。
 
-DockerイメージでFRRを動かす場合、設定が複数ありますので、設定ファイルの名前とその中身を辞書型にして渡してあげる必要があります。
+DockerイメージでFRRを動かす場合、設定ファイルが複数ありますので、設定ファイルの名前とその中身を辞書型にして渡してあげる必要があります。
+
+ここがハマりどころです。
+
+```python
+# FRRに設定するファイル一式
+frr_configurations = [
+    {
+        'name': 'node.cfg',
+        'content': ★ここにnode.cfgの中身を指定
+    },
+    {
+        'name': 'protocols',
+        'content': ★ここにprotocolsの中身を指定
+    }
+]
+
+# FRRノードに設定を適用する
+frr_node.configuration = frr_configurations
+```

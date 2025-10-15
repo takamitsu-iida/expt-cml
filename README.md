@@ -16,7 +16,7 @@ Windows Terminal使いの方にオススメしたい使い方です。
 
 <br>
 
-## Python virl2-clientを使ったラボの作り方
+## Python virl2_clientを使ったラボの作り方
 
 手作業でラボを作るよりも、Pythonスクリプトで作った方が圧倒的に楽です。
 

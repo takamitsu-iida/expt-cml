@@ -124,29 +124,41 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("SimpleMCPServer")
 
 
-def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
-    labs = client.find_labs_by_title(title)
-    return labs[0] if labs else None
+
+def get_lab_titles() -> list[str]:
+    try:
+        client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+    except Exception as e:
+        logger.error(f"CMLへの接続に失敗しました: {e}")
+        return []
+    labs = client.find_labs()
+    return [lab.title() for lab in labs] if labs else []
 
 
-def run_command_on_cml(lab_title: str, node_label: str, command: str) -> str | None:
-    """Run a command on the device in exec mode.
-    """
-
+def get_lab_by_title(lab_title: str) -> Lab | None:
     try:
         client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
     except Exception as e:
         logger.error(f"CMLへの接続に失敗しました: {e}")
         return None
-
-    lab = get_lab_by_title(client, lab_title)
+    labs = client.find_labs_by_title(lab_title)
+    lab = labs[0] if labs else None
     if not lab:
         logger.error(f"ラボ '{lab_title}' が見つかりません")
         return None
+    return lab
 
-    state = lab.state()
-    if state != 'STARTED':
-        logger.error(f"ラボ '{lab_title}' は起動していません")
+
+def get_lab_status_by_title(lab_title: str) -> str:
+    lab = get_lab_by_title(lab_title)
+    if not lab:
+        return "NOT FOUND"
+    return lab.state()
+
+
+def get_node_by_label(lab: Lab, node_label: str):
+    if lab.state() != 'STARTED':
+        logger.error(f"ラボ '{lab.title()}' は起動していません")
         return None
 
     try:
@@ -155,42 +167,57 @@ def run_command_on_cml(lab_title: str, node_label: str, command: str) -> str | N
         logger.error(f"ノード '{node_label}' が見つかりません: {e}")
         return None
 
-    lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
+    return node
 
-    result = node.run_pyats_command(command)
+
+def run_command_on_device(lab_title: str, node_label: str, command: str) -> str | None:
+    """Run a command on the device in exec mode.
+    """
+    lab = get_lab_by_title(lab_title)
+    if not lab:
+        return None
+
+    node = get_node_by_label(lab, node_label)
+    if not node:
+        return None
+
+    try:
+        lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
+    except Exception as e:
+        logger.error(f"pyATS testbedの同期に失敗しました: {e}")
+        return None
+
+    try:
+        result = node.run_pyats_command(command)
+    except Exception as e:
+        logger.error(f"コマンドの実行に失敗しました: {e}")
+        return None
 
     return result
 
 
-def run_config_command_on_cml(lab_title: str, node_label: str, command: str) -> str | None:
+def run_config_command_on_device(lab_title: str, node_label: str, command: str) -> str | None:
     """Run a command on the device in configure mode.
     """
-
-    try:
-        client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
-    except Exception as e:
-        logging.error(f"CMLへの接続に失敗しました: {e}")
-        return None
-
-    lab = get_lab_by_title(client, lab_title)
+    lab = get_lab_by_title(lab_title)
     if not lab:
-        logger.error(f"ラボ '{lab_title}' が見つかりません")
         return None
 
-    state = lab.state()
-    if state != 'STARTED':
-        logger.error(f"ラボ '{lab_title}' は起動していません")
+    node = lab.get_node_by_label(node_label)
+    if not node:
         return None
 
     try:
-        node = lab.get_node_by_label(node_label)
+        lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
     except Exception as e:
-        logger.error(f"ノード '{node_label}' が見つかりません: {e}")
+        logger.error(f"pyATS testbedの同期に失敗しました: {e}")
         return None
 
-    lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
-
-    result = node.run_pyats_config_command(command)
+    try:
+        result = node.run_pyats_config_command(command)
+    except Exception as e:
+        logger.error(f"コンフィグコマンドの実行に失敗しました: {e}")
+        return None
 
     return result
 
@@ -206,7 +233,41 @@ if __name__ == "__main__":
     thread_pool_executor = concurrent.futures.ThreadPoolExecutor()
 
     @mcp.tool()
-    async def run_command_on_cml_async(lab_title: str, node_label: str, command: str) -> str | None:
+    async def get_lab_titles_async() -> list[str]:
+        """
+        CMLに登録されている全てのラボのタイトルを取得します。
+
+        Returns:
+            ラボのタイトルのリスト
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            get_lab_titles
+        )
+
+
+    @mcp.tool()
+    async def get_lab_status_async(lab_title: str) -> str:
+        """
+        指定したCMLラボの状態を取得します。
+
+        Args:
+            lab_title: ラボのタイトル
+
+        Returns:
+            ラボの状態（str）
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            get_lab_status_by_title,
+            lab_title
+        )
+
+
+    @mcp.tool()
+    async def run_command_on_device_async(lab_title: str, node_label: str, command: str) -> str | None:
         """
         指定したCMLラボのノードでコマンドを実行します。
 
@@ -221,7 +282,7 @@ if __name__ == "__main__":
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             thread_pool_executor,
-            run_command_on_cml,
+            run_command_on_device,
             lab_title,
             node_label,
             command
@@ -229,7 +290,7 @@ if __name__ == "__main__":
 
 
     @mcp.tool()
-    async def run_config_command_on_cml_async(lab_title: str, node_label: str, command: str) -> str | None:
+    async def run_config_command_on_device_async(lab_title: str, node_label: str, command: str) -> str | None:
         """
         指定したCMLラボのノードでコンフィグコマンドを実行します。
 
@@ -244,7 +305,7 @@ if __name__ == "__main__":
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             thread_pool_executor,
-            run_config_command_on_cml,
+            run_config_command_on_device,
             lab_title,
             node_label,
             command
@@ -260,7 +321,7 @@ if __name__ == "__main__":
         # テスト用
         if args.show:
             lab_title, node_label, command = args.show
-            result = run_command_on_cml(lab_title, node_label, command)
+            result = run_command_on_device(lab_title, node_label, command)
             print(result)
             sys.exit(0)
 

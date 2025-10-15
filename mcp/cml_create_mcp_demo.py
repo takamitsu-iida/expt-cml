@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
 #
-# virl2_clientを使ってラボを作成するスクリプトです
-# テスト用のラボを作成するのに使います
+# virl2_clientを使ってMCPの動作テスト用のラボを作成します
 #
 
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
-SCRIPT_DESCRIPTION = 'create test lab'
+SCRIPT_DESCRIPTION = 'create lab to test MCP'
 
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
-LAB_NAME = "test lab"
+LAB_NAME = "mcp demo"
 
 ###########################################################
 

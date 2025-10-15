@@ -74,20 +74,23 @@ FRRを使うときはVRFやIPv6中継も必要になることが多いです。C
 
 ## FRR(Docker)でOpenFabricを検証
 
+合計13台のFRR(Docker)を使ってOpenFabricのルーティング動作を検証します。
+
 [README.openfabric_docker.md](/README.openfabric_docker.md)
 
 <br>
 
 ## FRR(Docker)でSRv6 L3VPNを検証
 
-[README.srv6.md](/README.srv6.md)
+Pルータ2台、PEルータ4台、CEルータ4台の合計10台のFRR(Docker)を使ってSRv6の動作を検証します。
 
+[README.srv6.md](/README.srv6.md)
 
 <br><br><br>
 
 ## Visual Studio CodeからMCPでラボを操作
 
-Github Copilotのエージェントモードを使ってCMLのラボを操作できます。
+Github Copilotのエージェントモードを使ってCMLのラボを操作します。
 
 [README.mcp.md](/README.mcp.md)
 

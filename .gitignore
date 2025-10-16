@@ -1,7 +1,8 @@
 # githubのpythonテンプレート
 # https://github.com/github/gitignore
 
-/intman.yaml
+intman.yaml
+deadman.conf
 
 *.tgz
 cisco*.sh

@@ -244,7 +244,7 @@ if __name__ == "__main__":
     @mcp.tool()
     async def get_lab_titles_async() -> list[str]:
         """
-        CMLに登録されている全てのラボのタイトルを取得します。
+        CMLに登録されているラボの一覧をタイトルのリストとして返却します。
 
         Returns:
             ラボのタイトルのリスト
@@ -259,9 +259,12 @@ if __name__ == "__main__":
     @mcp.tool()
     async def get_node_labels_async(lab_title: str) -> list[str] | None:
         """
-        指定したCMLラボの全てのノードのラベルを取得します。 ラボが見つからない場合はNoneを返します。
+        引数で指定したタイトルのラボに含まれるノードの一覧をラベルのリストとして返却します。
+        ラボが見つからない場合はNoneを返します。
+
         Args:
             lab_title: ラボのタイトル
+
         Returns:
             ノードのラベルのリスト（list）またはNone
         """
@@ -276,7 +279,7 @@ if __name__ == "__main__":
     @mcp.tool()
     async def get_lab_status_async(lab_title: str) -> str:
         """
-        指定したCMLラボの状態を取得します。
+        引数で指定したタイトルのラボの状態を取得して返却します。
 
         Args:
             lab_title: ラボのタイトル
@@ -295,7 +298,7 @@ if __name__ == "__main__":
     @mcp.tool()
     async def run_command_on_device_async(lab_title: str, node_label: str, command: str) -> str | None:
         """
-        指定したCMLラボのノードでコマンドを実行します。
+        引数で指定したノードにおいて、コマンドを実行し、応答を返却します。設定を変更するコマンドは実行できません。
 
         Args:
             lab_title: ラボのタイトル
@@ -318,7 +321,7 @@ if __name__ == "__main__":
     @mcp.tool()
     async def run_config_command_on_device_async(lab_title: str, node_label: str, command: str) -> str | None:
         """
-        指定したCMLラボのノードでコンフィグコマンドを実行します。
+        引数で指定したノードにおいて、コンフィグコマンドを実行し、実行結果を返します。
 
         Args:
             lab_title: ラボのタイトル
@@ -345,18 +348,20 @@ if __name__ == "__main__":
         parser.add_argument("--titles", action='store_true', default=False, help="ラボタイトル一覧を表示")
         args = parser.parse_args()
 
-        # テスト用
+        # テスト用　コマンドを実行
         if args.run:
-            lab_title, node_label, command = args.show
+            lab_title, node_label, command = args.run
             result = run_command_on_device(lab_title, node_label, command)
             print(result)
             sys.exit(0)
+
+        # テスト用　ラボタイトル一覧を表示
         if args.titles:
             titles = get_lab_titles()
             print(titles)
             sys.exit(0)
 
-
+        # MCPサーバ起動
         logger.info("MCPサーバを起動します")
         mcp.run(transport="stdio")
 

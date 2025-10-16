@@ -71,9 +71,12 @@ Pythonならある程度理解できますので、改造して使えるかも�
 
 ## CMLのトラフィック量はどうやって取得する？
 
-CMLのラボの中を流れるトラフィックの量を把握するために、Pythonのモジュール virl2_client を使います。
+CMLのラボの中を流れるトラフィック（パケット）の統計値はどこかしらに記録されているはずです。
 
-virl2_clientのマニュアルを見ると、インタフェースに `readpackets` と `writepackets` というプロパティがあります。
+CMLが使っているハイパーバイザはKVMなので、コマンドを駆使すれば取得できそうですが、ラボの中のどのインタフェースがKVMのどれに相当するのか、対応付けるのがめんどくさそうです。
+
+何かいい方法はないかな～、とPythonのモジュール virl2_client のマニュアルを眺めてみますと、
+インタフェースに `readpackets` と `writepackets` というプロパティがありました。
 
 定期的に `readpackets` と `writepackets` を参照して、packet per secondsを計算すればトラフィック量は把握できそうです。
 
@@ -123,16 +126,18 @@ R1とR2はCSR1000vです。
 
 <br><br>
 
-もうちょっと実践的なラボで試してみます。
+今度はもうちょっと実践的なラボで試してみます。
 
 このラボはSRv6を使ったL3VPNのラボです。
-CEルータ間の通信は網内のECMPパスのどこかしらを通るのですが、行き・帰り共にどこを通るか予測できません。
+PEルータとPルータはSRv6網を構成しています。
+CEルータ間の通信は、入口のPEルータでSRv6にカプセル化されて、出口のPEルータで元のIPパケットの戻ります。
+SRv6網内はECMPになっていて、行き・帰りの通信は共にどこを通るか予測できません。
 
 ![srv6-lab](/assets/srv6_docker_lab.png)
 
 <br>
 
-Visual Studio Codeのターミナルでintman.pyを実行してみます。
+Visual Studio Codeのターミナルを2分割して、一方でintman.pyを実行、一方でpingを打ち込んでみます。
 
 <br>
 
@@ -142,7 +147,7 @@ Visual Studio Codeのターミナルでintman.pyを実行してみます。
 
 intman.pyの結果から、どのルータの、どのインタフェースにトラフィックが通っているか、なんとなくわかります。
 
-絵にするとこんな感じです。行きと帰りは違うところを通ってます。
+これを絵にするとこんな感じです。
 
 <br>
 
@@ -150,7 +155,14 @@ intman.pyの結果から、どのルータの、どのインタフェースに�
 
 <br>
 
-tracerouteすればどこを通ってるか分かるじゃん、って言われそうですが、SRv6 L3VPNだと網内は見えなくて、1ホップでたどり着いちゃうんですよね。
+行きと帰りは違うところを通ってます。
+
+パケットをキャプチャする場合、闇雲に勘で場所を決めるのではなく、狙った場所でキャプチャできますね！
+
+<br><br>
+
+tracerouteすればどこを通ってるか分かるじゃん、って言われそうですが、
+SRv6のL3VPNだと網内は見えなくて、CEルータ間は1ホップでたどり着いちゃうんですよね。
 
 ```bash
 CE101#traceroute 10.0.14.104
@@ -160,7 +172,6 @@ VRF info: (vrf in name/id, vrf out name/id)
   1 10.0.14.1 1 msec 1 msec 1 msec
   2 10.0.14.104 0 msec 0 msec 0 msec
 ```
-
 
 <br><br><br>
 
@@ -173,10 +184,7 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 [deadman.py](/bin/deadman.py) と [intman.py](/bin/intman.py) はどちらも短いPythonスクリプトですので、
 ぜひ改造して使ってみてください。
 
-
 <br><br><br><br><br><br><br><br>
-
-<br>
 
 ---
 
@@ -186,7 +194,9 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 >
 > [cml_create_intman_demo.py](bin/cml_create_intman_demo.py) を実行すると、intman.pyを動かすラボ環境が整います。
 >
-> ルータ2台とubuntuが一つ作られます。ubuntuのコンソールから cisco/cisco でログインして、以下を実行してください。
+> ルータ2台とUbuntuが一つ作られます。
+>
+> Ubuntuは起動時にこのリポジトリをクローンして、必要なものを諸々インストールしますので、以下を実行するだけで環境は整います。
 >
 > ```bash
 > cd expt-cml
@@ -201,7 +211,7 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 
 > [!NOTE]
 >
-> CMLの中にUbuntuを作成した場合、環境変数の設定が原因でcursesアプリは動きません。
+> CMLの中にUbuntuを作成した場合、そのままだと環境変数の設定が原因でcursesアプリは動きません。
 >
 > 以下を試してください。
 >
@@ -209,53 +219,13 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 > export LC_ALL="en_US.UTF-8"
 > export TERM="linux"
 > ```
+>
+> [cml_create_intman_demo.py](bin/cml_create_intman_demo.py) で作成したラボは対策済みですので問題ありません。
 
 <br><br>
 
 > [!NOTE]
 >
-> virl2_clientのソースコード `interface.py` をみると、
-> readpacketsやwritepacketsといった統計値はある程度時間が経過してたら更新して、そうでなければ現在持っている値を返却します。
->
-> ```python
->   @property
->   def readpackets(self) -> int:
->       """Return the number of packets read by the interface."""
->       self.node._lab.sync_statistics_if_outdated()
->       return int(self.statistics["readpackets"])
-> ```
->
-> `node.py` をみると、自動更新が有効、かつ現在時刻と前回取得したときの時刻の差分が self._lab.auto_sync_interval よりも大きいときだけ更新します。
->
-> ```python
->   def sync_interface_operational_if_outdated(self) -> None:
->       timestamp = time.time()
->       if (
->           self._lab.auto_sync
->           and timestamp - self._last_sync_interface_operational_time
->           > self._lab.auto_sync_interval
->       ):
->           self.sync_interface_operational()
-> ```
->
-> `lab.py` をみると、このように初期化されてますので、1.0秒以上経過していたら取りに行く、という動作をしています。
->
-> ```python
->   def __init__(
->       self,
->       title: str | None,
->       lab_id: str,
->       session: httpx.Client,
->       username: str,
->       password: str,
->       auto_sync: bool = True,
->       auto_sync_interval: float = 1.0,
->       wait: bool = True,
->       wait_max_iterations: int = 500,
->       wait_time: int | float = 5,
->       hostname: str | None = None,
->       resource_pool_manager: ResourcePoolManagement | None = None,
->   ) -> None:
-> ```
+> virl2_clientのソースコードをみるとreadpacketsやwritepacketsといった統計値は1秒より経過してたら値を更新して、そうでなければ持っている値を返却します。
 >
 > ということは、トラフィック量を測定するインターバルも1秒（よりも僅かに長い時間）に合わせておくと良さそうです。

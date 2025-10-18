@@ -1,13 +1,20 @@
 {
-    "servers": {
-        "mcp_pyats": {
-            "type": "stdio",
-            "command": "${workspaceFolder}/.venv/bin/python",
-            "args": [
-                "${workspaceFolder}/mcp/cml_mcp.py"
-            ],
-            "cwd": "${workspaceFolder}"
-        }
-    },
-    "inputs": []
+	"servers": {
+		"cml_mcp": {
+			"type": "stdio",
+			"command": "${workspaceFolder}/.venv/bin/python",
+			"args": [
+				"${workspaceFolder}/mcp/cml_mcp.py"
+			],
+			"cwd": "${workspaceFolder}"
+		},
+		"cml_intman_mcp": {
+			"type": "stdio",
+			"command": "${workspaceFolder}/.venv/bin/python",
+			"args": [
+				"${workspaceFolder}/mcp/cml_intman_mcp.py"
+			],
+		}
+	},
+	"inputs": []
 }

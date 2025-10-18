@@ -126,6 +126,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("SimpleMCPServer")
 
 
+
+def get_lab_titles() -> list[str]:
+    try:
+        client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
+    except Exception as e:
+        logger.error(f"CMLへの接続に失敗しました: {e}")
+        return []
+    labs = client.all_labs()
+    return [lab.title for lab in labs] if labs else []
+
+
 def get_lab_by_title(lab_title: str) -> Lab | None:
     try:
         client = ClientLibrary(CML_ADDRESS, CML_USERNAME, CML_PASSWORD, ssl_verify=False)
@@ -253,32 +264,63 @@ if __name__ == "__main__":
 
 
     @mcp.tool()
-    async def run_command_on_device_async(lab_title: str, node_label: str, command: str) -> str | None:
+    async def get_lab_titles_async() -> list[str]:
         """
-        引数で指定したノードにおいて、コマンドを実行し、応答を返却します。設定を変更するコマンドは実行できません。
-
-        Args:
-            lab_title: ラボのタイトル
-            node_label: ノードのラベル
-            command: 実行するコマンド
+        CMLに登録されているラボの一覧をタイトルのリストとして返却します。
 
         Returns:
-            コマンドの実行結果（str）またはNone
+            ラボのタイトルのリスト
         """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             thread_pool_executor,
-            run_command_on_device,
-            lab_title,
-            node_label,
-            command
+            get_lab_titles
         )
 
 
+    @mcp.tool()
+    async def get_link_statistics_async(lab_title: str) -> list[dict] | None:
+        """
+        引数で指定したタイトルのラボ内の全てのリンクの統計情報を取得して返却します。
+        ラボが見つからない場合はNoneを返します。
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            get_link_statistics,
+            lab_title
+        )
 
-    def main() -> int:
+
+    @mcp.tool()
+    async def run_ping_on_device_async(lab_title: str, node_label: str, target: str, repeat: int = 5) -> str | None:
+        """
+        引数で指定したノードにおいて、pingコマンドを実行し、応答を返却します。
+
+        Args:
+            lab_title: ラボのタイトル
+            node_label: ノードのラベル
+            target: pingの宛先IPアドレス
+            repeat: pingの回数（デフォルトは5回）
+
+        Returns:
+            pingコマンドの実行結果（str）またはNone
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            run_ping_on_device,
+            lab_title,
+            node_label,
+            target,
+            repeat
+        )
+
+
+    def main() -> None:
         # 引数処理
         parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
+        parser.add_argument("--titles", action='store_true', default=False, help="ラボタイトル一覧を表示")
         parser.add_argument("--run", nargs=3, metavar=("LAB", "DEVICE", "COMMAND"), help="指定デバイスでコマンドを実行")
         parser.add_argument("--link", nargs=1, metavar=("LAB"), help="指定ラボのリンク統計情報を取得")
         args = parser.parse_args()
@@ -288,6 +330,12 @@ if __name__ == "__main__":
             lab_title, node_label, command = args.run
             result = run_command_on_device(lab_title, node_label, command)
             print(result)
+            sys.exit(0)
+
+        # テスト用　ラボタイトル一覧を表示
+        if args.titles:
+            titles = get_lab_titles()
+            print(titles)
             sys.exit(0)
 
         # テスト用　リンク統計情報を取得
@@ -308,3 +356,65 @@ if __name__ == "__main__":
 
     # 実行
     main()
+
+
+
+
+
+"""
+#cml_intman_mcp.py
+
+ラボは "Docker FRR SRv6" というタイトルで登録されています。
+
+CEルータのノードラベルとIPアドレスは以下の通りです。
+    - CE101 : 10.0.11.101
+    - CE102 : 10.0.12.102
+    - CE103 : 10.0.13.103
+    - CE104 : 10.0.14.104
+
+MCPサーバcml_intman_mcp.pyのget_link_statistics_asyncツールを使ってリンク情報を取得してください。
+"""
+
+
+"""
+#cml_intman_mcp.py
+
+ラボは "Docker FRR SRv6" というタイトルで登録されています。
+
+CEルータのノードラベルとIPアドレスは以下の通りです。
+    - CE101 : 10.0.11.101
+    - CE102 : 10.0.12.102
+    - CE103 : 10.0.13.103
+    - CE104 : 10.0.14.104
+
+MCPサーバcml_intman_mcp.pyのrun_ping_on_device_asyncツールを使ってCE101からCE104にpingを実行してください。
+"""
+
+
+"""
+#cml_intman_mcp.py
+
+ラボは "Docker FRR SRv6" というタイトルで登録されています。
+
+CEルータのノードラベルとIPアドレスは以下の通りです。
+    - CE101 : 10.0.11.101
+    - CE102 : 10.0.12.102
+    - CE103 : 10.0.13.103
+    - CE104 : 10.0.14.104
+
+CE101から発出されたパケットはどこを経由してCE104に届くか、以下の手順で調べてください。
+逆にCE104からCE101に届く経路も同様に調べてください。
+
+手順1
+ラボ内の全てのリンクの統計情報を取得します。
+これはMCPサーバcml_intman_mcp.pyのget_link_statistics_asyncツールを使って実行してください。
+リンクの両端のノード、インタフェースが分かるように統計情報を保存しておいてください。
+
+手順2
+CE101からCE104にpingを実行します。
+これはMCPサーバcml_intman_mcp.pyのrun_ping_on_device_asyncツールを使って実行してください。
+
+手順3
+再度、ラボ内の全てのリンクの統計情報を取得します。
+手順1で取得した統計情報と手順3で取得した統計情報を比較して、パケットが通過したリンクを特定してください。
+"""

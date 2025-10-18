@@ -185,9 +185,9 @@ Pythonのモジュール virl2_client を使ってCMLの中を流れるトラフ
 [deadman.py](/bin/deadman.py) と [intman.py](/bin/intman.py) はどちらも短いPythonスクリプトですので、
 ぜひ改造して使ってみてください。
 
-<br><br><br>
+<br><br><br><br>
 
-## 実験、実験！　AIエージェントに判断してもらおう！
+# 実験、実験！　AIエージェントに判断してもらおう！
 
 これだけじゃおもしろくないので、もうちょっと実験してみます！
 

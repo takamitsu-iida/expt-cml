@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
-SCRIPT_DESCRIPTION = "Simple pyATS MCP Server"
+SCRIPT_DESCRIPTION = "Simple MCP Server for Cisco Modeling Labs (CML)"
 
 #
 # 標準ライブラリのインポート
@@ -22,7 +22,12 @@ try:
     from dotenv import load_dotenv
     from virl2_client import ClientLibrary
     from virl2_client.models.lab import Lab
-    from mcp.server.fastmcp import FastMCP
+
+    # Python SDKの場合
+    # from mcp.server.fastmcp import FastMCP
+
+    # FastMCPの場合
+    from fastmcp import FastMCP
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -118,11 +123,6 @@ file_handler = logging.FileHandler(log_path, 'a+')
 file_handler.setFormatter(formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
-
-# ログ設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("SimpleMCPServer")
-
 
 
 def get_lab_titles() -> list[str]:
@@ -362,7 +362,6 @@ if __name__ == "__main__":
             sys.exit(0)
 
         # MCPサーバ起動
-        logger.info("MCPサーバを起動します")
         mcp.run(transport="stdio")
 
 

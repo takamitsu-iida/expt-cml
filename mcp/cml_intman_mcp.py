@@ -121,11 +121,6 @@ file_handler.setFormatter(formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
-# ログ設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("SimpleMCPServer")
-
-
 
 def get_lab_titles() -> list[str]:
     try:

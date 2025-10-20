@@ -1,17 +1,20 @@
 # Visual Studio CodeからMCPでCMLのラボを操作する
 
-PythonでMCPサーバを作成して、Visual Studio CodeのCopilotで利用できるようにします。
+<br>
 
+PythonでMCPサーバを作成して、Visual Studio CodeのCopilotのエージェントモードから利用できるようにします。
 
 <br><br>
 
-## MCPサーバ
+## 事前準備
 
-ラボの操作にvirl2_clientモジュールを使いたいので、PythonでMCPサーバを作ります。
+ラボの操作にPythonのモジュール virl2_clientモジュール を使いたいので、MCPサーバもPythonで作ります。
 
 [FastMCP](https://gofastmcp.com/getting-started/welcome)を使うと簡単にMCPサーバを実装できます。
 
 FastMCPはpipでインストールできます。
+
+また、ラボ内のノードも操作したいので、pyATSもインストールします。
 
 <br>
 
@@ -75,7 +78,7 @@ if __name__ == "__main__":
 >
 > Copilotの契約によってはvscodeでのMCP利用に制限がかかっていることがあります。
 >
-> 設定画面が以下のようになっている場合、MCPサーバを利用できませんので、別のツールを使ってください。
+> 設定画面が以下のようになっている場合、MCPサーバを利用できませんので別のツールを使ってください。
 >
 > ![vscode](/assets/mcp_vscode_organization.png)
 

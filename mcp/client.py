@@ -1,24 +1,28 @@
 #!/usr/bin/env python
 
 # MCPサーバのスクリプト
-MCP_SERVER_SCRIPT = "cml_mcp.py"
+MCP_SERVER_SCRIPT_NAME = "cml_mcp.py"
 
 #
 # 標準ライブラリのインポート
 #
 
 import asyncio
-import asyncio
 import logging
 import sys
 
 from pathlib import Path
 
+
+logging.getLogger("virl2_client.virl2_client").setLevel(logging.ERROR)
+
+
 #
 # 外部ライブラリのインポート
 #
+
 try:
-    from mcp.server.fastmcp import Client
+    from fastmcp import Client, FastMCP
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -70,10 +74,6 @@ log_path = log_dir.joinpath(log_file)
 # 独自にロガーを取得する場合
 logger = logging.getLogger(__name__)
 
-# 参考
-# ロガーに特定の名前を付けておけば、後からその名前でロガーを取得できる
-# logging.getLogger("main.py").setLevel(logging.INFO)
-
 # ログレベル設定
 logger.setLevel(logging.INFO)
 
@@ -92,35 +92,38 @@ file_handler.setFormatter(formatter)
 file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
-# ログ設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("SimpleMCPServer")
 
+# Local Python script
+client = Client(app_dir.joinpath(MCP_SERVER_SCRIPT_NAME))
 
-
-client = Client(MCP_SERVER_SCRIPT)
 
 async def main():
     # ここで接続が確立
     async with client:
+        # Basic server interaction
+        await client.ping()
+
         print(f"Client connected: {client.is_connected()}")
 
         # コンテキスト内でMCP呼び出しを行う
         tools = await client.list_tools()
-        print(f"Available tools: {tools}")
+        for tool in tools:
+            print(f"Available tools: {tool}")
 
         if any(tool.name == "get_lab_titles_async" for tool in tools):
-            labs = await client.call_tool("get_lab_titles_async", {})
-            print(f"Get lab titles result: {labs}")
+            result = await client.call_tool("get_lab_titles_async", {})
+            labs = result.structured_content.get('result', [])
+            for lab in labs:
+                print(f"Lab title: {lab}")
 
         if labs and any(tool.name == "get_node_labels_async" for tool in tools):
             for lab_title in labs:
-                node_labels = await client.call_tool("get_node_labels_async", {"lab_title": lab_title})
+                result = await client.call_tool("get_node_labels_async", {"lab_title": lab_title})
+                node_labels = result.structured_content.get('result', [])
                 print(f"Node labels in lab '{lab_title}': {node_labels}")
 
     # ここで接続は自動的にクローズ
     print(f"Client connected: {client.is_connected()}")
-
 
 if __name__ == "__main__":
 

@@ -74,6 +74,21 @@ net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 ```
 
+Dockerコンテナの中でVRFを使う場合は、母艦側でもVRFのカーネルモジュールをロードします。
+（恐らく初期状態のCMLは、VRFモジュールをロードしていないと思います）
+
+```bash
+root@cml-controller:~# lsmod | grep vrf
+vrf                    40960  0
+```
+
+このように表示されていればロードされています。
+もし何も表示されないようなら、以下のように設定を追加します。
+
+```bash
+echo "vrf" | sudo tee /etc/modules-load.d/vrf.conf
+```
+
 CML自身を再起動します。
 
 ```bash
@@ -640,3 +655,18 @@ systemctl restart virl2.target
 ですが、Alpineベースのイメージはバージョン10.4でも挙動不審です。
 
 サイズは大きくてもUbuntuベースでビルドした方が良さそうです。
+
+
+
+<!--
+
+root@cml-controller:~# modprobe vrf
+
+root@cml-controller:~# lsmod | grep vrf
+vrf                    40960  0
+
+起動時にvrfモジュールをロードするために、/etc/modules-load.dにファイルを作る
+
+echo "vrf" | sudo tee /etc/modules-load.d/vrf.conf
+
+-->

@@ -44,7 +44,7 @@ Ubuntuのカスタムイメージの作り方は大事なので記録として�
 
 FRRをコンパイルして作成する方法は大事なので記録として残していますが、**実用上はDockerがオススメ**です。
 
-[README.openfabric.md](/README.openfabric.md)
+[README.openfabric_ubuntu.md](/README.openfabric_ubuntu.md)
 
 <br><br><br>
 

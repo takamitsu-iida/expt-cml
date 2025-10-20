@@ -31,6 +31,9 @@ from pathlib import Path
 try:
     from dotenv import load_dotenv
     import yaml  # PyYAML
+
+    # SSL Verification disabled のログが鬱陶しいので、ERRORのみに抑制
+    logging.getLogger("virl2_client.virl2_client").setLevel(logging.ERROR)
     from virl2_client import ClientLibrary
 except ImportError as e:
     logging.critical(str(e))

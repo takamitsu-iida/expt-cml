@@ -1,24 +1,30 @@
 # FRRをインストールしたUbuntuを作成する
 
-CMLではUbuntuのイメージが提供されていますので、これをベースにカスタマイズして、CMLに登録します。
-
 <br>
 
-## 手順１．カスタマイズできるUbuntuのイメージ定義を作る
-
-CMLに登録されているUbuntuのイメージはRead Onlyなので、変更可能なイメージを作成します。
+CMLではUbuntuのイメージが提供されていますので、これをベースにカスタマイズして、CMLに登録します。
 
 <br>
 
 > [!NOTE]
 >
-> 作り方の解説は[こちら](/README.create_custom_ubuntu.md)
+> カスタマイズしたUbuntuイメージの作り方は[こちら](/README.create_custom_ubuntu.md)に解説があります。
 
-<br>
+<br><br>
 
-CMLのコックピットのターミナルで実行するシェルスクリプトを作ります。
+## 手順１．カスタマイズ可能なUbuntuのイメージ定義を作る
 
-ゼロから作るのは大変なので、シェルスクリプトをgithubからダウンロードして、適宜編集します。
+CMLに登録されているUbuntuのイメージはRead Onlyになっていて変更を保存できません。
+
+変更可能なイメージを作成します。
+
+この作業はCMLの中での操作（SSHでポート1122に接続するか、コックピットのターミナルで操作）になります。
+
+いくつかコマンドを叩くのですが、手間を省くためにシェルスクリプトにまとめます。
+
+このリポジトリにある [copy_image_definition_frr.sh](https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh) がたたき台です。
+
+githubからダウンロードして適宜編集します。
 
 curlでダウンロードするにはこうします。
 
@@ -26,9 +32,11 @@ curlでダウンロードするにはこうします。
 curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh --output copy_image_definition.sh
 ```
 
-内容はこのようになっています。
+内容は以下のようになっています。
 
-`COPY_DST`や`IMAGE_DEF_LABEL`など、適宜書き換えます。
+`COPY_DST`や`IMAGE_DEF_LABEL`など、好きな名前に書き換えます。
+
+ここでは元のUbuntuのイメージ定義の名前に -frr を付けて作成することにします。
 
 ```bash
 #!/bin/bash
@@ -73,7 +81,7 @@ systemctl restart virl2.target
 cat ${COPY_DST}.yaml
 ```
 
-`sudo -s -E`で特権ユーザのシェルを取ってからこのシェルスクリプトを実行します。
+`sudo -s -E`で **rootのシェルを取ってから** このシェルスクリプトを実行します。
 
 <br>
 
@@ -87,37 +95,62 @@ cat ${COPY_DST}.yaml
 
 <br><br>
 
-## 手順２．適当なラボでUbuntuを立ち上げる
+## 手順２．作成したイメージでUbuntuを立ち上げる
 
-`bin/cml_create_frr_ubuntu.py` を実行すると "frr_ubuntu" という名前のラボができます。
+[cml_create_frr_ubuntu.py](/bin/cml_create_frr_ubuntu.py) を実行すると "frr_ubuntu" という名前のラボができます。
 
-実行したときに表示されるメッセージは後ほど必要になります。
+実行したときに表示されるメッセージは後ほど必要になります（ログファイルが残りますので、いつでも確認できます）。
 
 実行例。
 
 ```bash
 (.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_frr_ubuntu.py
-SSL Verification disabled
-2025-08-13 11:51:04,139 - INFO - To commit changes, execute following commands in cml cockpit terminal.
+usage: cml_create_frr_ubuntu.py [-h] [--create] [--delete] [--stop] [--start] [--testbed]
 
-cd /var/local/virl2/images/427c1172-4aaa-4f0b-b0ef-d8900011fb54/e92b3b3a-aff9-4119-97a9-665c2aeb01ea
+create lab to customize ubuntu(with frr)
+
+options:
+  -h, --help  show this help message and exit
+  --create    Create lab
+  --delete    Delete lab
+  --stop      Stop lab
+  --start     Start lab
+  --testbed   Show pyATS testbed
+```
+
+<br>
+
+--createでラボを作成します。このときに表示されるメッセージが重要です。
+
+```bash
+(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_frr_ubuntu.py --create
+2025-10-20 18:53:36,110 - INFO - To commit changes, execute following commands in cml cockpit terminal.
+
+cd /var/local/virl2/images/e7be5509-500f-4b76-b928-4a99bc918575/5a4e4a74-f24e-41c2-bf4f-5b605071de04
 sudo qemu-img commit node0.img
 ```
 
-このラボを開始すると最新化された状態（apt update; apt dist-upgradeされた状態）でUbuntuが起動します。
-
 <br>
 
->[!NOTE]
->
-> このラボのUbuntuは起動時にcloud-initの中でアプリをインストールしますので、処理完了まで長い時間かかります。
-> `cloud-init status` で状況を確認してください。
+--startで開始します（ブラウザでSTARTボタンを押しても同じです）
 
-<br>
+```bash
+(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_frr_ubuntu.py --start
+2025-10-20 18:55:34,197 - INFO - Starting lab 'frr_ubuntu'
+2025-10-20 18:55:49,238 - INFO - Lab 'frr_ubuntu' started
+```
+
+startedと表示されていますが、Ubuntuは初回起動時にcloud-initで必要なツール類をインストールしますので、処理完了まで長い時間かかります。
+
+`cloud-init status` で状況を確認してください。
+
+<br><br>
 
 ## 手順３．FRRをインストールする（手作業の場合）
 
 ここからは起動したUbuntuで作業します。
+
+このUbuntuには 'serial:6000' というタグを付けていますので、CMLのポート6000番にtelnetすればコンソールが開きます。
 
 最新のFRRをインストールするにはソースコードからコンパイルしなければいけませんので作業は多めです。
 
@@ -191,7 +224,12 @@ FRRをコンパイルします。
 mkdir ~/src
 cd ~/src
 
-git clone https://github.com/frrouting/frr.git frr
+# stable 10.4
+git clone -b stable/10.4 https://github.com/FRRouting/frr.git frr
+
+# latest
+# git clone https://github.com/frrouting/frr.git frr
+
 cd frr
 
 ./bootstrap.sh
@@ -299,7 +337,7 @@ sudo rm -rf /var/lib/cloud
 
 その他、気が済むまでいじったらUbuntuを停止します。
 
-<br>
+<br><br>
 
 ## 手順３．FRRをインストールする（自動化する場合）
 
@@ -313,15 +351,16 @@ Ubuntuにログインしてから以下を実行します。
 
 ```bash
 git clone https://github.com/takamitsu-iida/expt-cml.git
+
 cd expt-cml
 
 sudo -s -E
-ansible-playbook install-frr-playbook.yaml
+ansible-playbook playbook.yaml
 ```
 
 このプレイブックの最後では `/var/lib/cloud/` ディレクトリを削除して、次に起動したときにcloud-initが走るようにしています。
 
-何らかの理由でこの仮想マシンを再起動してしまうと再びcloud-initが走ってしまうので、再起動したときには `rm -rf /var/lib/cloud` を忘れずに実行します。
+何らかの理由でこの仮想マシンを再起動してしまうと再びcloud-initが走ってしまいます。再起動したときには `rm -rf /var/lib/cloud` を忘れずに実行します。
 
 その他、気が済むまでいじったらUbuntuを停止します。
 

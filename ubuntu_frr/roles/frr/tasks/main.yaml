@@ -58,6 +58,7 @@
   ansible.builtin.git:
     repo: "{{ frr_repo_url }}"
     dest: /tmp/frr
+    version: stable/10.4
 
 - name: Execute bootstrap.sh
   ansible.builtin.command:

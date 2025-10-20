@@ -6,10 +6,8 @@ SCRIPT_DESCRIPTION = "Intman MCP Server"
 #
 # 標準ライブラリのインポート
 #
-import argparse
 import asyncio
 import concurrent.futures
-import json
 import logging
 import os
 import sys
@@ -22,8 +20,12 @@ from pathlib import Path
 #
 try:
     from dotenv import load_dotenv
+
+    # SSL Verification disabled のログが鬱陶しいので、ERRORのみに抑制
+    logging.getLogger("virl2_client.virl2_client").setLevel(logging.ERROR)
     from virl2_client import ClientLibrary
     from virl2_client.models.lab import Lab
+
     from mcp.server.fastmcp import FastMCP
 except ImportError as e:
     logging.critical(str(e))
@@ -311,45 +313,10 @@ if __name__ == "__main__":
             repeat
         )
 
-
-    def main() -> None:
-        # 引数処理
-        parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
-        parser.add_argument("--titles", action='store_true', default=False, help="ラボタイトル一覧を表示")
-        parser.add_argument("--run", nargs=3, metavar=("LAB", "DEVICE", "COMMAND"), help="指定デバイスでコマンドを実行")
-        parser.add_argument("--link", nargs=1, metavar=("LAB"), help="指定ラボのリンク統計情報を取得")
-        args = parser.parse_args()
-
-        # テスト用　コマンドを実行
-        if args.run:
-            lab_title, node_label, command = args.run
-            result = run_command_on_device(lab_title, node_label, command)
-            print(result)
-            sys.exit(0)
-
-        # テスト用　ラボタイトル一覧を表示
-        if args.titles:
-            titles = get_lab_titles()
-            print(titles)
-            sys.exit(0)
-
-        # テスト用　リンク統計情報を取得
-        if args.link:
-            lab_title = args.link[0]
-            results = get_link_statistics(lab_title)
-            if results is None:
-                print("No link statistics found")
-                sys.exit(0)
-            for result in results:
-                print(json.dumps(result, indent=2))
-            sys.exit(0)
-
-        # MCPサーバ起動
-        mcp.run(transport="stdio")
-
-
+    #
     # 実行
-    main()
+    #
+    mcp.run(transport="stdio")
 
 
 

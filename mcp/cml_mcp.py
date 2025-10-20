@@ -6,7 +6,6 @@ SCRIPT_DESCRIPTION = "Simple MCP Server for Cisco Modeling Labs (CML)"
 #
 # 標準ライブラリのインポート
 #
-import argparse
 import asyncio
 import concurrent.futures
 import logging
@@ -344,29 +343,7 @@ if __name__ == "__main__":
         )
 
 
-    def main() -> int:
-        # 引数処理
-        parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
-        parser.add_argument("--run", nargs=3, metavar=("LAB", "DEVICE", "COMMAND"), help="指定デバイスでコマンドを実行")
-        parser.add_argument("--titles", action='store_true', default=False, help="ラボタイトル一覧を表示")
-        args = parser.parse_args()
-
-        # テスト用　コマンドを実行
-        if args.run:
-            lab_title, node_label, command = args.run
-            result = run_command_on_device(lab_title, node_label, command)
-            print(result)
-            sys.exit(0)
-
-        # テスト用　ラボタイトル一覧を表示
-        if args.titles:
-            titles = get_lab_titles()
-            print(titles)
-            sys.exit(0)
-
-        # MCPサーバ起動
-        mcp.run(transport="stdio")
-
-
+    #
     # 実行
-    main()
+    #
+    mcp.run(transport="stdio")

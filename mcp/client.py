@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-# MCPサーバのスクリプト
+# MCPサーバの動作テスト用のクライアントスクリプトです
+
+# テストするMCPサーバのスクリプトファイル名
 MCP_SERVER_SCRIPT_NAME = "cml_mcp.py"
 
 #
@@ -13,16 +15,12 @@ import sys
 
 from pathlib import Path
 
-
-logging.getLogger("virl2_client.virl2_client").setLevel(logging.ERROR)
-
-
 #
 # 外部ライブラリのインポート
 #
 
 try:
-    from fastmcp import Client, FastMCP
+    from fastmcp import Client  #, FastMCP
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -93,34 +91,40 @@ file_handler.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 
-# Local Python script
+# ローカルのPythonスクリプトを指定してクライアントを作成
 client = Client(app_dir.joinpath(MCP_SERVER_SCRIPT_NAME))
 
 
 async def main():
     # ここで接続が確立
+    # コンテキスト内でMCP呼び出しを行う
     async with client:
         # Basic server interaction
         await client.ping()
-
         print(f"Client connected: {client.is_connected()}")
 
-        # コンテキスト内でMCP呼び出しを行う
         tools = await client.list_tools()
-        for tool in tools:
-            print(f"Available tools: {tool}")
+        if tools:
+            print("Available tools")
+            for tool in tools:
+                print(f"  name: {tool.name}")
+        else:
+            print(" No tools available")
+            return
 
         if any(tool.name == "get_lab_titles_async" for tool in tools):
             result = await client.call_tool("get_lab_titles_async", {})
+            print("Lab titles:")
             labs = result.structured_content.get('result', [])
             for lab in labs:
-                print(f"Lab title: {lab}")
+                print(f"  {lab}")
 
         if labs and any(tool.name == "get_node_labels_async" for tool in tools):
+            print("Nodes in lab:")
             for lab_title in labs:
                 result = await client.call_tool("get_node_labels_async", {"lab_title": lab_title})
                 node_labels = result.structured_content.get('result', [])
-                print(f"Node labels in lab '{lab_title}': {node_labels}")
+                print(f"  '{lab_title}': {node_labels}")
 
     # ここで接続は自動的にクローズ
     print(f"Client connected: {client.is_connected()}")

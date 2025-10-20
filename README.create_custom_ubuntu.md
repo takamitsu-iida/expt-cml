@@ -1,5 +1,7 @@
 # Ubuntuのカスタムイメージを作成する
 
+<br>
+
 CMLに含まれるUbuntuのイメージはRead Onlyになっていますので、どれだけ変更しても元のイメージが変わることはありません。
 そしてクローンできるのは元のイメージの方です。
 
@@ -9,7 +11,7 @@ CMLに含まれるUbuntuのイメージはRead Onlyになっていますので�
 
 > [!NOTE]
 >
-> カスタマイズしたUbuntuの作り方は、この動画がわかりやすいです。
+> カスタマイズしたUbuntuの作り方は、このYoutube動画がわかりやすいです。
 >
 > https://www.youtube.com/watch?v=dCWwtKXMUuU
 
@@ -339,7 +341,7 @@ qemu-img commit node0.img
 
 ラボのubuntuをwipeしてコンフィグを破棄して、再び起動すると、先ほど施した変更が反映された状態で起動します。
 
-<br>
+<br><br>
 
 ## Ubuntuをカスタマイズするためのラボを自動作成する
 
@@ -353,7 +355,23 @@ qemu-img commit node0.img
 
 ```bash
 (.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_custom_ubuntu.py
-SSL Verification disabled
+usage: cml_create_custom_ubuntu.py [-h] [--create] [--delete] [--stop] [--start] [--testbed]
+
+create lab to customize ubuntu
+
+options:
+  -h, --help  show this help message and exit
+  --create    Create lab
+  --delete    Delete lab
+  --stop      Stop lab
+  --start     Start lab
+  --testbed   Show pyATS testbed
+```
+
+作成するときは --create です。
+
+```bash
+(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_custom_ubuntu.py --create
 2025-08-12 20:48:06,763 - INFO - To commit changes, execute following commands in cml cockpit terminal.
 
 cd /var/local/virl2/images/0a17e568-c034-4f16-bb1b-9b463b8c25d4/d0396938-e30b-4d73-a859-7ffc296e3f78
@@ -403,7 +421,6 @@ sudo qemu-img commit node0.img
 - Ubuntuを停止する
 
 - コックピットのターミナルでqemu-img commit node0.imgを実行する（ラボ作成時に表示された場所で実行する）
-
 
 <br><br>
 

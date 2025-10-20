@@ -1,5 +1,7 @@
 # virl2_clientを使ってラボを作成する
 
+<br>
+
 ノード数が多いラボを作るときには、手作業で作成するよりもPythonで作成した方が圧倒的に簡単です。
 
 <br><br>
@@ -16,11 +18,27 @@ echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc
 source ~/.bashrc```
 ```
 
-venvを使います。
+venvを使いますので、インストールします。
 
 ```bash
 sudo apt install python3-venv
+```
 
+このリポジトリをクローンします。
+
+```bash
+git clone https://github.com/takamitsu-iida/expt-cml.git
+```
+
+移動します。
+
+```bash
+cd expt-cml
+```
+
+venvをセットアップします。
+
+```bash
 python3 -m venv .venv
 direnv allow
 pip install --upgrade pip
@@ -151,20 +169,10 @@ Ubuntuイメージはcloud-initで初回起動時に初期化処理を実行し�
 
 よく使う設定を埋め込んでおくと楽できます。
 
-<br>
-
-> [!NOTE]
->
-> 実行時に表示される
->
-> `SSL Verification disabled`
->
-> というメッセージを消すには証明書の検証を有効にするしかありません。
-> virl2_clientのソースコード virl2_client.py をみればわかります。
 
 <br><br>
 
-## frr(Docker)を含むラボを作ってみる
+## FRR(Docker)を含むラボを作ってみる
 
 スクリプト [bin/cml_create_lab2.py](/bin/cml_create_lab2.py) がたたき台となるサンプルです。
 

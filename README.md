@@ -36,7 +36,7 @@ Ubuntuはよく使うので、自分用にカスタマイズしたものを用�
 
 Ubuntuのカスタムイメージの作り方は大事なので記録として残していますが、**実用上はDockerがオススメ**です。
 
-[README.create_frr_ubuntu.md](/README.create_frr_ubuntu.md)
+[README.create_custom_ubuntu_frr.md](/README.create_custom_ubuntu_frr.md)
 
 <br>
 
@@ -60,7 +60,7 @@ CML2.9からDockerをサポートしています。Ubuntuをベースにして�
 
 Telegraf/InfluxDB/Grafanaを詰め込んだコンテナイメージを作ります。
 
-[README.tig.md](/README.tig.md)
+[README.tig_docker.md](/README.tig_docker.md)
 
 <br>
 
@@ -84,7 +84,7 @@ FRRを使うときはVRFやIPv6中継も必要になることが多いです。C
 
 Pルータ2台、PEルータ4台、CEルータ4台の合計10台のFRR(Docker)を使ってSRv6の動作を検証します。
 
-[README.srv6.md](/README.srv6.md)
+[README.srv6_docker.md](/README.srv6_docker.md)
 
 <br><br><br>
 

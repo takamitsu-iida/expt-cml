@@ -1,5 +1,7 @@
 # FRR(Docker)イメージを作成してCMLに登録する
 
+<br>
+
 FRRをインストールしたDockerイメージを作成してCMLに登録します。
 
 <br>
@@ -19,14 +21,14 @@ CML2.9に同梱のFRR(Docker)は次のような特徴を持っています。
 - Alpineをベースにしています
 - FRRのバージョンは10.2です
 - IPv6のルーティングはできません（CMLのノード定義ファイルの不備です）
-- FRRの設定は永続されません（毎回初期化されます）
-- 起動時に node.cfg をチェックして hostname コマンドが入っていたらDockerのホスト名に反映させています(start.sh参照)
+- FRRの設定は永続されません（毎回初期化されます。これは単純なミスなのでそのうち直ると思います）
+- 起動時に node.cfg をチェックして hostname コマンドが入っていたらDockerのホスト名に反映させています
 
 <br>
 
 ## 作成するFRR(Docker)について
 
-- Ubuntu24をベースにDockerイメージを作成します
+- Ubuntu24.04をベースにDockerイメージを作成します
 - FRRの設定(frr.conf)を永続できるようにします
 - IPv6中継できるようにします（sysctl net.ipv6.conf.all.forwarding=1を設定します）
 - FRR stable 10.4 をコンパイルして作成します
@@ -35,12 +37,12 @@ CML2.9に同梱のFRR(Docker)は次のような特徴を持っています。
 - SNMPを有効にします
 - FRRバージョン8以降はvtyshからシェルコマンドを呼び出せませんので、対策としてSSHで外部から乗り込めるようにします(アカウントはroot)
 
-Ubuntuをベースにすることでイメージのサイズは大きくなってしまいますが、Dockerイメージが登録されれば、以降のノード起動は高速かつ軽量なので気になることはないと思います。
+Ubuntuをベースにすることでイメージのサイズは大きくなってしまいますが、一度Dockerイメージが登録されれば以降のノード起動は高速かつ軽量なので気になることはないと思います。
 
 将来のCMLのバージョンアップでノード定義の名前が重複するかもしれませんが、
 そのときはCMLをインストールし直すので、またDockerイメージも作り直せばいいかな、と思います。
 
-<br>
+<br><br>
 
 ## CMLの母艦の設定
 
@@ -74,7 +76,7 @@ net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 ```
 
-Dockerコンテナの中でVRFを使う場合は、母艦側でもVRFのカーネルモジュールをロードします。
+Dockerコンテナの中でVRFを使う場合は、母艦側でVRFのカーネルモジュールをロードします。
 （恐らく初期状態のCMLは、VRFモジュールをロードしていないと思います）
 
 ```bash
@@ -83,13 +85,14 @@ vrf                    40960  0
 ```
 
 このように表示されていればロードされています。
+
 もし何も表示されないようなら、以下のように設定を追加します。
 
 ```bash
 echo "vrf" | sudo tee /etc/modules-load.d/vrf.conf
 ```
 
-CML自身を再起動します。
+CML自身を再起動します。次回以降、カーネルにVRFモジュールが組み込まれます。
 
 ```bash
 reboot
@@ -102,13 +105,15 @@ reboot
 > dockerdは起動時にホストがIPv6中継可能かどうかをチェックしていますので、`sysctl -p` で反映させただけではだめです。
 > CMLそのものを再起動したほうが早いです。
 
-<br>
+<br><br>
 
 ## DockerをインストールしたUbuntuを用意する
 
 Dockerイメージをビルドするための環境を作ります。
 
 [bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を使ってCMLの中に環境を整えます。
+
+実行例。
 
 ```bash
 iida@s400win:~/git/expt-cml$ bin/cml_create_custom_docker.py
@@ -123,6 +128,8 @@ options:
   --stop      Stop lab
   --start     Start lab
 ```
+
+ラボの作成は --create です。
 
 <br>
 
@@ -163,7 +170,7 @@ git clone https://github.com/takamitsu-iida/expt-cml.git
 
 ```bash
 cd expt-cml
-cd frr
+cd docker_frr
 ```
 
 繰り返しdockerイメージを作るときにはキャッシュが悪さをするかもしれませんので削除します（dockerインストール直後の場合は省略して構いません）。

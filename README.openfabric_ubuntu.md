@@ -1,4 +1,6 @@
-# OpenFabricメモ
+# UbuntuのFRRでOpenFabricを検証する
+
+<br>
 
 draft-white-openfabric-07.txt
 
@@ -24,13 +26,34 @@ OpenFabricはFRRで実装されていますので、実際に動作を検証し�
 
 ## ラボ構成
 
-スクリプト `bin/cml_create_openfabric_lab.py` を使ってCML内にラボを自動生成します。
+スクリプト [cml_create_openfabric_ubuntu_lab.py](/bin/cml_create_openfabric_ubuntu_lab.py) を使ってCML内にラボを生成します。
+
+実行例。
+
+```bash
+(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_openfabric_ubuntu_lab.py
+usage: cml_create_openfabric_ubuntu_lab.py [-h] [--create] [--delete] [--stop] [--start] [--testbed]
+
+create FRR OpenFabric lab
+
+options:
+  -h, --help  show this help message and exit
+  --create    Create lab
+  --delete    Delete lab
+  --stop      Stop lab
+  --start     Start lab
+  --testbed   Show pyATS testbed
+```
+
+ラボを作成するときは --create です。
+
+このような構成のラボが作られます。
 
 <br>
 
 ![ラボ構成](/assets/openfabric_lab.png)
 
-<br>
+<br><br>
 
 ## ルータの設定
 
@@ -51,7 +74,6 @@ OpenFabricはFRRで実装されていますので、実際に動作を検証し�
 各ルータ（Ubuntu）は初回起動時にcloud-initの中でJinja2のテンプレートから生成したコンフィグを `/etc/frr/frr.conf` に格納しています。
 
 テンプレートはこの通り。`{{ HOSTNAME }}`　等のパラメータはスクリプト実行時に動的に割り当てています。
-
 
 <br>
 
@@ -85,9 +107,9 @@ exit
 !
 ```
 
-<br>
+<br><br>
 
-# R1(T2ルータ)のルーティングテーブル
+## R1(T2ルータ)のルーティングテーブル
 
 IPv6のルーティングテーブルに関しては特に不思議な点はありません。
 
@@ -190,7 +212,7 @@ IPv4のアドレスを割り当ててるのはループバックだけなので�
 
 <br><br>
 
-# R4(T1ルータ)のルーティングテーブル
+## R4(T1ルータ)のルーティングテーブル
 
 R4はR5と共にクラスタにおけるスパインを形成しています。
 
@@ -289,7 +311,7 @@ R4#
 
 <br><br>
 
-# R6(T0ルータ)のルーティングテーブル
+## R6(T0ルータ)のルーティングテーブル
 
 ```text
 R6# show ipv6 route
@@ -375,7 +397,7 @@ f>* 192.168.255.13/32 [115/4134] via 192.168.255.4, ens2 onlink, weight 1, 00:03
 R6#
 ```
 
-<br><br><br>
+<br><br>
 
 ## 考察
 
@@ -419,6 +441,8 @@ IS-IS L2 IPv4 routing table:
 
 どうやって隣接ルータに到達するためのMACアドレスを知るのか、疑問が生じますので、実際に通信をキャプチャして確かめてみました。
 
-隣接ルータのループバックアドレスを解決するためのARP Requestが発信されて、隣接ルータはそれに答えていました。
+隣接ルータのループバックアドレスを解決するためのARP Requestが発信されて、隣接ルータはそれに応答していました。
 
-この動作はLinuxなら普通なのかな？
+LinuxではIPv4のスタティックルートのネクストホップをIPv6アドレスにできますので、この動作は普通なんだと思います。
+
+商用ルータではこのような動作は難しいかもしれません。

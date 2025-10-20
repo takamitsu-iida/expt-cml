@@ -1,10 +1,12 @@
 # Dockerイメージを作成してCMLに登録する
 
-CML2.9はDockerをサポートしています。
+<br>
+
+CMLはバージョン2.9以降でDockerをサポートしています。
 
 もちろん自分で作成したDockerイメージをCMLに登録して動作させることもできます。
 
-ここではUbuntuをベースによく使うアプリをインストールしたDockerイメージを作成してCMLに登録してみます。
+ここではよく使うアプリをインストールしたUbuntuベースのDockerイメージを作成してCMLに登録してみます。
 
 <br><br>
 
@@ -13,9 +15,9 @@ CML2.9はDockerをサポートしています。
 Dockerイメージをビルドする母艦が必要です。
 
 母艦となるUbuntuにはaptであれやこれやインストールしなければいけませんので、
-Pythonスクリプトで生成した方が簡単です。
+Pythonスクリプトで作成した方が簡単です。
 
-[bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を実行して作成します。
+[bin/cml_create_custom_docker.py](/bin/cml_create_custom_docker.py)を実行してラボを作成します。
 
 ```bash
 bin/cml_create_custom_docker.py
@@ -31,15 +33,15 @@ options:
   --start     Start lab
 ```
 
-ラボを作るときは `bin/cml_create_custom_docker.py --create` です。
+ラボを作るときは `--create` です。
 
 初回起動時はcloud-initで必要なパッケージをまとめてインストールしますので、Ubuntuのセットアップに少々時間がかかります。
 
-<br>
+<br><br>
 
 ## Dockerエンジンをインストール
 
-`bin/cml_create_custom_docker.py` を使ってラボを作成した場合、UbuntuにDockerエンジンがインストールされた状態で起動しますので、この作業は不要です。
+`cml_create_custom_docker.py` を使ってラボを作成した場合、UbuntuにDockerエンジンがインストールされた状態で起動しますので、この作業は不要です。
 
 別の環境で作業する場合は、以下の手順でDockerエンジンをインストールします。
 
@@ -178,79 +180,6 @@ apt install -y make
 
 <br><br>
 
-[Makefile](/ubuntu_docker/Makefile)は以下のようになっていますので、これを見ながらdockerコマンドを叩いても結果は同じです。
-
-```Makefile
-.DEFAULT_GOAL := help
-.PHONY: help
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
-TAG ?= ubuntu24.04:20251010
-
-# ファイル名・パスの変数化
-IMAGE_TAR    = ubuntu24.04.20251010.tar
-IMAGE_TAR_GZ = ubuntu24.04.20251010.tar.gz
-
-# CMLのIPアドレス
-CML_HOST = 192.168.122.212
-CML_UPLOAD_DIR = /var/tmp
-
-####################################################
-# 以下、変更不要
-####################################################
-SOURCE_IMAGE_DEFINITION = cml_image_definition.yaml
-SOURCE_NODE_DEFINITION = cml_node_definition.yaml
-INSTALL_SCRIPT = cml_install_image.sh
-SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-CONTAINER_NAME = ntools-test
-
-build: ## Dockerイメージを作成する
-	@docker build -t ${TAG} -f Dockerfile .
-
-
-inspect: ## DockerイメージのIDをインスペクトして、image_definition.yamlおよびnode_definition.yamlを生成する
-	@cp -f ${SOURCE_IMAGE_DEFINITION} image_definition.yaml
-	@cp -f ${SOURCE_NODE_DEFINITION} node_definition.yaml
-	@SHA256=$$(docker inspect ${TAG} | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2); \
-	sed -i "s/^sha256:.*/sha256: $$SHA256/" image_definition.yaml; echo $$SHA256
-
-
-save: ## Dockerイメージを保存する
-	@rm -f $(IMAGE_TAR_GZ)
-	@docker save -o $(IMAGE_TAR) ${TAG}
-	@gzip $(IMAGE_TAR)
-
-
-run: ## Dockerコンテナを起動する
-	@docker run -d --rm --init --privileged --name ${CONTAINER_NAME} ${TAG}
-
-
-shell: ## Dockerコンテナにシェルで入る
-	@docker exec -it ${CONTAINER_NAME} bash
-
-
-stop: ## Dockerコンテナを停止する
-	@if [ -n "$$(docker ps -q -f name=${CONTAINER_NAME})" ]; then docker stop ${CONTAINER_NAME}; fi
-
-
-prune: ## Dockerの不要なイメージを削除する
-	@docker system prune -f --all
-
-
-clean: ## Dockerイメージを削除する
-	@if [ -n "$$(docker images -q)" ]; then docker rmi $$(docker images -q); fi
-	@rm -f $(IMAGE_TAR_GZ)
-	@rm -f image_definition.yaml
-	@rm -f node_definition.yaml
-
-
-upload: ## ubuntu_docker.tar.gzおよびノード定義ファイルをCMLにアップロードする
-	@rsync -avz -e "ssh ${SSH_OPTS}" $(IMAGE_TAR_GZ) image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}
-```
-
-<br><br><br>
-
 ## Dockerイメージを作成する
 
 ゼロからDockerfileを作成するのは茨の道です。すでに作成したものがありますので、それを使いましょう。
@@ -265,10 +194,10 @@ git clone https://github.com/takamitsu-iida/expt-cml.git
 
 ```bash
 cd expt-cml
-cd ubuntu_docker
+cd docker_ubuntu
 ```
 
-[Dockerfile](/ubuntu_docker/Dockerfile) を確認して、追加したいパッケージがあれば追加、不要なものは削除します。
+[Dockerfile](/docker_ubuntu/Dockerfile) を確認して、追加したいパッケージがあれば追加、不要なものは削除します。
 
 <br>
 
@@ -343,7 +272,7 @@ scp cml_install_image.sh        admin@192.168.122.212:
 > CMLのAPIをcurlで叩いてもいいのですが、
 > 新規に送り込むときはPOST、すでに存在しているものを更新する場合はPUT、というようにメソッドを使い分けるのがめんどくさいです。
 >
-> Pythonのvirl2_clientを使ってもできます。
+> Pythonのvirl2_clientを使ってファイルを送ることもできます。この方が簡単です。
 > スクリプト [cml_upload.py](/bin/cml_upload.py) を使えばノード定義、イメージ定義、イメージファイルをCMLに送り込めます。
 >
 > ```bash
@@ -360,13 +289,13 @@ scp cml_install_image.sh        admin@192.168.122.212:
 >   --image-file IMAGE_FILE イメージファイル（tar.gzなど）のパス
 > ```
 >
-> ですが、Pythonの環境を整えるのがめんどくさいので、前述の通り `make upload` で送り込むのが簡単です。
+> ですが、Pythonの環境を整えるのがめんどくさいので、前述の通り `make upload` で送り込むのが一番簡単です。
 
 <br><br>
 
 ここからはCMLのコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHでポート1122に接続した方が快適です）。
 
-ルート特権を取ります。
+root特権を取ります。
 
 ```bash
 sudo -s -E

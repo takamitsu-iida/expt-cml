@@ -394,6 +394,12 @@ python bin/route_monitor.py
 
 ### メッシュでpingして結果を表にして
 
+このラボを使います。
+
+![SRv6ラボ](/assets/srv6_docker_lab.png)
+
+<br>
+
 ```text
 ラボタイトル "Docker FRR SRv6" の中に4台のCEルータがあります。
 IPアドレスは以下の通りです。

@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
 #
-# FRRインストール済みのUbuntuを作成するためのラボを生成するスクリプトです
+# FRRインストール済みのUbuntuを作成するためのラボを作成するスクリプトです
 #
 
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
 SCRIPT_DESCRIPTION = 'create lab to customize ubuntu(with frr)'
 
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
-LAB_NAME = "frr_ubuntu"
+LAB_NAME = "create ubuntu with frr installed"
 
 # ノード定義
 NODE_DEFINITION = "ubuntu"

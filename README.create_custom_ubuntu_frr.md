@@ -97,15 +97,15 @@ cat ${COPY_DST}.yaml
 
 ## 手順２．作成したイメージでUbuntuを立ち上げる
 
-[cml_create_frr_ubuntu.py](/bin/cml_create_frr_ubuntu.py) を実行すると "frr_ubuntu" という名前のラボができます。
+[cml_create_custom_ubuntu_frr.py](/bin/cml_create_custom_ubuntu_frr.py) を実行すると "create ubuntu with frr installed" という名前のラボができます。
 
 実行したときに表示されるメッセージは後ほど必要になります（ログファイルが残りますので、いつでも確認できます）。
 
 実行例。
 
 ```bash
-(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_frr_ubuntu.py
-usage: cml_create_frr_ubuntu.py [-h] [--create] [--delete] [--stop] [--start] [--testbed]
+(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_custom_ubuntu_frr.py
+usage: cml_create_custom_ubuntu_frr.py [-h] [--create] [--delete] [--stop] [--start] [--testbed]
 
 create lab to customize ubuntu(with frr)
 
@@ -123,7 +123,7 @@ options:
 --createでラボを作成します。このときに表示されるメッセージが重要です。
 
 ```bash
-(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_frr_ubuntu.py --create
+(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_custom_ubuntu_frr.py --create
 2025-10-20 18:53:36,110 - INFO - To commit changes, execute following commands in cml cockpit terminal.
 
 cd /var/local/virl2/images/e7be5509-500f-4b76-b928-4a99bc918575/5a4e4a74-f24e-41c2-bf4f-5b605071de04
@@ -135,14 +135,13 @@ sudo qemu-img commit node0.img
 --startで開始します（ブラウザでSTARTボタンを押しても同じです）
 
 ```bash
-(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_frr_ubuntu.py --start
-2025-10-20 18:55:34,197 - INFO - Starting lab 'frr_ubuntu'
+(.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_custom_ubuntu_frr.py --start
 2025-10-20 18:55:49,238 - INFO - Lab 'frr_ubuntu' started
 ```
 
-startedと表示されていますが、Ubuntuは初回起動時にcloud-initで必要なツール類をインストールしますので、処理完了まで長い時間かかります。
+startedと表示されていますが、Ubuntuは初回起動時にcloud-initで必要なツール類をインストールしますので、この処理の完了まで長い時間かかります。
 
-`cloud-init status` で状況を確認してください。
+Ubuntuにログインしたら `cloud-init status` で状況を確認してください。
 
 <br><br>
 
@@ -379,12 +378,12 @@ ansible-playbook playbook.yaml
 
 ## 手順４．変更を反映する
 
-`bin/cml_create_frr_ubuntu.py` でラボを作成したときに表示されたメッセージをコックピットのターミナルで実行します。
+`bin/cml_create_custom_ubuntu_frr.py` でラボを作成したときに表示されたメッセージをコックピットのターミナルで実行します。
 
-このメッセージが流れてしまっていても大丈夫です。`log/cml_create_frr_ubuntu.log` に残っていますので、確認します。
+このメッセージが流れてしまっていても大丈夫です。`log/cml_create_custom_ubuntu_frr.log` に残っていますので、確認します。
 
 ```bash
-cat log/cml_create_frr_ubuntu.log
+cat log/cml_create_custom_ubuntu_frr.log
 ```
 
 <br>

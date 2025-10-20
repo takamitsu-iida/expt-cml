@@ -347,14 +347,16 @@ sudo rm -rf /var/lib/cloud
 
 これはroot権限で作業します。
 
-Ubuntuにログインしてから以下を実行します。
+Ubuntuにログインしてから以下を実行します。インストール作業を行いますのでroot特権を取ってからansibleを実行します。
 
 ```bash
 git clone https://github.com/takamitsu-iida/expt-cml.git
 
 cd expt-cml
+cd ubuntu_frr
 
 sudo -s -E
+
 ansible-playbook playbook.yaml
 ```
 
@@ -362,34 +364,54 @@ ansible-playbook playbook.yaml
 
 何らかの理由でこの仮想マシンを再起動してしまうと再びcloud-initが走ってしまいます。再起動したときには `rm -rf /var/lib/cloud` を忘れずに実行します。
 
-その他、気が済むまでいじったらUbuntuを停止します。
+その他、気が済むまでいじったら**Ubuntuを停止**します（停止した状態でないと変更を反映できません）。
 
 <br>
 
 > [!NOTE]
 >
-> cloud-initのansible-pullを使えば、このプレイブックを初回起動時に自動実行できますが、FRRのコンパイルに長い時間かかりますので、プレイブックは手動で実行したほうがよさそうです。
-
-<br>
-
-> [!NOTE]
+> cloud-initのansible-pullを使えば、このプレイブックを初回起動時に自動実行することもできます。
+> ですが、FRRのコンパイルに長い時間かかりますし、失敗する恐れもありますので、プレイブックは手動で実行した方がよさそうです。
 >
-> cloud-initでansible-pullを設定すると `/root/.ansible/pull` に展開されます。
-> 期待通りにansible-pullが走っていないときは、そこにちゃんとリポジトリのプレイブック一式が展開されているか確認します。
-> 再度プレイブックを走らせたいときも `/root/.ansible/pull` にあるプレイブックを実行します。
+> もしansible-pullで初回起動時に実行した場合、playbook等は `/root/.ansible/pull` に展開されています。
 
-<br>
+<br><br>
 
 ## 手順４．変更を反映する
 
-`bin/cml_create_frr_ubuntu.py` を実行したときに表示されたメッセージをコックピットのターミナルで実行します。
+`bin/cml_create_frr_ubuntu.py` でラボを作成したときに表示されたメッセージをコックピットのターミナルで実行します。
 
-このメッセージは `log/cml_create_frr_ubuntu.log` に残っていますので、確認します。
+このメッセージが流れてしまっていても大丈夫です。`log/cml_create_frr_ubuntu.log` に残っていますので、確認します。
 
 ```bash
 cat log/cml_create_frr_ubuntu.log
 ```
 
+<br>
+
+CMLのターミナルでroot特権を取ります。
+
+```bash
+sudo -s -E
+```
+
+コピペします。
+
+例
+
+```bash
+root@cml-controller:~# cd /var/local/virl2/images/e7be5509-500f-4b76-b928-4a99bc918575/5a4e4a74-f24e-41c2-bf4f-5b605071de04
+sudo qemu-img commit node0.img
+Image committed.
+root@cml-controller:/var/local/virl2/images/e7be5509-500f-4b76-b928-4a99bc918575/5a4e4a74-f24e-41c2-bf4f-5b605071de04#
+```
+
 これでFRRがインストールされたイメージ定義が完成です！
 
-ラボでUbuntuを作成したときに　`Image Definition`　のドロップダウンから自分で作成したイメージを選びましょう（Automaticのままだと既定のUbuntuイメージが立ち上がってしまいます）。
+次回以降、ラボでUbuntuを作成したときに　`Image Definition`　のドロップダウンから自分で作成したイメージを選びましょう（Automaticのままだと既定のUbuntuイメージが立ち上がってしまいます）。
+
+Ubuntu自体の設定は通常通りcloud-initで設定します（ダッシュボードのGUIのCONFIGから設定します）。
+
+FRR自体の設定はログイン後に /etc/frr にあるファイルを編集します。
+
+FRRのシェルに入るには、`sudo vtysh` です（root特権を取るのを忘れがち）。

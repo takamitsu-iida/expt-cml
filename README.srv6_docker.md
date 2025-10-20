@@ -2,7 +2,7 @@
 
 CML2.9以降でDockerイメージが動作するようになっています。
 
-[この手順](/README.create_custom_docker.md)で作成したFRR(Docker)を使ってSRv6のL3VPNを検証します。
+[この手順](/README.create_frr_docker.md)で作成したFRR(Docker)を使ってSRv6のL3VPNを検証します。
 
 <br>
 
@@ -44,7 +44,7 @@ ip link set dev eth2 master CE
 
 <br><br>
 
-SRv6を動かすためにコンテナ起動時に以下のsysctlを設定しています（[ノード定義ファイル](/frr/cml_node_definition.yaml)を参照）。
+SRv6を動かすためにコンテナ起動時に以下のsysctlを設定しています（[ノード定義ファイル](/docker_frr/cml_node_definition.yaml)を参照）。
 
 ```bash
 net.ipv4.conf.all.rp_filter=0

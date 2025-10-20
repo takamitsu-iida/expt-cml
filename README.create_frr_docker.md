@@ -10,7 +10,7 @@ FRRをインストールしたDockerイメージを作成してCMLに登録し�
 >
 > Dockerイメージを作ってCMLに登録する方法は [README.create_custom_docker.md](/README.create_custom_docker.md) を参考にしてください。
 >
-> FRRをコンパイルしてインストールする方法は [README.create_frr_ubuntu](/README.create_frr_ubuntu.md) を参考にしてください。
+> FRRをコンパイルしてインストールする方法は [README.create_custom_ubuntu_frr](/README.create_custom_ubuntu_frr.md) を参考にしてください。
 
 <br><br>
 

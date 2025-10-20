@@ -345,7 +345,6 @@ if __name__ == "__main__":
             sys.exit(0)
 
         # MCPサーバ起動
-        logger.info("MCPサーバを起動します")
         mcp.run(transport="stdio")
 
 

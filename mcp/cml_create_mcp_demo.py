@@ -82,6 +82,9 @@ from pathlib import Path
 #
 try:
     from dotenv import load_dotenv
+
+    # SSL Verification disabled のログが鬱陶しいので、ERRORのみに抑制
+    logging.getLogger("virl2_client.virl2_client").setLevel(logging.ERROR)
     from virl2_client import ClientLibrary
     from virl2_client.models.lab import Lab
 except ImportError as e:

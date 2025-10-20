@@ -10,5 +10,8 @@ jinja2
 # YAMLファイルを読み書きするためのライブラリ ノード定義ファイル等、YAML形式を扱うために利用
 pyyaml
 
-# pyATS関連
+# tabulate ラボ一覧表示に利用
+tabulate
+
+# pyATS関連はMCPのスクリプトでしか使わないのでコメントアウト
 # pyats[full]==25.2.0

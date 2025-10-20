@@ -233,6 +233,12 @@ def run_config_command_on_device(lab_title: str, node_label: str, command: str) 
     return result
 
 
+def run_ping_on_device(lab_title: str, node_label: str, target: str, repeat: int) -> str | None:
+    """Run ping command on the device in exec mode.
+    """
+    return run_command_on_device(lab_title, node_label, f"ping {target} repeat {repeat}")
+
+
 if __name__ == "__main__":
 
     #
@@ -341,6 +347,33 @@ if __name__ == "__main__":
             node_label,
             command
         )
+
+
+    @mcp.tool()
+    async def run_ping_on_device_async(lab_title: str, node_label: str, target: str, repeat: int = 5) -> str | None:
+        """
+        引数で指定したノードにおいて、pingコマンドを実行し、応答を返却します。
+
+        Args:
+            lab_title: ラボのタイトル
+            node_label: ノードのラベル
+            target: pingの宛先IPアドレス
+            repeat: pingの回数（デフォルトは5回）
+
+        Returns:
+            pingコマンドの実行結果（str）またはNone
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            thread_pool_executor,
+            run_ping_on_device,
+            lab_title,
+            node_label,
+            target,
+            repeat
+        )
+
+
 
 
     #

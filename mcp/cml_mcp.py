@@ -114,10 +114,13 @@ logger.setLevel(logging.INFO)
 # フォーマット
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
+# 標準出力へのハンドラ（STDIOサーバでは何も出力しないようにする）
+class NullStreamHandler(logging.Handler):
+    def emit(self, record):
+        pass
+
 # 標準出力へのハンドラ
-stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setFormatter(formatter)
-stdout_handler.setLevel(logging.INFO)
+stdout_handler = NullStreamHandler()
 logger.addHandler(stdout_handler)
 
 # ログファイルのハンドラ
@@ -186,16 +189,24 @@ def run_command_on_device(lab_title: str, node_label: str, command: str) -> str 
     """
     lab = get_lab_by_title(lab_title)
     if not lab:
+        logger.error(f"ラボ '{lab_title}' が見つかりません")
         return None
 
     node = get_node_by_label(lab, node_label)
     if not node:
+        logger.error(f"ノード '{node_label}' が見つかりません")
+        return None
+
+    try:
+        lab.pyats._check_pyats_installed()
+    except Exception:
+        logger.error(f"pyATSがインストールされていません")
         return None
 
     try:
         lab.pyats.sync_testbed(CML_USERNAME, CML_PASSWORD)
-    except Exception as e:
-        logger.error(f"pyATS testbedの同期に失敗しました: {e}")
+    except Exception:
+        logger.error(f"pyATS testbedの同期に失敗しました")
         return None
 
     try:
@@ -231,12 +242,6 @@ def run_config_command_on_device(lab_title: str, node_label: str, command: str) 
         return None
 
     return result
-
-
-def run_ping_on_device(lab_title: str, node_label: str, target: str, repeat: int) -> str | None:
-    """Run ping command on the device in exec mode.
-    """
-    return run_command_on_device(lab_title, node_label, f"ping {target} repeat {repeat}")
 
 
 if __name__ == "__main__":
@@ -366,15 +371,11 @@ if __name__ == "__main__":
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             thread_pool_executor,
-            run_ping_on_device,
+            run_command_on_device,
             lab_title,
             node_label,
-            target,
-            repeat
+            f"ping {target} repeat {repeat}"
         )
-
-
-
 
     #
     # 実行

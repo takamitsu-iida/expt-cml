@@ -25,6 +25,13 @@ except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
 
+try:
+    from pyats.topology.loader.base import TestbedFileLoader as _PyatsTFLoader
+except ImportError as e:
+    logging.critical(str(e))
+    sys.exit(-1)
+
+
 # このファイルへのPathオブジェクト
 app_path = Path(__file__)
 
@@ -125,6 +132,26 @@ async def main():
                 result = await client.call_tool("get_node_labels_async", {"lab_title": lab_title})
                 node_labels = result.structured_content.get('result', [])
                 print(f"  '{lab_title}': {node_labels}")
+
+        lab_title = "Docker FRR SRv6"
+        tool_name = "run_ping_on_device_async"
+        ce_routers = ["CE101", "CE102"]
+        ping_results = {}
+        if any(lab == lab_title for lab in labs) and any(tool.name == tool_name for tool in tools):
+            print("Running ping tests...")
+            for src in ce_routers:
+                result = await client.call_tool(tool_name, {
+                    "lab_title": lab_title,
+                    "node_label": src,
+                    "target": "10.0.14.104",
+                    "repeat": 5
+                })
+                ping_output = result.structured_content.get('result', '')
+                ping_results[src] = ping_output
+                print(f"Ping from {src}: {ping_output}")
+
+            print("Ping tests completed.")
+
 
     # ここで接続は自動的にクローズ
     print(f"Client connected: {client.is_connected()}")

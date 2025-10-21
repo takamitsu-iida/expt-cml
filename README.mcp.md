@@ -398,7 +398,7 @@ python bin/route_monitor.py
 
 <br>
 
-### メッシュでpingして結果を表にして
+### pingを実行して
 
 このラボを使います。
 
@@ -407,6 +407,41 @@ python bin/route_monitor.py
 <br>
 
 ```text
+#cml_mcp.py
+
+ラボタイトル "Docker FRR SRv6" の中に4台のCEルータがあります。
+IPアドレスは以下の通りです。
+
+CE101 10.0.11.101
+CE102 10.0.12.102
+CE103 10.0.13.103
+CE104 10.0.14.104
+
+CE101から残り全てのCEルータにpingを打って疎通確認してください。
+
+pingの実行にはcml_mcpのrun_ping_on_device_asyncツールを使ってください。
+repeatはデフォルトのまま5としてください。
+```
+
+<br>
+
+```text
+CE101から他のCEルータ（CE102, CE103, CE104）へのping疎通結果は以下の通りです。
+
+- CE101 → CE102 (10.0.12.102): 100%成功 (5/5), 最小/平均/最大RTT = 1/1/1 ms
+- CE101 → CE103 (10.0.13.103): 100%成功 (5/5), 最小/平均/最大RTT = 1/1/2 ms
+- CE101 → CE104 (10.0.14.104): 100%成功 (5/5), 最小/平均/最大RTT = 1/1/3 ms
+
+全て疎通OKです。
+```
+
+<br>
+
+### メッシュでpingして結果を表にして
+
+```text
+#cml_mcp.py
+
 ラボタイトル "Docker FRR SRv6" の中に4台のCEルータがあります。
 IPアドレスは以下の通りです。
 
@@ -416,7 +451,9 @@ CE103 10.0.13.103
 CE104 10.0.14.104
 
 CEルータ同士でメッシュでpingを打って疎通確認してください。
-pingの実行にはcml_mcpのrun_command_on_device_asyncツールを使ってください。
+pingの実行にはcml_mcpのrun_ping_on_device_asyncツールを使ってください。
+repeatはデフォルトのまま5としてください。
+
 pingの実行結果は log/ping_result.log にテキストで保存してください。
 
 実行結果log/ping_result.logを分析して、メッシュで実行した結果を表にしてください。
@@ -425,91 +462,46 @@ pingの実行結果は log/ping_result.log にテキストで保存してくだ�
 
 <br>
 
-`log/ping_result.log`
+作成された log/ping_result.log の内容
 
 ```text
-CE101 -> CE102 (10.0.12.102):
-ping -c 5 10.0.12.102
-<結果: 実行成功 or 失敗>
-
-CE101 -> CE103 (10.0.13.103):
-ping -c 5 10.0.13.103
-<結果: 実行成功 or 失敗>
-
-CE101 -> CE104 (10.0.14.104):
-ping -c 5 10.0.14.104
-<結果: 実行成功 or 失敗>
-
-CE102 -> CE101 (10.0.11.101):
-ping -c 5 10.0.11.101
-<結果: 実行成功 or 失敗>
-
-CE102 -> CE103 (10.0.13.103):
-ping -c 5 10.0.13.103
-<結果: 実行成功 or 失敗>
-
-CE102 -> CE104 (10.0.14.104):
-ping -c 5 10.0.14.104
-<結果: 実行成功 or 失敗>
-
-CE103 -> CE101 (10.0.11.101):
-ping -c 5 10.0.11.101
-<結果: 実行成功 or 失敗>
-
-CE103 -> CE102 (10.0.12.102):
-ping -c 5 10.0.12.102
-<結果: 実行成功 or 失敗>
-
-CE103 -> CE104 (10.0.14.104):
-ping -c 5 10.0.14.104
-<結果: 実行成功 or 失敗>
-
-CE104 -> CE101 (10.0.11.101):
-ping -c 5 10.0.11.101
-<結果: 実行成功 or 失敗>
-
-CE104 -> CE102 (10.0.12.102):
-ping -c 5 10.0.12.102
-<結果: 実行成功 or 失敗>
-
-CE104 -> CE103 (10.0.13.103):
-ping -c 5 10.0.13.103
-<結果: 実行成功 or 失敗>
-```
-
-```text
-pingメッシュの実行結果（log/ping_result.log）は、まだ「<結果: 実行成功 or 失敗>」のプレースホルダのままです。
-実際のpingコマンドの出力結果が記録されていれば、各CEルータ間の疎通状況を以下のような表でまとめられます。
+CE101 -> CE102: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/4 ms
+CE101 -> CE103: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/2 ms
+CE101 -> CE104: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/3 ms
+CE102 -> CE101: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/4 ms
+CE102 -> CE103: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/1 ms
+CE102 -> CE104: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/1 ms
+CE103 -> CE101: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/2 ms
+CE103 -> CE102: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/2 ms
+CE103 -> CE104: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/1 ms
+CE104 -> CE101: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/3 ms
+CE104 -> CE102: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/3 ms
+CE104 -> CE103: Success rate is 100 percent (5/5), round-trip min/avg/max = 1/1/2 ms
 ```
 
 <br>
 
-| From  | To    | IPアドレス      | 結果         |
-|-------|-------|----------------|--------------|
-| CE101 | CE102 | 10.0.12.102    | 実行成功/失敗 |
-| CE101 | CE103 | 10.0.13.103    | 実行成功/失敗 |
-| CE101 | CE104 | 10.0.14.104    | 実行成功/失敗 |
-| CE102 | CE101 | 10.0.11.101    | 実行成功/失敗 |
-| CE102 | CE103 | 10.0.13.103    | 実行成功/失敗 |
-| CE102 | CE104 | 10.0.14.104    | 実行成功/失敗 |
-| CE103 | CE101 | 10.0.11.101    | 実行成功/失敗 |
-| CE103 | CE102 | 10.0.12.102    | 実行成功/失敗 |
-| CE103 | CE104 | 10.0.14.104    | 実行成功/失敗 |
-| CE104 | CE101 | 10.0.11.101    | 実行成功/失敗 |
-| CE104 | CE102 | 10.0.12.102    | 実行成功/失敗 |
-| CE104 | CE103 | 10.0.13.103    | 実行成功/失敗 |
-
-<br>
-
 ```text
-表を行にCEルータ、列にCEルータを並べたマトリックス形式にしてください。
+pingメッシュ結果を ping_result.log に保存しました。
+
+次に、この結果を分析し、Markdown形式の表にまとめます。
 ```
 
-<br>
+| From   | To     | Success Rate | RTT min/avg/max (ms) |
+|--------|--------|--------------|----------------------|
+| CE101  | CE102  | 100% (5/5)   | 1 / 1 / 4            |
+| CE101  | CE103  | 100% (5/5)   | 1 / 1 / 2            |
+| CE101  | CE104  | 100% (5/5)   | 1 / 1 / 3            |
+| CE102  | CE101  | 100% (5/5)   | 1 / 1 / 4            |
+| CE102  | CE103  | 100% (5/5)   | 1 / 1 / 1            |
+| CE102  | CE104  | 100% (5/5)   | 1 / 1 / 1            |
+| CE103  | CE101  | 100% (5/5)   | 1 / 1 / 2            |
+| CE103  | CE102  | 100% (5/5)   | 1 / 1 / 2            |
+| CE103  | CE104  | 100% (5/5)   | 1 / 1 / 1            |
+| CE104  | CE101  | 100% (5/5)   | 1 / 1 / 3            |
+| CE104  | CE102  | 100% (5/5)   | 1 / 1 / 3            |
+| CE104  | CE103  | 100% (5/5)   | 1 / 1 / 2            |
 
-|       | CE101         | CE102         | CE103         | CE104         |
-|-------|---------------|---------------|---------------|---------------|
-| CE101 | -             | 実行成功/失敗 | 実行成功/失敗 | 実行成功/失敗 |
-| CE102 | 実行成功/失敗 | -             | 実行成功/失敗 | 実行成功/失敗 |
-| CE103 | 実行成功/失敗 | 実行成功/失敗 | -             | 実行成功/失敗 |
-| CE104 | 実行成功/失敗 | 実行成功/失敗 | 実行成功/失敗 | -             |
+```text
+この表はMarkdownドキュメントにそのまま貼り付け可能です。全て疎通OKです。
+```

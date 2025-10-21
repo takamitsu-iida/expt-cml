@@ -13,5 +13,12 @@ pyyaml
 # tabulate ラボ一覧表示に利用
 tabulate
 
-# pyATS関連はMCPのスクリプトでしか使わないのでコメントアウト
-# pyats[full]==25.2.0
+# pyATS フルインストール、virl2_clientからpyATSを使うために必要
+pyats[full]==25.2.0
+
+# MCP Python SDK
+# 便利だけど、現状ではFastMCPしか使わないのでコメントアウト
+# mcp
+
+# FastMCP Library
+fastmcp

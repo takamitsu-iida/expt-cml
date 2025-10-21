@@ -25,7 +25,7 @@ IMAGE_DEFINITION = "ubuntu-24-04-20250503-frr"
 NODE_TAG = "serial:6000"
 
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うホスト名
-UBUNTU_HOSTNAME = "ubuntu-0"
+UBUNTU_HOSTNAME = "ubuntu"
 
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うユーザ名
 UBUNTU_USERNAME = "cisco"
@@ -356,9 +356,9 @@ if __name__ == '__main__':
         # Jinja2のTemplateをインスタンス化する
         template = Template(UBUNTU_CONFIG)
 
-        # templateに渡すコンテキストオブジェクトを作成する
+        # templateに渡すコンテキストオブジェクトの初期値
         lab_context = {
-            "UBUNTU_HOSTNAME": "",
+            "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
             "UBUNTU_USERNAME": UBUNTU_USERNAME,
             "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
             "SSH_PUBLIC_KEY": UBUNTU_SSH_PUBLIC_KEY,
@@ -366,7 +366,7 @@ if __name__ == '__main__':
             "FRR_CONF": ""
         }
 
-        # Ubuntu上のFRRの設定テンプレート
+        # Ubuntu上のFRRの設定のコンテキストオブジェクトの初期値
         frr_template = Template(FRR_CONFIG)
         frr_context = {
             "HOSTNAME": "R",
@@ -426,7 +426,7 @@ if __name__ == '__main__':
             # 外部接続用スイッチと接続
             # lab.connect_two_nodes(ext_switch_node, node)
 
-            # FRRの設定を作る
+            # FRRの設定コンテキスト
             frr_context["HOSTNAME"] = node_name
             frr_context["IPv4_ROUTER_ID"] = str(router_number)
             frr_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
@@ -435,7 +435,7 @@ if __name__ == '__main__':
             frr_config = indent_string(frr_config)
 
             # nodeに適用するcloud-init設定を作る
-            lab_context["HOSTNAME"] = node_name
+            lab_context["UBUNTU_HOSTNAME"] = node_name
             lab_context["ROUTER_ID"] = router_number
             lab_context["FRR_CONF"] = frr_config
             config_text = template.render(lab_context)
@@ -489,6 +489,7 @@ if __name__ == '__main__':
                 node.add_tag(tag=node_tag)
 
                 # FRRの設定を作る
+                frr_context["HOSTNAME"] = node_name
                 frr_context["IPv4_ROUTER_ID"] = str(router_number)
                 frr_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
                 frr_context["TIER"] = "1"
@@ -496,7 +497,7 @@ if __name__ == '__main__':
                 frr_config = indent_string(frr_config)
 
                 # cloud-init設定
-                lab_context["HOSTNAME"] = node_name
+                lab_context["UBUNTU_HOSTNAME"] = node_name
                 lab_context["ROUTER_ID"] = router_number
                 lab_context["FRR_CONF"] = frr_config
                 node.configuration = template.render(lab_context)
@@ -536,6 +537,7 @@ if __name__ == '__main__':
                 node.add_tag(tag=node_tag)
 
                 # FRRの設定を作る
+                frr_context["HOSTNAME"] = node_name
                 frr_context["IPv4_ROUTER_ID"] = str(router_number)
                 frr_context["IPv6_ROUTER_ID"] = "{:0=2}".format(router_number)
                 frr_context["TIER"] = "0"
@@ -543,7 +545,7 @@ if __name__ == '__main__':
                 frr_config = indent_string(frr_config)
 
                 # 設定
-                lab_context["HOSTNAME"] = node_name
+                lab_context["UBUNTU_HOSTNAME"] = node_name
                 lab_context["ROUTER_ID"] = router_number
                 lab_context["FRR_CONF"] = frr_config
                 node.configuration = template.render(lab_context)
@@ -563,7 +565,7 @@ if __name__ == '__main__':
         parser.add_argument('--delete', action='store_true', default=False, help='Delete lab')
         parser.add_argument('--stop', action='store_true', default=False, help='Stop lab')
         parser.add_argument('--start', action='store_true', default=False, help='Start lab')
-        parser.add_argument('--testbed', action='store_true', default=False, help='Show pyATS testbed')  # --- IGNORE ---
+        parser.add_argument('--testbed', action='store_true', default=False, help='Show pyATS testbed')
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了

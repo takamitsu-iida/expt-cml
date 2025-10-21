@@ -34,8 +34,7 @@ UBUNTU_PASSWORD = "cisco"
 SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
 
 # Ubuntuノードに設定するcloud-initのJinja2テンプレート
-UBUNTU_CONFIG = """
-#cloud-config
+UBUNTU_CONFIG = """#cloud-config
 hostname: {{ UBUNTU_HOSTNAME }}
 manage_etc_hosts: True
 system_info:
@@ -47,10 +46,16 @@ ssh_pwauth: True
 ssh_authorized_keys:
   - ssh-rsa {{ SSH_PUBLIC_KEY }}
 
+# set timezone
 timezone: Asia/Tokyo
 
 # locale: ja_JP.utf8
 locale: en_US.UTF-8
+
+# comment out because it does not work
+#sysctl:
+#  net.ipv4.ip_forward: 1
+#  net.ipv6.conf.all.forwarding: 1
 
 # run apt-get update
 # default false
@@ -62,10 +67,6 @@ package_upgrade: true
 # reboot if required
 package_reboot_if_required: true
 
-# sysctl settings
-sysctl:
-  net.ipv4.ip_forward: 1
-  net.ipv6.conf.all.forwarding: 1
 
 # packages
 packages:
@@ -108,11 +109,11 @@ write_files:
   #
   # VRF module load at boot time
   #
-  - path: /etc/modules-load.d/vrf.conf
-    permissions: '0600'
-    owner: root:root
-    content: |
-      vrf
+  #- path: /etc/modules-load.d/vrf.conf
+  #  permissions: '0600'
+  #  owner: root:root
+  #  content: |
+  #    vrf
 
 runcmd:
 
@@ -129,6 +130,7 @@ runcmd:
     #
     rsz () if [[ -t 0 ]]; then local escape r c prompt=$(printf '\\e7\\e[r\\e[999;999H\\e[6n\\e8'); IFS='[;' read -sd R -p "$prompt" escape r c; stty cols $c rows $r; fi
     rsz
+
     EOS
 
   # TERM
@@ -136,6 +138,7 @@ runcmd:
     cat - << 'EOS' >> /etc/bash.bashrc
     #
     export TERM="linux"
+
     EOS
 
   # direnv
@@ -144,6 +147,7 @@ runcmd:
     # direnv
     eval "$(direnv hook bash)"
     export EDITOR=vi
+
     EOS
 
   # Disable SSH client warnings
@@ -169,6 +173,10 @@ runcmd:
   # Disable AppArmor
   - systemctl stop apparmor.service
   - systemctl disable apparmor.service
+
+  # Enable IP forwarding
+  - sed -i.org 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf
+  - sed -i.org 's/#net.ipv6.conf.all.forwarding=1/net.ipv6.conf.all.forwarding=1/' /etc/sysctl.conf
 
 """.strip()
 

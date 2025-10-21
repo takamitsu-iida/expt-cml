@@ -10,6 +10,16 @@ CMLではUbuntuのイメージが提供されていますので、これをベ�
 >
 > カスタマイズしたUbuntuイメージの作り方は[こちら](/README.create_custom_ubuntu.md)に解説があります。
 
+<br>
+
+> [!NOTE]
+>
+> CMLに同梱のUbuntuではVRF機能が動かないかもしれません。
+>
+> CMLに同梱のUbuntuは `modprobe vrf` に失敗しますので、カーネルがVRFに対応していない可能性が高いです。
+>
+> DockerであればVRFも動きますので、[こちら](/README.create_frr_docker.md)を参考にしてください。
+
 <br><br>
 
 ## 手順１．カスタマイズ可能なUbuntuのイメージ定義を作る
@@ -127,7 +137,9 @@ options:
 
 --createでラボを作成します。
 
-このときに表示されるメッセージが重要です。ログファイルに残ってますので後からでも確認できます。
+このときに表示されるメッセージが重要です。
+
+ログファイルに残ってますので後からでも確認できます。
 
 ```bash
 (.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_custom_ubuntu_frr.py --create
@@ -426,7 +438,7 @@ root@cml-controller:/var/local/virl2/images/e7be5509-500f-4b76-b928-4a99bc918575
 
 <br>
 
-これでFRRがインストールされたイメージ定義が完成です！
+これでFRRがインストールされたイメージ定義が完成です。
 
 次回以降、ラボでUbuntuを作成したときに　`Image Definition`　のドロップダウンから自分で作成したイメージを選びましょう（Automaticのままだと既定のUbuntuイメージが立ち上がってしまいます）。
 

@@ -293,9 +293,7 @@ ip route 0.0.0.0 0.0.0.0 {{ GW_ADDR }}
 """.strip()
 
 # Ubuntuノードに設定するcloud-initのJinja2テンプレート
-UBUNTU_CONFIG_TEMPLATE = \
-"""
-#cloud-config
+UBUNTU_CONFIG_TEMPLATE = """#cloud-config
 hostname: {{ UBUNTU_HOSTNAME }}
 manage_etc_hosts: True
 system_info:

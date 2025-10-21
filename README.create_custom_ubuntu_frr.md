@@ -89,15 +89,14 @@ cat ${COPY_DST}.yaml
 
 <br>
 
-> [!NOTE]
->
-> 自分の場合はgithubにある[スクリプト](/bin/copy_image_definition_frr.sh)を（書き換えることなくそのまま）実行すればよいので、以下をコックピットのターミナルでコピペします。
->
-> ```bash
-> curl -H 'Cache-Control: no-cache' -Ls \
->   https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh \
->   | bash -s
-> ```
+上記の内容のまま、githubにある[スクリプト](/bin/copy_image_definition_frr.sh)を（書き換えることなくそのまま）実行すればよい場合は、
+以下をコックピットのターミナルでコピペします。
+
+```bash
+curl -H 'Cache-Control: no-cache' -Ls \
+  https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh \
+  | bash -s
+```
 
 <br><br>
 
@@ -126,7 +125,9 @@ options:
 
 <br>
 
---createでラボを作成します。このときに表示されるメッセージが重要です。
+--createでラボを作成します。
+
+このときに表示されるメッセージが重要です。ログファイルに残ってますので後からでも確認できます。
 
 ```bash
 (.venv) iida@s400win:~/git/expt-cml$ bin/cml_create_custom_ubuntu_frr.py --create

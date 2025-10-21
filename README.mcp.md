@@ -12,19 +12,20 @@ PythonでMCPサーバを作成して、Visual Studio CodeのCopilotのエージ�
 
 [FastMCP](https://gofastmcp.com/getting-started/welcome)を使うと簡単にMCPサーバを実装できます。
 
-FastMCPはpipでインストールできます。
-
-また、ラボ内のノードも操作したいので、pyATSもインストールします。
+ラボ内のノードも操作したいので、pyATSもインストールします。
 
 ```bash
-pip install -r mcp/requirements.txt
+pip install virl2-client==2.9
+pip install pyats[full]==25.2.0
+pip install fastmcp
 ```
 
 <br>
 
 FastMCPの使い方は簡単です。
 
-ラボ内のノードにコマンドを送り込む関数を作ったら、こんな感じでデコレータを被せるだけでMCPサーバのツールになります。
+ラボ内のノードにコマンドを送り込む関数を作ったら、
+こんな感じでデコレータを被せるだけでMCPサーバのツールになります。
 
 ```python
 if __name__ == "__main__":
@@ -184,7 +185,7 @@ MCPサーバを使う時には「実行しますか？」と聞かれるので�
 
 ## 動作例
 
-このラボ（ラボタイトルはtest lab）を使って実験してみます。
+シンプルなラボ（ラボタイトルはtest lab）を使って実験してみます。
 
 <br>
 
@@ -398,9 +399,16 @@ python bin/route_monitor.py
 
 <br>
 
+vscodeの中のGithub Copilotを使っているせいか、
+ちょっと難しいことを頼むとコードを作って解決しようとする傾向が強いです。
+
+<br>
+
 ### pingを実行して
 
-このラボを使います。
+今度は、このラボを使います。
+
+[bin/cml_create_srv6_docker_lab.py](/bin/cml_create_srv6_docker_lab.py)で作成したSRv6 L3VPNのラボです。
 
 ![SRv6ラボ](/assets/srv6_docker_lab.png)
 

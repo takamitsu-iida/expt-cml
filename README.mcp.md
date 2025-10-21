@@ -16,8 +16,6 @@ FastMCPはpipでインストールできます。
 
 また、ラボ内のノードも操作したいので、pyATSもインストールします。
 
-<br>
-
 ```bash
 pip install -r mcp/requirements.txt
 ```
@@ -92,6 +90,8 @@ if __name__ == "__main__":
 mkdir -p .vscode
 ```
 
+<br>
+
 新しいファイル `mcp.json` を作成します。
 
 エディタの右下に「サーバの追加」というボタンが登場するので、それをクリックします。
@@ -120,6 +120,8 @@ vscodeが一気に補完してくれますので、必要な部分を変更し�
 }
 ```
 
+<br>
+
 type は `stdio` or `sse` を指定します。
 
 ローカル環境で動かすときは `stdio` です。
@@ -137,12 +139,16 @@ Dockerイメージとして走らせるならこんな感じになります。
 "args": ["run", "-i", "--rm", "..."]
 ```
 
+<br>
+
 Pythonスクリプトを走らせるならこんな感じになります。
 
 ```json
 "command": "${workspaceFolder}/.venv/bin/python",
 "args": [ "${workspaceFolder}/mcp/cml_mcp.py" ]
 ```
+
+<br>
 
 グローバル環境のPythonを使っているなら、commandは単にpython3でよいと思いますが、venvで仮想環境を作っている場合は上記のような指定になります。
 
@@ -174,7 +180,7 @@ Ctrl-Shift-Pでコマンドパレットを開いて、mcpと入力して、
 
 MCPサーバを使う時には「実行しますか？」と聞かれるので、常に許可しておくと手間が省けます。
 
-<br><br><br>
+<br><br>
 
 ## 動作例
 

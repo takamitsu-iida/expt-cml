@@ -1,24 +1,26 @@
 # FRR(Docker)でOpenFabricを検証する
 
+<br>
+
 CML2.9以降でDockerイメージが動作するようになっています。
 
-[この手順](/README.create_custom_docker.md)で作成したFRR(Docker)を使ってOpenFabricの検証を行います。
+[この手順](/README.create_frr_docker.md)で作成したFRR(Docker)を使ってOpenFabricの検証を行います。
 
-<br>
+<br><br>
 
 ## ラボ構成
 
-スクリプト `bin/cml_create_openfabric_docker_lab.py` を使ってCML内にラボを自動生成します。
+スクリプト [/bin/cml_create_openfabric_docker_lab.py](/bin/cml_create_openfabric_docker_lab.py) を使ってCML内にラボを自動生成します。
 
 <br>
 
 ![ラボ構成](/assets/openfabric_docker_lab.png)
 
-<br>
+<br><br>
 
 ## R1のルーティングテーブル
 
-IPv4のルーティングテーブル。期待通りです。
+**IPv4のルーティングテーブル**
 
 ```bash
 R1# show ip route
@@ -58,7 +60,9 @@ f>* 192.168.255.13/32 [115/30] via 192.168.255.9, eth2 onlink, weight 1, 00:02:5
   *                            via 192.168.255.10, eth3 onlink, weight 1, 00:02:54
 ```
 
-R1からR8へのping
+<br>
+
+**R1からR8へのping**
 
 ```bash
 R1# ping 192.168.255.8
@@ -71,7 +75,9 @@ PING 192.168.255.8 (192.168.255.8): 56 data bytes
 round-trip min/avg/max = 0.812/1.211/1.611 ms
 ```
 
-R1からR13へのping
+<br>
+
+**R1からR13へのping**
 
 ```bash
 R1# ping 192.168.255.13
@@ -84,7 +90,9 @@ PING 192.168.255.13 (192.168.255.13): 56 data bytes
 round-trip min/avg/max = 0.610/0.660/0.710 ms
 ```
 
-IPv6のルーティングテーブル。これも期待通りです。
+<br>
+
+**IPv6のルーティングテーブル**
 
 ```bash
 R1# show ipv6 route
@@ -126,7 +134,9 @@ C>* fe80::/64 is directly connected, eth1, weight 1, 00:04:24
 R1#
 ```
 
-R1からR8へのping
+<br>
+
+**R1からR8へのping**
 
 ```
 R1# ping ipv6 2001:db8::8
@@ -139,7 +149,9 @@ PING 2001:db8::8 (2001:db8::8): 56 data bytes
 round-trip min/avg/max = 0.238/0.598/0.958 ms
 ```
 
-R1からR13へのping
+<br>
+
+**R1からR13へのping**
 
 ```
 R1# ping 2001:db8::13
@@ -152,5 +164,8 @@ PING 2001:db8::13 (2001:db8::13): 56 data bytes
 3 packets transmitted, 3 packets received, 0% packet loss
 round-trip min/avg/max = 0.287/0.699/0.989 ms
 ```
+
+<br>
+
 
 ルータ・ルータ間にはIPv6リンクローカルアドレスしか設定していませんが、IPv4およびIPv6ともに疎通できています。

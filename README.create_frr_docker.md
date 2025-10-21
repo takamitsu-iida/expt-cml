@@ -58,11 +58,15 @@ root特権を取ります。
 sudo -s -E
 ```
 
-`/etc/sysctl.conf` を編集します。
+<br>
+
+/etc/sysctl.conf を編集します。
 
 ```bash
 vi /etc/sysctl.conf
 ```
+
+<br>
 
 `net.ipv6.ip_forward=1` と `net.ipv6.conf.all.forwarding=1` が有効になるように、コメントを外します。
 
@@ -76,6 +80,8 @@ net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 ```
 
+<br>
+
 Dockerコンテナの中でVRFを使う場合は、母艦側でVRFのカーネルモジュールをロードします。
 （恐らく初期状態のCMLは、VRFモジュールをロードしていないと思います）
 
@@ -84,6 +90,8 @@ root@cml-controller:~# lsmod | grep vrf
 vrf                    40960  0
 ```
 
+<br>
+
 このように表示されていればロードされています。
 
 もし何も表示されないようなら、以下のように設定を追加します。
@@ -91,6 +99,8 @@ vrf                    40960  0
 ```bash
 echo "vrf" | sudo tee /etc/modules-load.d/vrf.conf
 ```
+
+<br>
 
 CML自身を再起動します。次回以降、カーネルにVRFモジュールが組み込まれます。
 
@@ -129,9 +139,9 @@ options:
   --start     Start lab
 ```
 
-ラボの作成は --create です。
-
 <br>
+
+ラボの作成は --create です。
 
 ラボを起動するとDockerエンジンがインストールされた状態のUbuntuが起動します。
 
@@ -166,6 +176,8 @@ options:
 git clone https://github.com/takamitsu-iida/expt-cml.git
 ```
 
+<br>
+
 移動します。
 
 ```bash
@@ -173,17 +185,23 @@ cd expt-cml
 cd docker_frr
 ```
 
+<br>
+
 繰り返しdockerイメージを作るときにはキャッシュが悪さをするかもしれませんので削除します（dockerインストール直後の場合は省略して構いません）。
 
 ```bash
 docker system prune --all
 ```
 
+<br>
+
 Dockerfileの内容に従ってビルドします。長い時間かかります。10分以上かかります。
 
 ```bash
 make build
 ```
+
+<br>
 
 作成したdockerイメージをインスペクトしてIdの値をイメージ定義ファイルに反映します。
 
@@ -193,12 +211,16 @@ make build
 make inspect
 ```
 
+<br>
+
 実行例。
 
 ```bash
 root@ubuntu-0:~/expt-cml/frr# make inspect
 dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71
 ```
+
+<br>
 
 `make inspect` を実行すると、image_definition.yamlを作成して、SHA256: の部分にこの文字列を埋め込みます。
 
@@ -207,6 +229,8 @@ dcb26c9c1ba66cdb17c6d3b7e2d1952abffd96b832a855ad4dd7e4c559a76d71
 ```bash
 make save
 ```
+
+<br>
 
 ファイルfrr.tar.gzが生成されます。
 
@@ -218,7 +242,9 @@ CMLでSSHサーバ(ポート1122番）を有効にしている場合、次のコ
 make upload
 ```
 
-<br><br><br>
+<br>
+
+<br><br>
 
 ここからはコックピットのターミナルに移ります（Webブラウザのターミナルよりも、SSHで接続した方が快適です）。
 
@@ -227,6 +253,8 @@ make upload
 ```bash
 sudo -s -E
 ```
+
+<br>
 
 `make upload` でファイルをCMLにアップロードすると、/var/tmpにインストール用のシェルスクリプトがありますので、以下のように実行します。
 
@@ -241,7 +269,6 @@ virl2を再起動します。
 ```
 systemctl restart virl2.target
 ```
-
 
 <br><br><br><br><br><br>
 

@@ -1,4 +1,6 @@
-# SRv6
+# FRR(Docker)を使ったSRv6 L3VPN
+
+<br>
 
 CML2.9以降でDockerイメージが動作するようになっています。
 
@@ -11,7 +13,7 @@ CML2.9以降でDockerイメージが動作するようになっています。
 > CML2.9に同梱されているFRR(Docker)ではSRv6を動かすことはできません。
 > FRRをコンパイルして作成してください。
 
-<br>
+<br><br>
 
 ## ラボ構成
 
@@ -25,11 +27,11 @@ Pルータ、PEルータはDockerコンテナで、シリアルコンソール�
 
 ![ラボ構成](/assets/srv6_docker_lab.png)
 
-<br>
+<br><br>
 
 ## Linuxの設定
 
-FRR(Docker)でVRFを作ることはできません。
+FRR(Docker)の中からVRFを作ることはできません。Linuxで作成します。
 
 FRR(Docker)の設定ファイルboot.shにて以下を実行してCEというvrfを作成します。
 
@@ -42,7 +44,7 @@ ip link set dev CE up
 ip link set dev eth2 master CE
 ```
 
-<br><br>
+<br>
 
 SRv6を動かすためにコンテナ起動時に以下のsysctlを設定しています（[ノード定義ファイル](/docker_frr/cml_node_definition.yaml)を参照）。
 
@@ -63,7 +65,7 @@ net.vrf.strict_mode=1
 
 ## ルータの設定
 
-スクリプト内で自動生成しています。
+スクリプト内でFRRの設定を生成しています。
 
 ループバックのIPv6アドレスはノードSIDと同じものを割り当てます。
 
@@ -74,7 +76,7 @@ IPv6アドレスは複数持てますので、管理用アドレスとノードS
 
 <br>
 
-PE11の設定
+**PE11の設定**
 
 ```text
 !
@@ -184,9 +186,9 @@ exit
 end
 ```
 
-<br><br>
+<br>
 
-P1ルータの設定
+**P1ルータの設定**
 
 ```text
 !
@@ -304,11 +306,11 @@ end
 
 その他のルータはアドレスやロケータが異なるだけです。
 
-<br>
+<br><br>
 
 ## 疎通確認
 
-CE101から他のCEルータにpingします。
+**CE101から他のCEルータへのping**
 
 ```text
 CE101# ping ip 10.0.12.102
@@ -345,7 +347,7 @@ round-trip min/avg/max = 0.617/1.666/2.233 ms
 CE101#
 ```
 
-<br>
+<br><br>
 
 ## パケットキャプチャ
 
@@ -359,15 +361,13 @@ IPv6ヘッダにSRはありません。
 
 IPv6ヘッダにSRが登場します。
 
-<br>
-
-<br>
+<br><br>
 
 ## SIDを確認
 
 `show segment-routing srv6 sid`
 
-P11で実行した場合
+**P11で実行した場合**
 
 ```text
 PE11# show segment-routing srv6 sid
@@ -385,7 +385,7 @@ PE11# show segment-routing srv6 sid
 
 `show ip route vrf <VRF NAME>`
 
-PE11で実行した場合
+**PE11で実行した場合**
 
 ```text
 PE11# show ip route vrf CE
@@ -426,7 +426,7 @@ PE11#
 
 `show ip bgp vrf CE detail`
 
-PE11で実行した場合
+**PE11で実行した場合**
 
 ```text
 PE11# show ip bgp vrf CE detail
@@ -516,7 +516,6 @@ Displayed 4 routes and 7 total paths
 PE11#
 ```
 
-
 <br><br>
 
 ## Traffic Steering into SRv6
@@ -529,6 +528,8 @@ PE11にて、
 ip route 192.168.255.13 255.255.255.255 lo segments fd00:1:1::
 ```
 
+<br>
+
 とすると、P1のuN（fd00:1:1::）を経由したSRv6パケットで送信されます。
 
 さらに、このように書けば、PE11→P1→PE12という順路をたどります。
@@ -537,6 +538,8 @@ ip route 192.168.255.13 255.255.255.255 lo segments fd00:1:1::
 ip route 192.168.255.13/32 lo segments fd00:1:1::/fd00:1:12::
 ```
 
+<br>
+
 でも、これは動きません。
 
 ```text
@@ -544,6 +547,10 @@ ip route 192.168.255.13/32 lo segments fd00:1:1::/fd00:1:12:: encap-behavior H_E
 ```
 
 <br><br><br><br><br><br><br><br>
+
+以下、メモです。
+
+<br><br>
 
 ## SIDの構造
 

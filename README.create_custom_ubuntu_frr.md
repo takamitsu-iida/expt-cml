@@ -2,7 +2,7 @@
 
 <br>
 
-CMLではUbuntuのイメージが提供されていますので、これをベースにカスタマイズして、CMLに登録します。
+CMLではUbuntuのイメージが提供されていますので、これをベースにFRRをインストールしたUbuntuを作成してCMLに登録します。
 
 <br>
 
@@ -20,7 +20,7 @@ CMLに登録されているUbuntuのイメージはRead Onlyになっていて�
 
 この作業はCMLの中での操作（SSHでポート1122に接続するか、コックピットのターミナルで操作）になります。
 
-いくつかコマンドを叩くのですが、手間を省くためにシェルスクリプトにまとめます。
+コマンドをいくつか実行しますので、手間を省くためにシェルスクリプトにまとめます。
 
 このリポジトリにある [copy_image_definition_frr.sh](https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh) がたたき台です。
 
@@ -29,12 +29,14 @@ githubからダウンロードして適宜編集します。
 curlでダウンロードするにはこうします。
 
 ```bash
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh --output copy_image_definition.sh
+curl -H 'Cache-Control: no-cache' -Ls \
+  https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh \
+  --output copy_image_definition.sh
 ```
 
 内容は以下のようになっています。
 
-`COPY_DST`や`IMAGE_DEF_LABEL`など、好きな名前に書き換えます。
+`COPY_DST` や `IMAGE_DEF_LABEL` などは好きな名前に書き換えます。
 
 ここでは元のUbuntuのイメージ定義の名前に -frr を付けて作成することにします。
 
@@ -81,7 +83,9 @@ systemctl restart virl2.target
 cat ${COPY_DST}.yaml
 ```
 
-`sudo -s -E`で **rootのシェルを取ってから** このシェルスクリプトを実行します。
+<br>
+
+`sudo -s -E`で **root権限を取ってから** このシェルスクリプトを実行します。
 
 <br>
 
@@ -90,7 +94,9 @@ cat ${COPY_DST}.yaml
 > 自分の場合はgithubにある[スクリプト](/bin/copy_image_definition_frr.sh)を（書き換えることなくそのまま）実行すればよいので、以下をコックピットのターミナルでコピペします。
 >
 > ```bash
-> curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh | bash -s
+> curl -H 'Cache-Control: no-cache' -Ls \
+>   https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_frr.sh \
+>   | bash -s
 > ```
 
 <br><br>
@@ -172,6 +178,8 @@ sudo apt-get install -y \
    protobuf-c-compiler libprotobuf-c-dev
 ```
 
+<br>
+
 libyangをインストールします。libyangは新しいものが必要なのでソースコードからmakeします。
 
 ```bash
@@ -190,11 +198,15 @@ make
 sudo make install
 ```
 
+<br>
+
 GRPCをインストールします。
 
 ```bash
 sudo apt-get install libgrpc++-dev protobuf-compiler-grpc
 ```
+
+<br>
 
 ロールバック機能を使うにはsqlite3が必要なのでインストールします。
 
@@ -202,11 +214,15 @@ sudo apt-get install libgrpc++-dev protobuf-compiler-grpc
 sudo apt install libsqlite3-dev
 ```
 
+<br>
+
 ZeroMQをインストールします。これは任意ですが、実行しておきます。
 
 ```bash
 sudo apt-get install libzmq5 libzmq3-dev
 ```
+
+<br>
 
 FRRのユーザとグループを作成します。
 
@@ -217,7 +233,9 @@ sudo adduser --system --ingroup frr --home /var/run/frr/ --gecos "FRR suite" --s
 sudo usermod -a -G frrvty frr
 ```
 
-FRRをコンパイルします。
+<br>
+
+FRRをコンパイルします。時間かかります。
 
 ```bash
 mkdir ~/src
@@ -258,6 +276,8 @@ make
 sudo make install
 ```
 
+<br>
+
 コンフィグファイルをインストールします。
 
 ```bash
@@ -270,29 +290,7 @@ sudo install -m 640 -o frr -g frr tools/etc/frr/daemons /etc/frr/daemons
 sudo install -m 640 -o frr -g frr tools/etc/frr/support_bundle_commands.conf /etc/frr/support_bundle_commands.conf
 ```
 
-カーネル設定を変更するために `/etc/sysctl.conf `を編集します。
-
-```bash
-sudo vi /etc/sysctl.conf
-```
-
-以下2行のコメントを外してルーティングを有効にします。
-
-```bash
-# Uncomment the next line to enable packet forwarding for IPv4
-net.ipv4.ip_forward=1
-
-# Uncomment the next line to enable packet forwarding for IPv6
-#  Enabling this option disables Stateless Address Autoconfiguration
-#  based on Router Advertisements for this host
-net.ipv6.conf.all.forwarding=1
-```
-
-IPルーティングを有効にするために再起動します。
-
-```bash
-sudo reboot
-```
+<br>
 
 サービス起動用のファイルをインストールします。
 
@@ -303,17 +301,23 @@ sudo install -m 644 tools/frr.service /etc/systemd/system/frr.service
 sudo systemctl enable frr
 ```
 
-FRRのデーモン設定を変更してfabricdを有効にします。
+<br>
+
+FRRのデーモン設定を編集します。
 
 ```bash
 sudo vi /etc/frr/daemons
 ```
 
-好きなプロトコルを `yes` に変更します。
+<br>
+
+好きなプロトコルを `yes` に変更します。ここではfabricdを有効にします。
 
 ```text
 fabricd=yes
 ```
+
+<br>
 
 FRRサービスを起動します。
 
@@ -321,12 +325,16 @@ FRRサービスを起動します。
 sudo systemctl start frr
 ```
 
-FRRに入るにはvtyshを起動します。
+<br>
+
+FRRに入るにはvtyshを起動します（sudoを忘れがち）。
 
 ```bash
 sudo -s -E
 vtysh
 ```
+
+<br>
 
 最後に `/var/lib/cloud` ディレクトリを丸ごと消去して、次に起動したときにcloud-initが走るようにします。
 
@@ -334,7 +342,13 @@ vtysh
 sudo rm -rf /var/lib/cloud
 ```
 
+<br>
+
 その他、気が済むまでいじったらUbuntuを停止します。
+
+```bash
+sudo shutdown -h now
+```
 
 <br><br>
 
@@ -344,9 +358,9 @@ sudo rm -rf /var/lib/cloud
 
 試行錯誤しながら繰り返し実行すると尚更ですので、FRRのインストール作業を自動化するansibleのプレイブックを作成しました。
 
-これはroot権限で作業します。
+Ubuntuにログインしてから以下を実行します。
 
-Ubuntuにログインしてから以下を実行します。インストール作業を行いますのでroot特権を取ってからansibleを実行します。
+インストール作業を行いますのでroot特権を取ってからansibleを実行します。
 
 ```bash
 git clone https://github.com/takamitsu-iida/expt-cml.git
@@ -358,6 +372,8 @@ sudo -s -E
 
 ansible-playbook playbook.yaml
 ```
+
+<br>
 
 このプレイブックの最後では `/var/lib/cloud/` ディレクトリを削除して、次に起動したときにcloud-initが走るようにしています。
 
@@ -394,9 +410,11 @@ CMLのターミナルでroot特権を取ります。
 sudo -s -E
 ```
 
+<br>
+
 コピペします。
 
-例
+実行例。
 
 ```bash
 root@cml-controller:~# cd /var/local/virl2/images/e7be5509-500f-4b76-b928-4a99bc918575/5a4e4a74-f24e-41c2-bf4f-5b605071de04
@@ -404,6 +422,8 @@ sudo qemu-img commit node0.img
 Image committed.
 root@cml-controller:/var/local/virl2/images/e7be5509-500f-4b76-b928-4a99bc918575/5a4e4a74-f24e-41c2-bf4f-5b605071de04#
 ```
+
+<br>
 
 これでFRRがインストールされたイメージ定義が完成です！
 
@@ -413,4 +433,4 @@ Ubuntu自体の設定は通常通りcloud-initで設定します（ダッシュ�
 
 FRR自体の設定はログイン後に /etc/frr にあるファイルを編集します。
 
-FRRのシェルに入るには、`sudo vtysh` です（root特権を取るのを忘れがち）。
+FRRのシェルに入るには、`sudo vtysh` です（sudoを忘れがち）。

@@ -43,21 +43,22 @@ It is available at https://192.168.122.212:9090 (opens in a new Tab/Window).
 
 <br>
 
-もしくはCMLでSSHを有効にしているなら、好きなターミナルでポート1122にSSHします。こちらの方がおすすめです。
+もしくはCMLでSSHを有効にしているなら、使い慣れたターミナルでポート1122にSSHします。
+こちらの方がおすすめです。
 
 <br>
 
-### ルート権限のシェルを開く
+### root権限のシェルを開く
 
 コックピットの左下に「端末」が見えるので、それをクリックしてターミナルを開きます。
 
-ルート権限のシェルを起動するには以下のようにします。
+root権限のシェルを起動するには以下のようにします。
 
 ```bash
 sudo -s -E
 ```
 
-ルート権限を取るとプロンプトが `$` から `#` に変わります。
+root権限を取るとプロンプトが `$` から `#` に変わります。
 
 <br>
 
@@ -69,6 +70,8 @@ CMLにバンドルされているUbuntuのイメージは `/var/lib/libvirt/imag
 cd /var/lib/libvirt/images
 cd virl-base-images
 ```
+
+<br>
 
 ここにはUbuntuだけでなく様々なイメージが保存されています。
 
@@ -111,13 +114,15 @@ drwxrwxr-x 2 libvirt-qemu virl2 4096 Aug 12 07:41 ubuntu-24-04-20250503
 
 ### Ubuntuのイメージをコピーする
 
-改造して使いたいのは `ubuntu-24-04-20250503` のイメージです。このディレクトリをコピーします。
+上記のうち、改造して使いたいのは `ubuntu-24-04-20250503` のイメージです。このディレクトリをコピーします。
 
 名前は何でも良いのですが、ここでは分かりやすく `-iida` を後ろに追加します。
 
 ```bash
 cp -a ubuntu-24-04-20250503 ubuntu-24-04-20250503-iida
 ```
+
+<br>
 
 オーナーとグループをvirl2にします。
 
@@ -135,6 +140,8 @@ chown virl2:virl2 ubuntu-24-04-20250503-iida
 cd ubuntu-24-04-20250503-iida
 ```
 
+<br>
+
 ここにはイメージファイルとイメージ定義ファイル（YAMLファイル）が置かれています。
 
 イメージ定義ファイル（YAML形式のファイル）をディレクトリ名と一致するように変更します。
@@ -143,11 +150,15 @@ cd ubuntu-24-04-20250503-iida
 mv ubuntu-24-04-20250503.yaml ubuntu-24-04-20250503-iida.yaml
 ```
 
+<br>
+
 続いて内容を編集します。
 
 ```bash
 vi ubuntu-24-04-20250503-iida.yaml
 ```
+
+<br>
 
 もとのYAMLはこうなっています。
 
@@ -179,6 +190,8 @@ schema_version: 0.0.1
 
 - **read_onlyをtrueからfalseに変えます**
 
+<br>
+
 編集後はこのようになります。
 
 ```YAML
@@ -207,9 +220,11 @@ schema_version: 0.0.1
 systemctl restart virl2.target
 ```
 
+<br>
+
 サービスを再起動しても稼働中のラボには影響しませんが、ブラウザでCMLにログインしていた場合は強制的にログアウトされます。
 
-<br>
+<br><br>
 
 ## 以上のコックピットでの作業を自動化するシェルスクリプト
 
@@ -266,14 +281,18 @@ cat ${COPY_DST}.yaml
 自分の場合はgithub上のシェルスクリプトを（改版せずにそのまま）実行するだけなので、コックピットのターミナルで `sudo -s -E` で特権を取ってから以下をコピペするだけです。
 
 ```bash
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh | bash -s
+curl -H 'Cache-Control: no-cache' -Ls \
+  https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh \
+  | bash -s
 ```
 
-中身を書き換える場合はシェルスクリプトをダウンロードして編集してください。
+中身を書き換える場合はこのシェルスクリプトをダウンロードして、編集します。
 curlでダウンロードするにはこうします。
 
 ```bash
-curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh --output copy_image_definition.sh
+curl -H 'Cache-Control: no-cache' -Ls \
+  https://raw.githubusercontent.com/takamitsu-iida/expt-cml/refs/heads/master/bin/copy_image_definition_iida.sh \
+  --output copy_image_definition.sh
 ```
 
 <br><br>
@@ -284,7 +303,7 @@ curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamits
 
 適当なラボを作り、インターネットに出ていける外部接続とUbuntuを作成します。
 
-このときUbuntuのSETTINGSタブの `Image Definition` のドロップダウンから、**上記で作成したラベルのものを選んで起動**します。
+このときUbuntuのSETTINGSタブの `Image Definition` のドロップダウンから **上記で作成したラベルのものを選んで起動** します。
 
 起動したらアップデート、FRRのインストール、などなどを実行して好みのUbuntuに仕上げます。
 
@@ -294,7 +313,13 @@ curl -H 'Cache-Control: no-cache' -Ls https://raw.githubusercontent.com/takamits
 sudo rm -rf /var/lib/cloud
 ```
 
-Ubuntuをshutdownして停止してください。
+<br>
+
+変更の反映は停止したイメージでなければできませんので、Ubuntuをshutdownして停止してください。
+
+```bash
+sudo shutdown -h now
+```
 
 <br><br>
 
@@ -308,17 +333,20 @@ Ubuntuをshutdownして停止してください。
 
 作成したラボのUbuntuイメージの場所に移動します。
 この場所を見つけるのはちょっと大変です。
+
 CMLのダッシュボードで当該ラボを開いた状態でURLの文字列をコピーします。
 
 こんな感じのURLになっているはずです。
 
 ```text
-https://192.168.122.212/lab/7fe8ece7-6b23-49f3-a852-519c9f0a843a
+https://cml-controller/lab/7fe8ece7-6b23-49f3-a852-519c9f0a843a
 ```
+
+<br>
 
 最後のUUIDの部分をコピーします（この場合は7fe8ece7-6b23-49f3-a852-519c9f0a843aがUUIDです）
 
-コックピットのターミナルで `/var/local/virl2/images/{{uuid}}` に移動します（`{{uuid}}`の部分は先ほどコピーしたものに置き換えます）
+コックピットのターミナルで `/var/local/virl2/images/{{uuid}}` に移動します（{{uuid}}の部分は先ほどコピーしたものに置き換えます）
 
 もう一つ下のディレクトリに起動中のubuntuのイメージがあります。
 
@@ -337,6 +365,8 @@ node0.imgファイルは元のイメージからの変更を保持していま�
 qemu-img commit node0.img
 ```
 
+<br>
+
 念の為、ubuntuを起動しなおして動作確認してみます。
 
 ラボのubuntuをwipeしてコンフィグを破棄して、再び起動すると、先ほど施した変更が反映された状態で起動します。
@@ -347,7 +377,7 @@ qemu-img commit node0.img
 
 ラボを作って、外部接続を作って、Ubuntuを作って、起動イメージを変更して、外部接続と結線して・・・といった作業を手作業でやるのは面倒なので、Pythonで自動化します。
 
-`bin/cml_create_custom_ubuntu.py` を実行すると "custom_ubuntu" という名前のラボができます。
+[bin/cml_create_custom_ubuntu.py](/bin/cml_create_custom_ubuntu.py) を実行すると "custom_ubuntu" という名前のラボができます。
 
 このラボを開始すると最新化された状態（apt update; apt dist-upgradeされた状態）でubuntuが起動します。
 
@@ -368,6 +398,8 @@ options:
   --testbed   Show pyATS testbed
 ```
 
+<br>
+
 作成するときは --create です。
 
 ```bash
@@ -378,13 +410,23 @@ cd /var/local/virl2/images/0a17e568-c034-4f16-bb1b-9b463b8c25d4/d0396938-e30b-4d
 sudo qemu-img commit node0.img
 ```
 
+<br>
+
 このUbuntuを好きなだけイジったら `/var/lib/cloud` ディレクトリを丸ごと消去して、次に起動したときにcloud-initが走るようにします（忘れがち）。
 
 ```bash
 sudo rm -rf /var/lib/cloud
 ```
 
+<br>
+
 Ubuntuを停止します。
+
+```bash
+sudo shutdown -h now
+```
+
+<br>
 
 ラボ作成時に表示されたメッセージをコックピットのターミナルで実行します。
 
@@ -394,12 +436,16 @@ Ubuntuを停止します。
 cat log/cml_create_custom_ubuntu.log
 ```
 
-例。
+<br>
+
+実行例。
 
 ```bash
 cd /var/local/virl2/images/0a17e568-c034-4f16-bb1b-9b463b8c25d4/d0396938-e30b-4d73-a859-7ffc296e3f78
 sudo qemu-img commit node0.img
 ```
+
+<br>
 
 これで変更が確定しますので、次回以降このイメージ定義を使えば、カスタマイズされた状態のUbuntuが起動します。
 
@@ -410,17 +456,19 @@ sudo qemu-img commit node0.img
 
 <br>
 
-- CMLのコックピットのターミナルでUbuntuのイメージをコピーするシェルスクリプト(copy_image_definition_iida.sh)を実行する
+- CMLのコックピットのターミナルでUbuntuのイメージをコピーするシェルスクリプト(copy_image_definition_iida.sh)をダウンロードする
+
+- 名前など、シェルスクリプトの中身を書き換えて実行する
 
 - bin/cml_create_custom_ubuntu.py を実行してラボを作る
 
 - ラボの中のUbuntuを好きなようにいじる
 
-- `/var/lib/cloud` ディレクトリを丸ごと消去する
+- Ubuntuの `/var/lib/cloud` ディレクトリを丸ごと消去する
 
 - Ubuntuを停止する
 
-- コックピットのターミナルでqemu-img commit node0.imgを実行する（ラボ作成時に表示された場所で実行する）
+- CMLのコックピットのターミナルでqemu-img commit node0.imgを実行する（ラボ作成時に表示された場所で実行する）
 
 <br><br>
 

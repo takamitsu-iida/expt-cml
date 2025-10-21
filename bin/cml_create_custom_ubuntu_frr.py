@@ -62,6 +62,11 @@ package_upgrade: true
 # reboot if required
 package_reboot_if_required: true
 
+# sysctl settings
+sysctl:
+  net.ipv4.ip_forward: 1
+  net.ipv6.conf.all.forwarding: 1
+
 # packages
 packages:
   - curl
@@ -100,6 +105,14 @@ write_files:
             dhcp4: true
             dhcp6: false
             link-local: []
+  #
+  # VRF module load at boot time
+  #
+  - path: /etc/modules-load.d/vrf.conf
+    permissions: '0600'
+    owner: root:root
+    content: |
+      vrf
 
 runcmd:
 

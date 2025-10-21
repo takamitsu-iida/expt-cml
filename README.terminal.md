@@ -108,13 +108,15 @@ WVS(Ubuntu)の中にいてもWindows Terminalを起動するwt.exeを実行で�
 wt.exe -p t5001
 ```
 
+<br>
+
 ラボ内にルータが複数あるときに、それごとにWindows Terminalを開くのは面倒ですし、なによりウィンドウがたくさんあるのって嫌ですよね。
 
 そこで、Windows Terminalをペインに分割して一気に開くbashスクリプト [open_profile.sh](/bin/open_profile.sh) を作成しました。
 
 作成済みのWindows Terminalのアクションプロファイルを指定して、次のように実行します。
 
-例１．プロファイルが一つの場合
+**例１．プロファイルが一つの場合**
 
 普通にWindows Terminalが起動します。
 
@@ -124,9 +126,9 @@ bin/open_profile.sh t5011
 
 ![t5011](/assets/windows_terminal_t5011.png)
 
-<br>
+<br><br>
 
-例２．プロファイルが２つの場合
+**例２．プロファイルが２つの場合**
 
 左右に分割した状態で起動します。
 
@@ -136,9 +138,9 @@ bin/open_profile.sh t5011 t5012
 
 ![t5011 t5012](/assets/windows_terminal_t5011_t5012.png)
 
-<br>
+<br><br>
 
-例３．プロファイル３個の場合
+**例３．プロファイル３個の場合**
 
 左側に２個のペイン、右側に１個のペインの構成で起動します。
 
@@ -148,9 +150,9 @@ bin/open_profile.sh t5011 t5012 t5013
 
 ![t5011 t5012 t5013](/assets/windows_terminal_t5011_t5012_t5013.png)
 
-<br>
+<br><br>
 
-例４．プロファイル４個の場合
+**例４．プロファイル４個の場合**
 
 左側に２個のペイン、右側に２個のペインの構成で起動します。
 
@@ -168,7 +170,7 @@ bin/open_profile.sh t5011 t5012 t5013 t5014
 
 <br><br>
 
-## プロファイルを作っていないけど同時に開きたい場合
+## ポート番号を指定して同時に開きたい場合
 
 PATtyで接続したい装置のポート番号を列挙して、コマンド一発でターミナルを開くbashスクリプト [open_terminal.sh](bin/open_terminal.sh) を作りました。
 

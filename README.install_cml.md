@@ -1,4 +1,6 @@
-# CMLメモ
+# CMLインストールメモ
+
+<br>
 
 CMLについての個人的メモです。
 
@@ -14,13 +16,14 @@ CMLについての個人的メモです。
 >
 > SSH接続できなくなった場合はリリースノートに記載されているワークアラウンドで復旧できます。
 
-<br>
 
 <br><br>
 
 ## CMLについて
 
 毎年年末になるとCMLのライセンスがセールになるので、その機を逃さずに購入します。
+
+購入およびライセンス管理はCisco Learning Network Storeから。
 
 [The Cisco Learning Network Store](https://learningnetworkstore.cisco.com/)
 
@@ -40,17 +43,19 @@ CMLについての個人的メモです。
 Hyper-Vが必要になりますので、Windowsの条件はPro以上になります。
 
 母艦となるWindowsではIISを有効にしておきます。
-CML上の仮想マシンにファイルを受け渡すのに使います。
+これはCMLの中で動いているVMにファイルを受け渡すのに使います。
 
 <br>
 
-### CML環境
+### 動作環境
 
 Hyper-Vを有効にしたWindows11上でCMLを動かします。
 
-このWindows11には物理NICが5個あり、そのうち2個を利用しています（常時リンクアップさせるためのポートを含めると合計3ポート使用）。
+このWindows11には物理NICが5個あり、
+そのうち2個を利用しています（常時リンクアップさせるためのポートを含めると合計3ポート使用）。
 
-2個のNICのうち一つは実際にインターネットに出ていけるLAN、もう一つはリンクアップしているだけの何もつながっていないNICです。
+2個のNICのうち一つは実際にインターネットに出ていけるLAN、
+もう一つはリンクアップしているだけの何もつながっていないNICです。
 
 <br>
 
@@ -58,13 +63,15 @@ Hyper-Vを有効にしたWindows11上でCMLを動かします。
 
 <br>
 
-CMLを二本足のマシンにして、それぞれブリッジで繋ぎます。★ここ重要
+**CMLを二本足のマシンにして、それぞれブリッジで繋ぎます（★ここ重要）**
 
 CML内のラボ機器にインターネットに出ていける外部のアドレスを割り当てたいときには `bridge0` につなぎます。
 
 外部接続は不要なものの、母艦となるWindowsとは通信したい、という場合には `bridge1` につなぎます。
 
 CML内の異なるラボの機器同士で通信したい、という場合も `bridge1` を経由すると便利です。
+
+<br>
 
 ![論理構成](./assets/CML_LogicalDiagram.png)
 
@@ -84,7 +91,7 @@ CML内の異なるラボの機器同士で通信したい、という場合も `
 
 <br>
 
-![証明書エラー](/assets/CML_Cert_error.png)
+| ![証明書エラー](/assets/CML_Cert_error.png) |:--|
 
 <br>
 
@@ -92,7 +99,7 @@ CML内の異なるラボの機器同士で通信したい、という場合も `
 
 そして**IPアドレスではなく、証明書の名前で**アクセスします。
 
-Windowsのhostsファイルに書いてなくても、ブラウザは証明書名で接続できます。
+ホスト名の名前解決ができなくても、ブラウザは証明書の名前で接続できます。
 
 - ダッシュボード [https://cml-controller](https://cml-controller)
 - コックピット [https://cml-controller:9090](https://cml-controller:9090)
@@ -103,11 +110,13 @@ Windowsのhostsファイルに書いてなくても、ブラウザは証明書�
 
 ### インストール
 
-Hyper-Vの仮想スイッチマネージャで仮想スイッチを２個作成します。
+CMLをインストールする前に、Hyper-Vの仮想スイッチマネージャで仮想スイッチを２個作成します。
 
 １つ目は名前を `vSwitch(192.168.122.0)` としておきます。
 
 接続種類は外部ネットワーク、インターネットに出ていけるNICを選択します。
+
+<br>
 
 ![仮想スイッチ設定](./assets/HyperV_NetworkManager_1.png)
 
@@ -283,16 +292,16 @@ PATtyを有効にするとCML上の仮想マシンのシリアルコンソール
 
 コックピットに入ります。
 
-https://192.168.122.212:9090
+https://cml-controller:9090
 
 
 以下の手順１～３を実施します。
 
-- 手順１．コックピットの「サービス」からvirl2-pattyを探してONにする
+**手順１．コックピットの「サービス」からvirl2-pattyを探してONにする**
 
 インストール中にPATtyを有効にしていればこの作業は不要です。
 
-- 手順２．/etc/default/patty.envのファイルにある OPTS="-vnc -serial" のコメントを外す
+**手順２．/etc/default/patty.envのファイルにある OPTS="-vnc -serial" のコメントを外す**
 
 コックピットの左下「端末」をクリックするとターミナルが開きます。
 
@@ -300,7 +309,7 @@ https://192.168.122.212:9090
 sudo vi /etc/default/patty.env
 ```
 
-- 手順３．コックピットの「サービス」からfirewalldを探してOFFにする、もしくはネットワーキングを選択してファイアウォールを無効にする
+**手順３．コックピットの「サービス」からfirewalldを探してOFFにする、もしくはネットワーキングを選択してファイアウォールを無効にする**
 
 CMLへの着信通信を許可してもよいのですが、面倒なのでファイアウォールを停止します。
 
@@ -312,7 +321,7 @@ CMLで作成する仮想マシンのタグに `serial:5000` や `vnc:7000` な�
 
 ### SSH
 
-この作業は恐らく不要。
+この作業は恐らく不要です（初期状態でもパスワードでログインできます）。
 
 ~~/etc/ssh/sshd_config ファイルから以下のコメントを外します。~~
 
@@ -345,7 +354,7 @@ sed -i -e "s/^#PasswordAuthentication yes\$/PasswordAuthentication yes/" /etc/ss
 これでパスワードなしでSSH接続できます。
 
 ```bash
-ssh-copy-id -i ~/.ssh/id_rsa.pub -p 1122 192.168.122.212ssh-copy-id -i ~/.ssh/id_rsa.pub -p 1122 192.168.122.212
+ssh-copy-id -i ~/.ssh/id_rsa.pub -p 1122 192.168.122.212
 ```
 
 <br>
@@ -376,7 +385,27 @@ net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 ```
 
-<br><br><br>
+<br>
+
+### カーネルモジュールのロード
+
+Dockerコンテナの中でVRFを使う場合、母艦側でもVRFのカーネルモジュールをロードしておきます。
+（恐らく初期状態のCMLは、VRFモジュールをロードしていないと思います）
+
+```bash
+root@cml-controller:~# lsmod | grep vrf
+vrf                    40960  0
+```
+
+このように表示されていればロードされています。
+
+もし何も表示されないようなら、以下のように設定を追加します。
+
+```bash
+echo "vrf" | sudo tee /etc/modules-load.d/vrf.conf
+```
+
+<br><br>
 
 ## CML追加設定（オプション）
 
@@ -417,7 +446,7 @@ sudo timedatectl set-timezone Asia/Tokyo
 
 ### パッケージを追加
 
-たいていのものはすでに入ってます。
+追加で使いたいものを入れておきます。
 
 stringsでバイナリファイルの中身を覗いてみたいので、binutilsを入れておきます。
 
@@ -473,7 +502,7 @@ cd /var/lib/libvirt/images/virl-base-images
 cd /var/local/virl2/dropfolder
 ```
 
-<br><br><br>
+<br><br>
 
 ## 参考文献
 

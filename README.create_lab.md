@@ -15,8 +15,10 @@ direnvをインストールしておくと楽できます。
 ```bash
 sudo apt install direnv
 echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc
-source ~/.bashrc```
+source ~/.bashrc
 ```
+
+<br>
 
 venvを使いますので、インストールします。
 
@@ -24,17 +26,23 @@ venvを使いますので、インストールします。
 sudo apt install python3-venv
 ```
 
+<br>
+
 このリポジトリをクローンします。
 
 ```bash
 git clone https://github.com/takamitsu-iida/expt-cml.git
 ```
 
+<br>
+
 移動します。
 
 ```bash
 cd expt-cml
 ```
+
+<br>
 
 venvをセットアップします。
 
@@ -49,9 +57,8 @@ pip install -r requirements.txt
 
 > [!NOTE]
 >
-> Pythonのモジュール virl2_client はCMLのバージョンと一致させる必要があります。requirements.txtに記載のバージョンを確認してください。
-
-<br>
+> Pythonのモジュール virl2_client はCMLのバージョンと一致させる必要があります。
+> requirements.txtに記載のバージョンを確認してください。
 
 <br><br>
 

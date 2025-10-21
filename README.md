@@ -68,7 +68,7 @@ Telegraf/InfluxDB/Grafanaを詰め込んだコンテナイメージを作りま�
 
 FRRを使うときはVRFやIPv6中継も必要になることが多いです。CMLのDockerではノード定義ファイルでsysctlを設定します。
 
-[README.create_custom_docker.md](/README.create_custom_docker.md)
+[README.create_frr_docker.md](/README.create_frr_docker.md)
 
 <br>
 

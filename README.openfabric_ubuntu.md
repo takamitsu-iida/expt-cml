@@ -71,11 +71,11 @@ options:
 >
 > fabric-tierで設定する数字は末端のルータが0で、コア側に行くほど数字が大きくなります
 
+<br>
+
 各ルータ（Ubuntu）は初回起動時にcloud-initの中でJinja2のテンプレートから生成したコンフィグを `/etc/frr/frr.conf` に格納しています。
 
 テンプレートはこの通り。`{{ HOSTNAME }}`　等のパラメータはスクリプト実行時に動的に割り当てています。
-
-<br>
 
 ```jinja
 ! frr version 10.4-dev

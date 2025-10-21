@@ -1,5 +1,7 @@
 # Telegraf/InfluxDB/Grafana
 
+<br>
+
 一つのコンテナの中でTIGスタックを動かします。
 
 <br>
@@ -46,17 +48,23 @@ SSHの鍵が作成済みか、確認します。
 ls -al ~/.ssh
 ```
 
+<br>
+
 まだSSHの鍵を作っていない場合は新規で作成します。
 
 ```bash
 ssh-keygen -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa
 ```
 
+<br>
+
 次に公開鍵をCMLに送り込みます。
 
 ```bash
 ssh-copy-id -p 1122 admin@192.168.122.212
 ```
+
+<br>
 
 これでパスワードなしでCMLにログインできるようになります。
 
@@ -70,6 +78,8 @@ Ubuntuにログインしたら、このリポジトリをクローンします�
 git clone https://github.com/takamitsu-iida/expt-cml.git
 ```
 
+<br>
+
 tigディレクトリに移動します。
 
 ```bash
@@ -77,11 +87,15 @@ cd expt-cml
 cd tig
 ```
 
+<br>
+
 イメージをビルドします。時間かかります。
 
 ```bash
 make build
 ```
+
+<br>
 
 ビルドできたら、コンテナを実行してみます。
 
@@ -89,11 +103,15 @@ make build
 make run
 ```
 
+<br>
+
 コンテナにシェルで接続して動作状況を確認してみます。
 
 ```bash
 make shell
 ```
+
+<br>
 
 telegraf, influxdb, grafanaすべてのプロセスが起動していれば、ひとまず問題ありません。
 
@@ -103,6 +121,8 @@ telegraf, influxdb, grafanaすべてのプロセスが起動していれば、�
 make stop
 ```
 
+<br>
+
 ビルドを繰り返すときは、Dockerのキャッシュを削除してからビルドします。
 
 ```bash
@@ -110,6 +130,8 @@ make clean
 make prune
 make build
 ```
+
+<br>
 
 ビルドしたコンテナイメージとノード定義ファイル、イメージ定義ファイルをCMLの/var/tmpにアップロードします。
 
@@ -119,6 +141,8 @@ make save
 make upload
 ```
 
+<br>
+
 CMLに登録します。
 
 この作業は手打ちすると面倒なので、CMLのコックピットのターミナルでルート特権を取ってから、シェルスクリプトを実行します。
@@ -127,13 +151,15 @@ CMLに登録します。
 bash /var/tmp/cml_install_image.sh
 ```
 
+<br>
+
 最後にvirl2サービスを再起動します。
 
 ```bash
 systemctl restart virl2.target
 ```
 
-<br><br><br>
+<br><br>
 
 ## Telegrafの動作確認
 
@@ -143,7 +169,7 @@ systemctl restart virl2.target
 telegraf --config /etc/telegraf/telegraf.conf --test
 ```
 
-<br>
+<br><br>
 
 ## Telegrafの再起動
 
@@ -155,7 +181,7 @@ telegraf --config /etc/telegraf/telegraf.conf --test
 supervisorctl restart telegraf
 ```
 
-<br><br><br>
+<br><br>
 
 ## InfluxDB動作確認
 
@@ -163,7 +189,7 @@ influxdbに値が蓄積されているか、確認します。
 
 <br>
 
-DockerコンテナのCPU使用率
+**DockerコンテナのCPU使用率**
 
 ```bash
 influx query '
@@ -176,7 +202,7 @@ from(bucket: "my_bucket")
 
 <br>
 
-インタフェースの統計値
+**インタフェースの統計値**
 
 ```bash
 influx query '
@@ -189,7 +215,7 @@ from(bucket: "my_bucket")
 
 <br>
 
-Telegrafがルータから情報を取得している場合、
+**Telegrafがルータから情報を取得している場合**
 
 ```influx
 from(bucket: "my_bucket")
@@ -218,7 +244,6 @@ Windows母艦からブラウザで接続します。
 
 http://192.168.0.110:3000
 
-
 InfluxDBのトークンはmake build時に生成して環境変数TOKENに保存しています。
 
 make buildを実行したUbuntuであれば、Dockerイメージをインスペクトすれば値は見えます。
@@ -228,11 +253,15 @@ docker images
 docker inspect tig:latest
 ```
 
+<br>
+
 すでにCMLに登録してコンテナとして起動済みであれば、コンテナを起動してコンソールから環境変数TOKENを表示します。
 
 ```bash
 printenv TOKEN
 ```
+
+<br>
 
 GrafanaからInfluxDBを参照する際にこの文字列が必要になりますのでコピーしておきます。
 
@@ -286,6 +315,8 @@ tx = from(bucket: "my_bucket")
 
 union(tables: [rx, tx])
 ```
+
+<br>
 
 これをグラフにします。
 

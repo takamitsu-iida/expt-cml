@@ -33,6 +33,8 @@ options:
   --start     Start lab
 ```
 
+<br>
+
 ラボを作るときは `--create` です。
 
 初回起動時はcloud-initで必要なパッケージをまとめてインストールしますので、Ubuntuのセットアップに少々時間がかかります。
@@ -52,6 +54,8 @@ sudo apt update
 sudo apt install -y ca-certificates curl gnupg
 ```
 
+<br>
+
 aptリポジトリを追加します。
 
 ```bash
@@ -67,6 +71,8 @@ echo \
 sudo apt update
 ```
 
+<br>
+
 dockerグループを作成してciscoアカウントをグループに所属させます（デフォルトのアカウントがciscoの場合）。
 
 ```bash
@@ -74,11 +80,15 @@ sudo groupadd docker
 sudo usermod -aG docker cisco
 ```
 
+<br>
+
 docker-engineをインストールします。
 
 ```bash
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
+
+<br>
 
 Ubuntuを再起動します。
 
@@ -190,6 +200,8 @@ apt install -y make
 git clone https://github.com/takamitsu-iida/expt-cml.git
 ```
 
+<br>
+
 移動します。
 
 ```bash
@@ -197,9 +209,9 @@ cd expt-cml
 cd docker_ubuntu
 ```
 
-[Dockerfile](/docker_ubuntu/Dockerfile) を確認して、追加したいパッケージがあれば追加、不要なものは削除します。
-
 <br>
+
+[Dockerfile](/docker_ubuntu/Dockerfile) を確認して、追加したいパッケージがあれば追加、不要なものは削除します。
 
 ビルドします。長い時間かかります。
 
@@ -207,11 +219,15 @@ cd docker_ubuntu
 make build
 ```
 
+<br>
+
 作成したdockerイメージをインスペクトしてIdの値をイメージ定義ファイルに反映します。
 
 ```bash
 make inspect
 ```
+
+<br>
 
 実行例。
 
@@ -219,6 +235,8 @@ make inspect
 cisco@ubuntu:~/expt-cml/ubuntu_docker$ make inspect
 850be02d0660af16fb83eb1ba6f44aa346f3cf445bf80ef82fec40c3589b6adc
 ```
+
+<br>
 
 `make inspect` を実行すると、image_definition.yamlを作成して、SHA256: の部分にこの文字列を埋め込みます。
 
@@ -232,9 +250,9 @@ cisco@ubuntu:~/expt-cml/ubuntu_docker$ make inspect
 make save
 ```
 
-`make save` することでイメージファイルが完成します。
-
 <br>
+
+`make save` することでイメージファイルが完成します。
 
 あとは、ノード定義, イメージ定義, イメージファイルの３点セットをCMLに送り込んで適切な場所に格納します。
 
@@ -245,6 +263,8 @@ make save
 ```bash
 make upload
 ```
+
+<br>
 
 もしCMLでSSHサーバを有効にしていない場合、手作業で以下の4個のファイルをアップロードします。
 
@@ -301,6 +321,8 @@ root特権を取ります。
 sudo -s -E
 ```
 
+<br>
+
 先程送り込んだファイル `cml_install_image.sh` を実行します。
 
 `make upload` でファイルをCMLにアップロードした場合は、/var/tmpにファイルがありますので、以下のように実行します。
@@ -309,11 +331,15 @@ sudo -s -E
 bash /var/tmp/cml_install_image.sh
 ```
 
+<br>
+
 個別にファイルをアップロードした場合は dropfolder にファイルがありますので、以下のように実行します。
 
 ```bash
 bash /var/local/virl2/dropfolder/cml_install_image.sh
 ```
+
+<br>
 
 これでノード定義、イメージ定義、イメージファイルが適切な場所に格納され、実行したスクリプト自身も消去されます。
 
@@ -365,7 +391,7 @@ rm -- "$0"
 systemctl restart virl2.target
 ```
 
-<br><br><br>
+<br><br>
 
 dockerのイメージがCMLに登録されているか、確認します。
 

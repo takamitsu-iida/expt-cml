@@ -150,22 +150,19 @@ root@cml-controller:/var/lib/libvirt/images/node-definitions# cp -a csr1000v.yam
 以下の内容に変更します。
 
 ```yaml
-#
-# arcos node definition
-#
 id: arcos
 boot:
   timeout: 120
-  uses_regex: false
   completed:
     - Debian GNU/Linux 12 localhost ttyS0
     - ArcOS (c) Arrcus, Inc
+  uses_regex: false
 sim:
   linux_native:
     libvirt_domain_driver: kvm
     driver: server
     disk_driver: virtio
-    ram: 3072
+    ram: 8192
     cpus: 1
     cpu_limit: 100
     nic_driver: vmxnet3
@@ -175,13 +172,9 @@ general:
 configuration:
   generator:
     driver: null
-  provisioning:
-    volume_name: disk
-    media_type: iso
 device:
   interfaces:
     serial_ports: 2
-    default_count: 5
     physical:
       - ma1
       - swp1
@@ -189,6 +182,7 @@ device:
       - swp3
       - swp4
     has_loopback_zero: true
+    default_count: 5
     loopback:
       - Loopback
 ui:
@@ -217,7 +211,7 @@ schema_version: 0.0.1
 - root
 - YouReallyNeedToChangeThis
 
-passwdコマンドでパスワードを変更します。
+ログインしたらpasswdコマンドでパスワードを変更します。
 
 シェルの起動は `cli` コマンドです。
 
@@ -234,3 +228,146 @@ CPU Information:  12th Gen Intel(R) Core(TM) i7-12700, 1 cores
 Memory [Total]:   2926092 kB
 Uptime:           1 minute
 ```
+
+設定は `config` コマンドですが、初回起動時はZTPプロセスが走っているため、手動での設定変更はできません。
+
+```text
+root@localhost# config
+ZTP is in progress. System configuration cannot be changed now. Please stop ZTP using cli "request system ztp stop" to stop ZTP and change system configuration.
+```
+
+上記メッセージにある通り `request system ztp stop` で停止します。
+
+設定できるようになりますが・・・
+
+```text
+root@localhost# request system ztp stop
+Are you sure? This command will disable ZTP and may take several minutes (up to 10 minutes) [no,yes] yes
+
+Initiating ZTP stop. Please do not perform any operation on the system until ZTP is stopped...
+2025-11-27 09:00:33 ArcOS ztp INFO: Stopping ZTP...
+```
+
+```text
+root@localhost# config
+Entering configuration mode terminal
+
+root@localhost(config)# interface ?
+Possible completions:
+  ma1
+  swp1
+  swp2
+  swp3
+  swp4
+root@localhost(config)# interface swp1
+root@localhost(config-interface-swp1)# enabled
+root@localhost(config-interface-swp1)# commit
+Aborted: 'interface swp1 enabled': Admin user password (system aaa authentication admin-user) still not changed from factory default password. Interfaces cannot be enabled!
+
+root@localhost(config-interface-swp1)#
+```
+
+このように、最初にAdminユーザのパスワードを変更しないと、設定の変更は許可してもらえません。
+
+この設定を行います。
+
+```text
+root@localhost(config)# system aaa authentication admin-user admin-password
+(<hash digest string>): ********
+root@localhost(config)#
+root@localhost(config)# commit
+Commit complete.
+root@localhost(config)#
+```
+
+設定をテキストファイルに保存します。
+
+```text
+root@localhost# show running-config | save run-conf.txt
+```
+
+exitでシェルを抜けてbashに戻ると、ファイルを確認できます。中身はこんな感じ。
+
+```bash
+root@localhost:~# ls
+run-conf.txt
+root@localhost:~#
+root@localhost:~# cat run-conf.txt
+version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
+features feature ARCOS_RIOT
+ supported false
+!
+features feature ARCOS_ICMP_SRC_REWRITE
+ supported true
+!
+features feature ARCOS_SUBIF
+ supported true
+!
+features feature ARCOS_QoS
+ supported false
+!
+features feature ARCOS_MPLS
+ supported true
+!
+features feature ARCOS_SFLOW
+ supported true
+!
+system login-banner "ArcOS (c) Arrcus, Inc."
+system cli commit-message true
+system netconf-server enable false
+system netconf-server transport ssh enable false
+system restconf-server enable false
+system aaa authentication admin-user admin-password $6$DGq6SqagIDmiu3tA$TxSoLLT7XA5F6vg3/D9VuLauylwOFPQon0ZGn/imwaxLb.Y7tJ4ii.RftGsLvpRkLdrptQDaRyT5Ah8D.ihXZ1
+system rib IPV6
+!
+system rib IPV4
+!
+interface ma1
+ type    ethernetCsmacd
+ mtu     1500
+ enabled true
+ subinterface 0
+ exit
+!
+interface swp1
+ type    ethernetCsmacd
+ enabled true
+!
+network-instance default
+!
+network-instance management
+ interface ma1
+ !
+!
+lldp interface ma1
+!
+lldp interface swp1
+!
+routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
+ prefix 0.0.0.0/8 8..32
+ !
+ prefix 127.0.0.0/8 8..32
+ !
+ prefix 192.0.0.0/24 24..32
+ !
+ prefix 224.0.0.0/4 exact
+ !
+ prefix 224.0.0.0/24 exact
+ !
+ prefix 240.0.0.0/4 4..32
+ !
+!
+routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
+ prefix ::/128 exact
+ !
+ prefix ::1/128 exact
+ !
+ prefix ff00::/8 exact
+ !
+ prefix ff02::/16 exact
+ !
+!
+root@localhost:~#
+```
+
+このように別ファイルに保存することはできるものの、commitしたときにどこに保存されているかは不明です。

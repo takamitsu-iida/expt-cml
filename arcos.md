@@ -6,9 +6,13 @@
 - ファイル名 arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2
 - サイズ 約2GB
 
-バージョン等は不明。
+ファイル名からは読み取れないものの、中身は `8.3.1.EFT1:Nov_20_25:6_11_PM` というバージョンです。
 
-これをCMLにSCPで送り込む。
+これをCMLにSCPで送り込みます。
+
+`scp ./arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2 cml:`
+
+実行例。
 
 ```bash
 iida@s400win:~$ scp ./arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2 cml:
@@ -16,7 +20,9 @@ Warning: Permanently added '[192.168.122.212]:1122' (ECDSA) to the list of known
 arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2                100% 2016MB 362.8MB/s   00:05
 ```
 
-CMLにSSHで乗り込んで、root特権を取る。
+SSHでCMLに乗り込んで、root特権を取ります。
+
+実行例。
 
 ```bash
 (.venv) iida@s400win:~/git/expt-cml$ ssh cml
@@ -44,7 +50,11 @@ iida@cml-controller:~$ sudo -s -E
 root@cml-controller:~#
 ```
 
-ファイルを確認。ホームディレクトリ（この場合は/home/iida）にファイルが転送されてきている。
+送ったファイルがあるか確認します。
+
+ホームディレクトリ（この場合は/home/iida）にファイルが転送されています。
+
+実行例。
 
 ```bash
 root@cml-controller:~# pwd
@@ -54,11 +64,13 @@ total 2064772
 -rw-r--r-- 1 iida iida 2114322432 Nov 26 13:51 arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2
 ```
 
-CSR1000vのイメージ定義ディレクトリをコピーする。
+イメージ定義を作ります。
+
+CSR1000vのイメージ定義ディレクトリをコピーします。
 
 ```bash
 root@cml-controller:~# cd /var/lib/libvirt/images/virl-base-images/
-root@cml-controller:/var/lib/libvirt/images/virl-base-images#
+
 root@cml-controller:/var/lib/libvirt/images/virl-base-images# ls
 alpine-base-3-21-3            cat-sdwan-validator-20-16-1  firefox-138-0-4-build1        iosvl2-2020         tacplus-f4-0-4-28
 alpine-desktop-3-21-3         cat-sdwan-vedge-20-16-1      fmcv-7-7-0                    iosxrv9000-25-1-1   thousandeyes-ea-1-210-0
@@ -69,7 +81,7 @@ asav-9-23-1                   cat9800-17-17-01             iol-xe-17-16-01a     
 cat-sdwan-controller-20-16-1  chrome-136-0-7103-113-1      iol-xe-17-16-01a-serial-4eth  server-tcl-16-0     ubuntu_docker
 cat-sdwan-edge-17-16-01a      csr1000v-17-03-08a           ioll2-xe-17-16-01a            splunk-9-4
 cat-sdwan-manager-20-16-1     dnsmasq-2-9-0                iosv-159-3-m10                syslog-3-38
-root@cml-controller:/var/lib/libvirt/images/virl-base-images#
+
 root@cml-controller:/var/lib/libvirt/images/virl-base-images# cp -a csr1000v-17-03-08a arcos
 ```
 
@@ -92,7 +104,8 @@ total 3452872
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# chown libvirt-qemu:virl2 arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2
 ```
 
-不要なcsr1000vのイメージを削除する。
+不要なcsr1000vのイメージを削除します。
+
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# ls -l
@@ -104,7 +117,7 @@ total 3452876
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# rm csr1000v-universalk9.17.03.08a-serial.qcow2
 ```
 
-イメージ定義ファイルを以下の内容に変更する。
+イメージ定義ファイルを以下の内容に変更します。
 
 ```yaml
 #
@@ -120,17 +133,21 @@ read_only: true
 schema_version: 0.0.1
 ```
 
-ノード定義ファイルが置かれている場所に移動する。
+ノード定義ファイルを作ります。
+
+ノード定義ファイルが置かれている場所に移動します。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# cd /var/lib/libvirt/images/node-definitions/
 ```
 
-CSR1000vのノード定義ファイルをコピーする。
+CSR1000vのノード定義ファイルをコピーします。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/node-definitions# cp -a csr1000v.yaml arcos.yaml
 ```
+
+以下の内容に変更します。
 
 ```yaml
 #
@@ -161,12 +178,6 @@ configuration:
   provisioning:
     volume_name: disk
     media_type: iso
-    files:
-      - name: config.txt
-        content: |-
-          hostname inserthostname-here
-          end
-        editable: true
 device:
   interfaces:
     serial_ports: 2
@@ -201,16 +212,14 @@ inherited:
 schema_version: 0.0.1
 ```
 
-デフォルトのログインアカウント
+デフォルトのアカウントでログインします。
 
 - root
 - YouReallyNeedToChangeThis
 
-passwdコマンドで変更する。
+passwdコマンドでパスワードを変更します。
 
-シェルの起動は cli コマンド
-
-
+シェルの起動は `cli` コマンドです。
 
 ```text
 Welcome to the ArcOS CLI

@@ -371,3 +371,319 @@ root@localhost:~#
 ```
 
 このように別ファイルに保存することはできるものの、commitしたときにどこに保存されているかは不明です。
+
+## 注意事項
+
+<br>
+
+### MTUに注意
+
+arcosのデフォルトでは、インタフェースのMTUが9000になっているが、CMLで動く仮想マシンは9000バイトは使えない模様。
+ISISのhelloはパディングを詰めてMTU長一杯のパケットを送るが、それは受け取れないので隣接が確立できない。
+MTUは3000程度に抑えること。
+
+<br>
+
+## cliコマンド
+
+`config` コンフィグモードに遷移します。
+
+`top` コンフィグモードの中で最上位の階層に移動します。
+
+`commit` コンフィグを確定します。
+
+`show configuration` コミット前の編集されている設定を表示します。
+
+
+`show network-instance default protocol ISIS core interface * state`
+
+
+
+
+<br><br><br>
+
+### SRv6
+
+
+ロケータ長 64ビット
+
+64 = (SIDブロック 40ビット) + (ノード長 24ビット)
+
+R1のロケータ fd00:0000:00  00:00:01::/64
+
+```text
+ !
+ srv6 locator MAIN
+  locator-node-length 24
+  prefix              fd00:0:0:1::/64
+ !
+```
+
+R2のロケータ fd00:0000:00  00:00:02::/64
+
+```text
+ !
+ srv6 locator MAIN
+  locator-node-length 24
+  prefix              fd00:0:0:2::/64
+ !
+```
+
+
+ローカルSID
+
+```text
+root@R1# show network-instance default srv6 local-sids
+srv6 local-sids local-sid fd00:0:0:1:1::/80
+ behavior     END_PSP_USD
+ locator-name MAIN
+ client-name  sidmgr
+```
+
+このローカルSIDをloopback0に割り当てたいけど、subinterface 0に複数のIPv6アドレスを割り当てられない。
+
+かといって、subinterface 1を作ろうとすると怒られる。
+
+これは意味がわからない。loopback 1を作れってことか？？？
+
+<br>
+
+### L3VPN over SRv6
+
+いまのところ動いてないです。
+
+何が足りないんだろう？？？
+
+```text
+root@R1# show run
+version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
+features feature ARCOS_RIOT
+ supported false
+!
+features feature ARCOS_ICMP_SRC_REWRITE
+ supported true
+!
+features feature ARCOS_SUBIF
+ supported true
+!
+features feature ARCOS_QoS
+ supported false
+!
+features feature ARCOS_MPLS
+ supported true
+!
+features feature ARCOS_SFLOW
+ supported true
+!
+system hostname R1
+system login-banner "ArcOS (c) Arrcus, Inc."
+system clock timezone-name Asia/Tokyo
+system ssh-server enable true
+system ssh-server permit-root-login true
+system cli commit-message true
+system netconf-server enable false
+system netconf-server transport ssh enable false
+system restconf-server enable false
+system aaa authentication admin-user admin-password $6$DGq6SqagIDmiu3tA$TxSoLLT7XA5F6vg3/D9VuLauylwOFPQon0ZGn/imwaxLb.Y7tJ4ii.RftGsLvpRkLdrptQDaRyT5Ah8D.ihXZ1
+system rib IPV6
+!
+system rib IPV4
+!
+interface ma1
+ type    ethernetCsmacd
+ mtu     1500
+ enabled true
+ subinterface 0
+  ipv4 enabled true
+ exit
+!
+interface swp1
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv4 enabled true
+  ipv4 address 192.168.12.1
+   prefix-length 24
+  exit
+  enabled true
+ exit
+!
+interface swp2
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 10
+  ipv6 enabled true
+  ipv4 enabled true
+  ipv4 address 10.0.1.1
+   prefix-length 24
+  exit
+  enabled true
+  vlan vlan-id 10
+ exit
+!
+interface loopback0
+ type    softwareLoopback
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 address 2001:db8:ffff::1
+   prefix-length 128
+  exit
+  ipv4 enabled true
+  ipv4 address 192.168.255.1
+   prefix-length 32
+  exit
+  enabled true
+ exit
+!
+network-instance default
+ protocol BGP MAIN
+  global as 65000
+  global router-id 192.168.255.1
+  global graceful-restart enabled true
+  global afi-safi L3VPN_IPV6_UNICAST
+  !
+  global afi-safi L3VPN_IPV4_UNICAST
+  !
+  global srv6 locator MAIN
+  neighbor 2001:db8:ffff::2
+   peer-as 65000
+   transport local-address 2001:db8:ffff::1
+   afi-safi L3VPN_IPV6_UNICAST
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    exit
+   !
+   exit
+  !
+ !
+ protocol ISIS core
+  global net [ 49.0000.0000.0000.0001.00 ]
+  global graceful-restart enabled true
+  global segment-routing enabled true
+  global traffic-engineering ipv4-router-id 192.168.255.1
+  global af IPV6 UNICAST
+   enabled true
+   exit
+  !
+  global af IPV4 UNICAST
+   enabled true
+   exit
+  !
+  global srv6 enabled true
+  global srv6 locator MAIN
+  !
+  level 1
+   enabled true
+   exit
+  !
+  level 2
+   enabled false
+   exit
+  !
+  interface swp1
+   enabled      true
+   network-type POINT_TO_POINT
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled true
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+  interface loopback0
+   enabled true
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled true
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+ !
+ srv6 locator MAIN
+  locator-node-length 24
+  prefix              fd00:0:0:1::/64
+ !
+!
+network-instance management
+ interface ma1
+ !
+!
+network-instance vrf-1
+ table-connection ADJACENCY BGP IPV4
+  src-dst-instance adjacency vrf-1
+  !
+ !
+ interface swp2.10
+ !
+ protocol BGP vrf-1
+  global route-distinguisher 65000:1
+  global afi-safi IPV4_UNICAST
+   network 10.0.1.0/24
+   !
+   rt-afi-safi L3VPN_IPV4_UNICAST
+    route-target 65000:1 both
+     exit
+    !
+    exit
+   !
+  !
+  global afi-safi IPV6_UNICAST
+  !
+ !
+!
+lldp interface ma1
+!
+lldp interface swp1
+!
+lldp interface swp2
+!
+routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
+ prefix 0.0.0.0/8 8..32
+ !
+ prefix 127.0.0.0/8 8..32
+ !
+ prefix 192.0.0.0/24 24..32
+ !
+ prefix 224.0.0.0/4 exact
+ !
+ prefix 224.0.0.0/24 exact
+ !
+ prefix 240.0.0.0/4 4..32
+ !
+!
+routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
+ prefix ::/128 exact
+ !
+ prefix ::1/128 exact
+ !
+ prefix ff00::/8 exact
+ !
+ prefix ff02::/16 exact
+ !
+!
+```

@@ -96,6 +96,18 @@ Windows Terminalの下向き矢印を押すと登録したアクションプロ�
 
 <br><br>
 
+## キーバインドを修正する
+
+Cisco IOSではコマンドの中止を `ctrl+shift+6` に割り当てています。
+
+Windows Terminalもデフォルトで同じキーバインドを割り当てていますので、これを削除します。
+
+GUIで「設定 → 操作」の順に辿ります。
+
+![delete keybind](/assets/windows_terminal_key_bind.png)
+
+<br><br>
+
 ## 複数のアクションプロファイルを一度に開く
 
 CMLのラボを起動したり、停止したり、といった作業はVisual Studio CodeでPythonスクリプトを書いて実行していますので、

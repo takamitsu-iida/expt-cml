@@ -404,10 +404,26 @@ MTUは3000程度に抑えること。
 
 ### SRv6
 
-
 ロケータ長 64ビット
 
+Cisco IOS-XRの場合、
+
 64 = (SIDブロック 40ビット) + (ノード長 24ビット)
+
+という構成。
+
+ここでは、
+
+64 = (SIDブロック 48ビット) + (ノード長 16ビット)
+
+という形にします。
+
+```text
+ srv6 locator MAIN
+  locator-node-length 16
+  prefix              fd00:0:0:1::/64
+ !
+```
 
 R1のロケータ fd00:0000:00  00:00:01::/64
 
@@ -450,12 +466,11 @@ srv6 local-sids local-sid fd00:0:0:1:1::/80
 
 ### L3VPN over SRv6
 
-いまのところ動いてないです。
+L3VPN_UNICASTをなんとか通せた。
 
-何が足りないんだろう？？？
+R1の設定
 
 ```text
-root@R1# show run
 version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
 features feature ARCOS_RIOT
  supported false
@@ -544,12 +559,24 @@ network-instance default
  protocol BGP MAIN
   global as 65000
   global router-id 192.168.255.1
+  global segment-routing enabled true
   global graceful-restart enabled true
   global afi-safi L3VPN_IPV6_UNICAST
   !
   global afi-safi L3VPN_IPV4_UNICAST
   !
   global srv6 locator MAIN
+  neighbor 192.168.255.2
+   peer-as 65000
+   transport local-address 192.168.255.1
+   afi-safi L3VPN_IPV6_UNICAST
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    exit
+   !
+   exit
+  !
   neighbor 2001:db8:ffff::2
    peer-as 65000
    transport local-address 2001:db8:ffff::1
@@ -562,7 +589,7 @@ network-instance default
    exit
   !
  !
- protocol ISIS core
+ protocol ISIS MAIN
   global net [ 49.0000.0000.0000.0001.00 ]
   global graceful-restart enabled true
   global segment-routing enabled true
@@ -607,6 +634,7 @@ network-instance default
   !
   interface loopback0
    enabled true
+   passive true
    af IPV6 UNICAST
     enabled true
    !
@@ -625,7 +653,7 @@ network-instance default
   !
  !
  srv6 locator MAIN
-  locator-node-length 24
+  locator-node-length 16
   prefix              fd00:0:0:1::/64
  !
 !
@@ -634,25 +662,303 @@ network-instance management
  !
 !
 network-instance vrf-1
- table-connection ADJACENCY BGP IPV4
-  src-dst-instance adjacency vrf-1
-  !
+ type L3VRF
+ table-connection DIRECTLY_CONNECTED BGP IPV4
  !
  interface swp2.10
  !
  protocol BGP vrf-1
-  global route-distinguisher 65000:1
+  global segment-routing enabled true
+  global route-distinguisher 192.168.255.1:1
+  global sid-allocation-mode PER_NEXTHOP
   global afi-safi IPV4_UNICAST
+   graceful-restart enabled true
    network 10.0.1.0/24
    !
    rt-afi-safi L3VPN_IPV4_UNICAST
-    route-target 65000:1 both
+    route-target 65000:1 import
+     exit
+    !
+    route-target 65000:1 export
      exit
     !
     exit
    !
   !
   global afi-safi IPV6_UNICAST
+  !
+  global srv6 locator MAIN
+  neighbor 10.0.1.100
+   peer-as 65001
+   afi-safi IPV4_UNICAST
+    next-hop SELF
+    extended-nexthop enable true
+    exit
+   !
+   exit
+  !
+ !
+!
+lldp interface ma1
+!
+lldp interface swp1
+!
+lldp interface swp2
+!
+routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
+ prefix 0.0.0.0/8 8..32
+ !
+ prefix 127.0.0.0/8 8..32
+ !
+ prefix 192.0.0.0/24 24..32
+ !
+ prefix 224.0.0.0/4 exact
+ !
+ prefix 224.0.0.0/24 exact
+ !
+ prefix 240.0.0.0/4 4..32
+ !
+!
+routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
+ prefix ::/128 exact
+ !
+ prefix ::1/128 exact
+ !
+ prefix ff00::/8 exact
+ !
+ prefix ff02::/16 exact
+ !
+!
+```
+
+R2の設定
+
+```text
+version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
+features feature ARCOS_RIOT
+ supported false
+!
+features feature ARCOS_ICMP_SRC_REWRITE
+ supported true
+!
+features feature ARCOS_SUBIF
+ supported true
+!
+features feature ARCOS_QoS
+ supported false
+!
+features feature ARCOS_MPLS
+ supported true
+!
+features feature ARCOS_SFLOW
+ supported true
+!
+system hostname R2
+system login-banner "ArcOS (c) Arrcus, Inc."
+system clock timezone-name Asia/Tokyo
+system ssh-server enable true
+system ssh-server permit-root-login true
+system cli commit-message true
+system netconf-server enable false
+system netconf-server transport ssh enable false
+system restconf-server enable false
+system aaa authentication admin-user admin-password $6$HAOaiOJfXV4ybYH9$55sa2AWuPptssaV1eo.5WRDi/wBv/TmqFbFMRlccF7twXLko37CGIVP9OOy4qUTKkQTZrNkrt7cwRZ0Tm6Gwn1
+system rib IPV6
+!
+system rib IPV4
+!
+interface ma1
+ type    ethernetCsmacd
+ mtu     1500
+ enabled true
+ subinterface 0
+  ipv4 enabled true
+  enabled true
+ exit
+!
+interface swp1
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv4 enabled true
+  ipv4 address 192.168.12.2
+   prefix-length 24
+  exit
+  enabled true
+ exit
+!
+interface swp2
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 10
+  ipv6 enabled true
+  ipv4 enabled true
+  ipv4 address 10.0.2.1
+   prefix-length 24
+  exit
+  enabled true
+  vlan vlan-id 10
+ exit
+!
+interface loopback0
+ type    softwareLoopback
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 address 2001:db8:ffff::2
+   prefix-length 128
+  exit
+  ipv4 enabled true
+  ipv4 address 192.168.255.2
+   prefix-length 32
+  exit
+  enabled true
+ exit
+!
+network-instance default
+ protocol BGP MAIN
+  global as 65000
+  global router-id 192.168.255.2
+  global segment-routing enabled true
+  global graceful-restart enabled true
+  global afi-safi L3VPN_IPV6_UNICAST
+  !
+  global afi-safi L3VPN_IPV4_UNICAST
+  !
+  global srv6 locator MAIN
+  neighbor 192.168.255.1
+   peer-as 65000
+   transport local-address 192.168.255.2
+   afi-safi L3VPN_IPV6_UNICAST
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    exit
+   !
+   exit
+  !
+  neighbor 2001:db8:ffff::1
+   peer-as 65000
+   transport local-address 2001:db8:ffff::2
+   afi-safi L3VPN_IPV6_UNICAST
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    exit
+   !
+   exit
+  !
+ !
+ protocol ISIS MAIN
+  global net [ 49.0000.0000.0000.0002.00 ]
+  global graceful-restart enabled true
+  global segment-routing enabled true
+  global traffic-engineering ipv4-router-id 192.168.255.2
+  global af IPV6 UNICAST
+   enabled true
+   exit
+  !
+  global af IPV4 UNICAST
+   enabled true
+   exit
+  !
+  global srv6 enabled true
+  global srv6 locator MAIN
+  !
+  level 1
+   enabled true
+   exit
+  !
+  level 2
+   enabled false
+   exit
+  !
+  interface swp1
+   enabled      true
+   network-type POINT_TO_POINT
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled true
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+  interface loopback0
+   enabled true
+   passive true
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled true
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+ !
+ srv6 locator MAIN
+  locator-node-length 16
+  prefix              fd00:0:0:2::/64
+ !
+!
+network-instance management
+ interface ma1
+ !
+!
+network-instance vrf-1
+ type L3VRF
+ table-connection DIRECTLY_CONNECTED BGP IPV4
+ !
+ interface swp2.10
+ !
+ protocol BGP vrf-1
+  global segment-routing enabled true
+  global route-distinguisher 192.168.255.2:1
+  global sid-allocation-mode PER_NEXTHOP
+  global afi-safi IPV4_UNICAST
+   graceful-restart enabled true
+   network 10.0.2.0/24
+   !
+   rt-afi-safi L3VPN_IPV4_UNICAST
+    route-target 65000:1 import
+     exit
+    !
+    route-target 65000:1 export
+     exit
+    !
+    exit
+   !
+  !
+  global afi-safi IPV6_UNICAST
+  !
+  global srv6 locator MAIN
+  neighbor 10.0.2.100
+   peer-as 65002
+   afi-safi IPV4_UNICAST
+    next-hop SELF
+    exit
+   !
+   exit
   !
  !
 !

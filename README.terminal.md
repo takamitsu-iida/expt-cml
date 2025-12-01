@@ -195,6 +195,8 @@ PATtyで接続したい装置のポート番号を列挙して、コマンド一
 > CMLのIPアドレスはホスト名 `cml` で名前解決していますので、
 > hostsファイルを作成していない場合はスクリプトを書き換えてIPアドレスを直書きしてください。
 
+<!-- TODO: VIRL2_HOSTのような環境変数からCMLのアドレスを得ること -->
+
 <br>
 
 開きたいポートが5011と5012の場合、WVS(Ubuntu)のターミナルからこのように実行します。
@@ -222,3 +224,5 @@ Ctrl-Shift-Pでコマンドパレットを開いて「ブロードキャスト�
 ![broadcast](/assets/windows_terminal_broadcast_input.gif)
 
 <br>
+
+左右にペインを並べた状態で show running-config を実行すれば、設定を見比べることができてとても便利です。

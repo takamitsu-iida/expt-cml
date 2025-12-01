@@ -4,6 +4,8 @@
 intman.yaml
 deadman.conf
 
+terminal_log*.txt
+
 *.tgz
 cisco*.sh
 

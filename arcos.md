@@ -1,5 +1,10 @@
 # ArcOS
 
+<br>
+
+## CMLでArcOSを動かす手順
+
+Arrcus社のホームページからリクエストを送って評価版のArcOSのイメージを頂きました。
 
 頂いたファイル
 
@@ -8,7 +13,7 @@
 
 ファイル名からは読み取れないものの、中身は `8.3.1.EFT1:Nov_20_25:6_11_PM` というバージョンです。
 
-これをCMLにSCPで送り込みます。
+このファイルをCML(ホスト名cml)にSCPで送り込みます。
 
 `scp ./arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2 cml:`
 
@@ -50,7 +55,7 @@ iida@cml-controller:~$ sudo -s -E
 root@cml-controller:~#
 ```
 
-送ったファイルがあるか確認します。
+scpで送ったファイルを確認します。
 
 ホームディレクトリ（この場合は/home/iida）にファイルが転送されています。
 
@@ -64,9 +69,11 @@ total 2064772
 -rw-r--r-- 1 iida iida 2114322432 Nov 26 13:51 arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2
 ```
 
-イメージ定義を作ります。
+<br>
 
-CSR1000vのイメージ定義ディレクトリをコピーします。
+### イメージ定義
+
+CSR1000vのイメージ定義ディレクトリをコピーします。コピー元はCSR1000vでなくても何でもいいです。
 
 ```bash
 root@cml-controller:~# cd /var/lib/libvirt/images/virl-base-images/
@@ -85,14 +92,14 @@ cat-sdwan-manager-20-16-1     dnsmasq-2-9-0                iosv-159-3-m10       
 root@cml-controller:/var/lib/libvirt/images/virl-base-images# cp -a csr1000v-17-03-08a arcos
 ```
 
-arcosのイメージ定義ディレクトリに移動して、イメージ定義ファイルの名前をarcos.yamlに変更する（ディレクトリ名と一致させる）。
+arcosのイメージ定義ディレクトリに移動して、イメージ定義ファイルの名前をarcos.yamlに変更します（ディレクトリ名と一致させます）。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images# cd arcos
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# mv csr1000v-17-03-08a.yaml arcos.yaml
 ```
 
-qcow2ファイルをイメージ定義ディレクトリに移す。オーナーとグループを `libvirt-qemu:virl2` に変更する。
+あらかじめ送信したqcow2ファイルをイメージ定義ディレクトリに移して、ファイルのオーナーとグループを `libvirt-qemu:virl2` に変更します。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# mv ~/arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2 .
@@ -117,7 +124,7 @@ total 3452876
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# rm csr1000v-universalk9.17.03.08a-serial.qcow2
 ```
 
-イメージ定義ファイルを以下の内容に変更します。
+イメージ定義ファイルarcos.yamlを以下の内容に変更します。
 
 ```yaml
 #
@@ -133,7 +140,9 @@ read_only: true
 schema_version: 0.0.1
 ```
 
-ノード定義ファイルを作ります。
+<br>
+
+### ノード定義ファイル
 
 ノード定義ファイルが置かれている場所に移動します。
 
@@ -206,18 +215,31 @@ inherited:
 schema_version: 0.0.1
 ```
 
-デフォルトのアカウントでログインします。
+スタートアップコンフィグを外部から指定する方法は分かりません。
+
+デフォルトでZTPが有効なので、それを使うのがいいのかもしれません。
+
+readonlyはfalseを指定します。
+
+<br><br>
+
+## 起動後の動作
+
+CMLのダッシュボードでarcosをドラッグドロップでインスタンス化します。
+
+コンソールを開いて、デフォルトのアカウントでログインします。
 
 - root
 - YouReallyNeedToChangeThis
 
 ログインしたらpasswdコマンドでパスワードを変更します。
 
-シェルの起動は `cli` コマンドです。
+ArcOSのシェルの起動は `cli` コマンドです。
 
 ```text
 Welcome to the ArcOS CLI
 root connected from 127.0.0.1 using console on R1
+root@R1
 root@R1# show version
 Platform:         Virtual
 Software:         Arrcus ArcOS
@@ -229,16 +251,18 @@ Memory [Total]:   2926092 kB
 Uptime:           1 minute
 ```
 
-設定は `config` コマンドですが、初回起動時はZTPプロセスが走っているため、手動での設定変更はできません。
+<br>
+
+`config` コマンドで設定変更モードに入りますが、初回起動時はZTPプロセスが走っているため、手動での設定変更はできません。
 
 ```text
 root@localhost# config
-ZTP is in progress. System configuration cannot be changed now. Please stop ZTP using cli "request system ztp stop" to stop ZTP and change system configuration.
+ZTP is in progress.
+System configuration cannot be changed now.
+Please stop ZTP using cli "request system ztp stop" to stop ZTP and change system configuration.
 ```
 
 上記メッセージにある通り `request system ztp stop` で停止します。
-
-設定できるようになりますが・・・
 
 ```text
 root@localhost# request system ztp stop
@@ -247,6 +271,10 @@ Are you sure? This command will disable ZTP and may take several minutes (up to 
 Initiating ZTP stop. Please do not perform any operation on the system until ZTP is stopped...
 2025-11-27 09:00:33 ArcOS ztp INFO: Stopping ZTP...
 ```
+
+これでコンフィグモードに入れるようになりますが、設定の変更はまだできません。
+
+正確には `commit` ができません。
 
 ```text
 root@localhost# config
@@ -262,7 +290,8 @@ Possible completions:
 root@localhost(config)# interface swp1
 root@localhost(config-interface-swp1)# enabled
 root@localhost(config-interface-swp1)# commit
-Aborted: 'interface swp1 enabled': Admin user password (system aaa authentication admin-user) still not changed from factory default password. Interfaces cannot be enabled!
+Aborted: 'interface swp1 enabled': Admin user password (system aaa authentication admin-user)
+still not changed from factory default password. Interfaces cannot be enabled!
 
 root@localhost(config-interface-swp1)#
 ```
@@ -280,13 +309,19 @@ Commit complete.
 root@localhost(config)#
 ```
 
+これで設定変更できるようになりました。
+
+<br><br>
+
+## 設定をファイルとして保存
+
 設定をテキストファイルに保存します。
 
 ```text
 root@localhost# show running-config | save run-conf.txt
 ```
 
-exitでシェルを抜けてbashに戻ると、ファイルを確認できます。中身はこんな感じ。
+exitでシェルを抜けてbashに戻ると、ファイルを確認できます。中身はこんな感じです。
 
 ```bash
 root@localhost:~# ls
@@ -370,7 +405,9 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
 root@localhost:~#
 ```
 
-このように別ファイルに保存することはできるものの、commitしたときにどこに保存されているかは不明です。
+このように別ファイルに保存することはできるものの、commitしたときのコンフィグがどこに保存されているかは不明です。
+
+<br><br>
 
 ## 注意事項
 
@@ -378,9 +415,11 @@ root@localhost:~#
 
 ### MTUに注意
 
-arcosのデフォルトでは、インタフェースのMTUが9000になっているが、CMLで動く仮想マシンは9000バイトは使えない模様。
-ISISのhelloはパディングを詰めてMTU長一杯のパケットを送るが、それは受け取れないので隣接が確立できない。
-MTUは3000程度に抑えること。
+ArcOSのデフォルトでは、インタフェースのMTUが9000バイトになっていますが、CMLで動く仮想マシンはそんなに大きなパケットは受け取れないようです。
+
+ISISのhelloはパディングを詰めてMTU長一杯のパケットを送ってきますが、それを受け取れないのでデフォルトのままでは隣接が確立できません。
+
+MTU長は3000程度に抑えるのが良さそうです。
 
 <br>
 
@@ -393,7 +432,6 @@ MTUは3000程度に抑えること。
 `commit` コンフィグを確定します。
 
 `show configuration` コミット前の編集されている設定を表示します。
-
 
 `show network-instance default protocol ISIS core interface * state`
 
@@ -412,7 +450,7 @@ ipv4-entries entry 192.168.255.2/32
 
 <br><br><br>
 
-### SRv6
+## SRv6
 
 ロケータ長 64ビット
 
@@ -455,7 +493,6 @@ R2のロケータ fd00:0000:00  00:00:02::/64
  !
 ```
 
-
 ローカルSID
 
 ```text
@@ -474,7 +511,7 @@ srv6 local-sids local-sid fd00:0:0:1:1::/80
 
 <br>
 
-### L3VPN over SRv6
+## L3VPN over SRv6
 
 L3VPN over SRv6を検証します。
 
@@ -499,7 +536,7 @@ network-instance vrf-1
 
 もうひとつ重要なのは、IPv6アドレスのBGPネイバーには **extended-nexthop enable true** の設定が必要なこと。
 
-RFC 5549(Advertising IPv4 Network Layer Reachability Information with an IPv6 Next Hop)を有効にする設定です。
+RFC 8950(Advertising IPv4 Network Layer Reachability Information with an IPv6 Next Hop)を有効にする設定です。
 
 
 ```text
@@ -517,7 +554,7 @@ arcosの場合は明示的に設定しないといけません。
 
 設定しない場合は、状態がESTABLISHEDになっても、L3VPN_IPV4_UNICASTの経路は交換してくれません。
 
-設定しない場合。
+こんな感じで、RECEIVED SENT共にゼロのままです。
 
 ```text
 root@R1# show bgp ne
@@ -1068,3 +1105,12 @@ NEIGHBOR ADDRESS  AS     STATE        PEER AS   ELAPSED TIME    AFI SAFI NAME   
 2001:db8:ffff::2  65000  ESTABLISHED  65000        0d 00:15:29  L3VPN_IPV4_UNICAST  2         2
                                                                 L3VPN_IPV6_UNICAST  0         0
 ```
+
+<br><br>
+
+## 次に試すこと
+
+- コアをPE-P-PEの構成にする
+- SR-MPLSで動かす
+- 初期コンフィグをZTPで渡す
+- NETCONFで設定する

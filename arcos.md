@@ -397,7 +397,17 @@ MTUは3000程度に抑えること。
 
 `show network-instance default protocol ISIS core interface * state`
 
+`show network-instance default rib IPV4 ipv4-entries entry displaylevel 1` ルーティングテーブルをシンプルに表示します。
 
+例
+
+```text
+root@R1# show network-instance default rib IPV4 ipv4-entries entry displaylevel 1
+ipv4-entries entry 192.168.255.1/32
+ipv4-entries entry 192.168.255.2/32
+```
+
+`show interface swp1 counters | repeat 1` 1秒に一度、インタフェースのカウンター値を表示します。
 
 
 <br><br><br>
@@ -456,11 +466,11 @@ srv6 local-sids local-sid fd00:0:0:1:1::/80
  client-name  sidmgr
 ```
 
-このローカルSIDをloopback0に割り当てたいけど、subinterface 0に複数のIPv6アドレスを割り当てられない。
+このローカルSIDをloopback0に割り当てたいけど、subinterface 0に複数のIPv6アドレスは割り当てられません。
 
-かといって、subinterface 1を作ろうとすると怒られる。
+かといって、subinterface 1を作ろうとすると怒られます。
 
-これは意味がわからない。loopback 1を作れってことか？？？
+これは意味がわからないのですが、ソフトインタフェースなのだからloopback 1を作れってことかもしれません。
 
 <br>
 
@@ -488,6 +498,9 @@ network-instance vrf-1
 **global sid-allocation-mode** は INSTANCE_SID 以外、動きません。
 
 もうひとつ重要なのは、IPv6アドレスのBGPネイバーには **extended-nexthop enable true** の設定が必要なこと。
+
+RFC 5549(Advertising IPv4 Network Layer Reachability Information with an IPv6 Next Hop)を有効にする設定です。
+
 
 ```text
 network-instance default

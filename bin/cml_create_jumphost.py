@@ -97,23 +97,23 @@ write_files:
             link-local: []
 
 
-  - path: /etc/dhcp/dhcpd.conf
-    permissions: '0644'
-    owner: root:root
-    content: |
-      # DHCP Server Configuration file.
-      # see /usr/share/doc/isc-dhcp-server/examples/dhcpd.conf.example for details.
-
-      # https://www.smarthome-diy.info/blog/developper/smarthome/2024/09/3940/
-
-      subnet 192.168.1.0 netmask 255.255.255.0 {
-        range 192.168.1.200 192.168.254.0;
-        authoritative;
-        option subnet-mask 255.255.255.0;
-        default-lease-time 600;
-        max-lease-time 7200;
-        include "/etc/dhcp/dhcpd.hosts";
-      }
+#  - path: /etc/dhcp/dhcpd.conf
+#    permissions: '0644'
+#    owner: root:root
+#    content: |
+#      # DHCP Server Configuration file.
+#      # see /usr/share/doc/isc-dhcp-server/examples/dhcpd.conf.example for details.
+#
+#      # https://www.smarthome-diy.info/blog/developper/smarthome/2024/09/3940/
+#
+#      subnet 192.168.1.0 netmask 255.255.255.0 {
+#        range 192.168.1.200 192.168.254.0;
+#        authoritative;
+#        option subnet-mask 255.255.255.0;
+#        default-lease-time 600;
+#        max-lease-time 7200;
+#        include "/etc/dhcp/dhcpd.hosts";
+#      }
 
 
 
@@ -298,6 +298,27 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
+    def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
+        base_params = {
+            'border_color': '#00000000',
+            'border_style': '',
+            'rotation': 0,
+            'text_bold': False,
+            'text_content': text_content,
+            'text_font': 'monospace',
+            'text_italic': False,
+            'text_size': 12,
+            'text_unit': 'pt',
+            'thickness': 1,
+            'x1': 0.0,
+            'y1': 0.0,
+            'z_index': 0
+        }
+        if params:
+            base_params.update(params)
+        lab.create_annotation('text', **base_params)
+
+
     def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
         labs = client.find_labs_by_title(title)
         return labs[0] if labs else None
@@ -344,10 +365,60 @@ if __name__ == '__main__':
         lab = client.create_lab(title=LAB_NAME)
 
         # 外部接続用のNATを作る
-        ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=0, y=0)
+        ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=-40, y=-240)
+
+        # bridge1を作る
+        bridge1_node = lab.create_node(label="bridge1", node_definition="external_connector", x=120, y=-120)
+        bridge1_node.configuration = [
+            {
+                'name': 'default',
+                'content': 'bridge1'
+            }
+        ]
+
+        # ma switchを作る
+        ma_switch_node = lab.create_node(label="ma-switch", node_definition="unmanaged_switch", x=-40, y=0)
+
+        #
+        # アノテーション
+        #
+
+        # 楕円形のアノテーションを作成する
+        lab.create_annotation('ellipse', **{
+            'border_color': '#808080FF',
+            'border_style': '',
+            'color': '#E2D6D6',
+            'rotation': 0,
+            'thickness': 2,
+            'x1': 320.0,
+            'y1': -120.0,
+            'x2': 40.0,
+            'y2': 40.0,
+            'z_index': 0
+        })
+
+        # 直線のアノテーションを作成する
+        lab.create_annotation('line', **{
+            'border_color': '#808080FF',
+            'border_style': '',
+            'color': '#FFFFFFFF',
+            'line_end': None,
+            'line_start': None,
+            'thickness': 1,
+            'x1': 120.0,
+            'y1': -120.0,
+            'x2': 280.0,
+            'y2': -120.0,
+            'z_index': 0
+        })
+
+        # テキストのアノテーションを作成する
+        create_text_annotation(lab, "192.168.0.0/24", {'x1': 80.0, 'y1': -160.0, 'z_index': 1})
+        create_text_annotation(lab, "192.168.0.0/24", {'x1': -200.0, 'y1': 0.0, 'z_index': 1})
+        create_text_annotation(lab, "Hyper-V host\n192.168.0.198/24", {'x1': 280.0, 'y1': -160.0, 'z_index': 1})
 
         # ubuntuのインスタンスを作る
-        ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=0, y=200)
+        ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=-40, y=-120)
 
         # 起動イメージを指定する
         # ubuntu_node.image_definition = IMAGE_DEFINITION
@@ -359,8 +430,14 @@ if __name__ == '__main__':
         for i in range(3):
             ubuntu_node.create_interface(i, wait=True)
 
-        # NATとubuntuを接続する
-        lab.connect_two_nodes(ext_conn_node, ubuntu_node)
+        # ubuntuとNATを接続する
+        lab.connect_two_nodes(ubuntu_node, ext_conn_node)
+
+        # ubuntuとbridge1を接続する
+        lab.connect_two_nodes(ubuntu_node, bridge1_node)
+
+        # ubuntuとma switchを接続する
+        lab.connect_two_nodes(ubuntu_node, ma_switch_node)
 
         # Jinja2のTemplateをインスタンス化する
         template = Template(UBUNTU_CONFIG)

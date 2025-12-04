@@ -16,6 +16,9 @@ NODE_DEFINITION = "ubuntu"
 # イメージ定義
 IMAGE_DEFINITION = "ubuntu-24-04-20250503"
 
+# イメージ定義がCMLにあるかどうかのフラグ
+EXIST_IMAGE_DEFINITION = True if IMAGE_DEFINITION else False  # 実際にイメージがあるか、実行時に確認する
+
 # ノードにつけるタグ
 NODE_TAG = "serial:6000"
 
@@ -376,12 +379,13 @@ if __name__ == '__main__':
 
     def create_lab(client: ClientLibrary) -> None:
 
-        # 指定されたimage_definitionが存在するか確認して、なければ終了する
-        image_defs = client.definitions.image_definitions()
-        image_def_ids = [img['id'] for img in image_defs]
-        if IMAGE_DEFINITION not in image_def_ids:
-            logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
-            return 1
+        # 指定されたimage_definitionが存在するか確認
+        if EXIST_IMAGE_DEFINITION:
+            image_defs = client.definitions.image_definitions()
+            image_def_ids = [img['id'] for img in image_defs]
+            if IMAGE_DEFINITION not in image_def_ids:
+                logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML. Use default image.")
+                EXIST_IMAGE_DEFINITION = False
 
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
@@ -400,7 +404,8 @@ if __name__ == '__main__':
         ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=-680, y=-40)
 
         # 起動イメージを指定する
-        ubuntu_node.image_definition = IMAGE_DEFINITION
+        if EXIST_IMAGE_DEFINITION:
+            ubuntu_node.image_definition = IMAGE_DEFINITION
 
         # 初期状態はインタフェースが存在しないので、追加する
         ubuntu_node.create_interface(0, wait=True)

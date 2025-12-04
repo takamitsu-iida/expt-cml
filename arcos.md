@@ -73,46 +73,52 @@ total 2064772
 
 ### イメージ定義
 
-CSR1000vのイメージ定義ディレクトリをコピーします。コピー元はCSR1000vでなくても何でもいいです。
+イメージ定義はひとつのファイルではなく、ディレクトリです。
+
+CSR1000vのイメージ定義ディレクトリを属性付きでコピーします。コピー元はCSR1000vでなくても何でもいいです。
+
+実行例。
 
 ```bash
 root@cml-controller:~# cd /var/lib/libvirt/images/virl-base-images/
 
-root@cml-controller:/var/lib/libvirt/images/virl-base-images# ls
-alpine-base-3-21-3            cat-sdwan-validator-20-16-1  firefox-138-0-4-build1        iosvl2-2020         tacplus-f4-0-4-28
-alpine-desktop-3-21-3         cat-sdwan-vedge-20-16-1      fmcv-7-7-0                    iosxrv9000-25-1-1   thousandeyes-ea-1-210-0
-alpine-trex-3-21-3            cat8000v-17-16-01a           frr-10-2-1-r1                 net-tools-1-0-0     tig
-alpine-wanem-3-21-3           cat9000v-q200-17-15-03       frr-10-4                      nginx-3-38          ubuntu-24-04-20250503
-arcos                         cat9000v-uadp-17-15-03       ftdv-7-7-0                    nxosv9300-10-5-3-f  ubuntu-24-04-20250503-frr
-asav-9-23-1                   cat9800-17-17-01             iol-xe-17-16-01a              radius-3-2-1        ubuntu-24-04-docker
-cat-sdwan-controller-20-16-1  chrome-136-0-7103-113-1      iol-xe-17-16-01a-serial-4eth  server-tcl-16-0     ubuntu_docker
-cat-sdwan-edge-17-16-01a      csr1000v-17-03-08a           ioll2-xe-17-16-01a            splunk-9-4
-cat-sdwan-manager-20-16-1     dnsmasq-2-9-0                iosv-159-3-m10                syslog-3-38
-
 root@cml-controller:/var/lib/libvirt/images/virl-base-images# cp -a csr1000v-17-03-08a arcos
 ```
 
-arcosのイメージ定義ディレクトリに移動して、イメージ定義ファイルの名前をarcos.yamlに変更します（ディレクトリ名と一致させます）。
+<br>
+
+コピーしたarcosのイメージ定義ディレクトリに移動して、イメージ定義ファイルの名前をarcos.yamlに変更します（ディレクトリ名と一致させます）。
+
+実行例。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images# cd arcos
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# mv csr1000v-17-03-08a.yaml arcos.yaml
 ```
 
+<br>
+
 あらかじめ送信したqcow2ファイルをイメージ定義ディレクトリに移して、ファイルのオーナーとグループを `libvirt-qemu:virl2` に変更します。
+
+実行例。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# mv ~/arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2 .
+
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# ls -l
 total 3452872
 -rw-r--r-- 1 iida         iida  2114322432 Nov 26 13:51 arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2
 -rw-rw-r-- 1 libvirt-qemu virl2        277 Nov 26 13:36 arcos.yaml
 -rw-rw-r-- 1 libvirt-qemu virl2 1421410304 Jun 17 12:26 csr1000v-universalk9.17.03.08a-serial.qcow2
+
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# chown libvirt-qemu:virl2 arcos-sa-1763662203.9bba6c06a052997075193079277be8ce9914c6c3.kvm.qcow2
 ```
 
+<br>
+
 不要なcsr1000vのイメージを削除します。
 
+実行例。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# ls -l
@@ -123,6 +129,8 @@ total 3452876
 
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# rm csr1000v-universalk9.17.03.08a-serial.qcow2
 ```
+
+<br>
 
 イメージ定義ファイルarcos.yamlを以下の内容に変更します。
 
@@ -144,17 +152,27 @@ schema_version: 0.0.1
 
 ### ノード定義ファイル
 
+ノード定義はひとつのファイルです。
+
 ノード定義ファイルが置かれている場所に移動します。
+
+実行例。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/virl-base-images/arcos# cd /var/lib/libvirt/images/node-definitions/
 ```
 
-CSR1000vのノード定義ファイルをコピーします。
+<br>
+
+CSR1000vのノード定義ファイルを属性付きでコピーします。コピー元はCSR1000vでなくても構いません。
+
+実行例。
 
 ```bash
 root@cml-controller:/var/lib/libvirt/images/node-definitions# cp -a csr1000v.yaml arcos.yaml
 ```
+
+<br>
 
 以下の内容に変更します。
 
@@ -215,11 +233,17 @@ inherited:
 schema_version: 0.0.1
 ```
 
-スタートアップコンフィグを外部から指定する方法は分かりません。
+readonlyは**false**を指定します。
 
-デフォルトでZTPが有効なので、それを使うのがいいのかもしれません。
+<br>
 
-readonlyはfalseを指定します。
+> [!NOTE]
+>
+> CSR1000vや他の仮想マシンではスタートアップコンフィグを外部から指定できるのですが、ArcOSの場合はやり方が分かりません。
+>
+> ArcOSは初期状態でZTPが有効なので、それを使うのがいいのかもしれません。
+
+<br>
 
 <br><br>
 
@@ -421,7 +445,7 @@ ISISのhelloはパディングを詰めてMTU長一杯のパケットを送っ�
 
 MTU長は3000程度に抑えるのが良さそうです。
 
-<br>
+<br><br>
 
 ## cliコマンド
 

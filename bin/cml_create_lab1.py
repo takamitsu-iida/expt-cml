@@ -319,6 +319,8 @@ if __name__ == '__main__':
 
     def create_lab(client: ClientLibrary) -> None:
 
+        global EXIST_IMAGE_DEFINITION
+
         # 指定されたimage_definitionが存在するか確認
         if EXIST_IMAGE_DEFINITION:
             image_defs = client.definitions.image_definitions()

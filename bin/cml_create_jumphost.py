@@ -357,6 +357,8 @@ if __name__ == '__main__':
 
     def create_lab(client: ClientLibrary) -> None:
 
+        global EXIST_IMAGE_DEFINITION
+
         # 指定されたimage_definitionが存在するか確認
         if EXIST_IMAGE_DEFINITION:
             image_defs = client.definitions.image_definitions()
@@ -419,6 +421,7 @@ if __name__ == '__main__':
         # テキストのアノテーションを作成する
         create_text_annotation(lab, "192.168.0.0/24", {'x1': 80.0, 'y1': -160.0, 'z_index': 1})
         create_text_annotation(lab, "192.168.0.0/24", {'x1': -200.0, 'y1': 0.0, 'z_index': 1})
+        create_text_annotation(lab, ".100", {'text_size': 16, 'text_bold': True, 'x1': 0.0, 'y1': -80.0, 'z_index': 1})
         create_text_annotation(lab, "Hyper-V host\n192.168.0.198/24", {'x1': 280.0, 'y1': -160.0, 'z_index': 1})
 
         # ubuntuのインスタンスを作る

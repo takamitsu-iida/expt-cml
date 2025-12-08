@@ -176,6 +176,12 @@ root@cml-controller:/var/lib/libvirt/images/node-definitions# cp -a csr1000v.yam
 
 以下の内容に変更します。
 
+メモリはたくさん割り当てるに越したことはないですが、同時に動かすノードの数を稼ぎたいので控えめに5GB程度にしておきます。
+
+CPUも4CPUくらいあったほうがいいのかもしれませんが、とりあえず1CPUでも動きます。
+
+物理インタフェースは管理インタフェースを含めて合計9個作ります。
+
 ```yaml
 id: arcos
 boot:
@@ -189,7 +195,7 @@ sim:
     libvirt_domain_driver: kvm
     driver: server
     disk_driver: virtio
-    ram: 8192
+    ram: 5120
     cpus: 1
     cpu_limit: 100
     nic_driver: vmxnet3
@@ -208,8 +214,12 @@ device:
       - swp2
       - swp3
       - swp4
+      - swp5
+      - swp6
+      - swp7
+      - swp8
     has_loopback_zero: true
-    default_count: 5
+    default_count: 9
     loopback:
       - Loopback
 ui:

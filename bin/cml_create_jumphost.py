@@ -396,21 +396,88 @@ if __name__ == '__main__':
 
 
     def create_router_config() -> str:
-        rid = 1  # router id
 
-        P1_CONFIG = f"""
+        P_CONFIG = """
+version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
+features feature ARCOS_RIOT
+ supported false
 !
-hostname P{rid}
+features feature ARCOS_ICMP_SRC_REWRITE
+ supported true
+!
+features feature ARCOS_SUBIF
+ supported true
+!
+features feature ARCOS_QoS
+ supported false
+!
+features feature ARCOS_MPLS
+ supported true
+!
+features feature ARCOS_SFLOW
+ supported true
+!
+system hostname P{{ rid }}
+system login-banner "ArcOS (c) Arrcus, Inc."
+system clock timezone-name Asia/Tokyo
+system ssh-server enable true
+system cli commit-message true
+system netconf-server enable false
+system netconf-server transport ssh enable false
+system restconf-server enable false
+system aaa authentication admin-user admin-password $6$45.xtCxp$NHORwpgM4fwL1b.9uKcL7J89ZoOcQ6zhauB1ZivfEcWsxmFybTtdq57tQ8oxGZePYAootxKC6L6NTIZwdxpth0
+system rib IPV6
+!
+system rib IPV4
+!
+interface ma1
+ type    ethernetCsmacd
+ mtu     1500
+ enabled true
+ subinterface 0
+ exit
+!
+network-instance default
+!
+network-instance management
+ interface ma1
+ !
+!
+lldp interface ma1
+!
+routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
+ prefix 0.0.0.0/8 8..32
+ !
+ prefix 127.0.0.0/8 8..32
+ !
+ prefix 192.0.0.0/24 24..32
+ !
+ prefix 224.0.0.0/4 exact
+ !
+ prefix 224.0.0.0/24 exact
+ !
+ prefix 240.0.0.0/4 4..32
+ !
+!
+routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
+ prefix ::/128 exact
+ !
+ prefix ::1/128 exact
+ !
+ prefix ff00::/8 exact
+ !
+ prefix ff02::/16 exact
+ !
 !
 """.strip()
 
+        # router id
+        rid = 1
+        p_template = Template(P_CONFIG)
+        P1_CONFIG = p_template.render({ "rid": rid })
 
-        rid = 2  # router id
-        P2_CONFIG = f"""
-!
-hostname P{rid}
-!
-""".strip()
+        rid = 2
+        P2_CONFIG = p_template.render({ "rid": rid })
 
         # 行頭にインデントを追加
         P1_CONFIG = indent_string(P1_CONFIG)

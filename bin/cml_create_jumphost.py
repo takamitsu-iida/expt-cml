@@ -27,9 +27,6 @@ NODE_DEFINITION = "ubuntu"
 # このイメージ定義が存在しない場合はデフォルトのイメージを使用する
 IMAGE_DEFINITION = "ubuntu-24-04-20250503"
 
-# イメージ定義がCMLにあるかどうかのフラグ
-EXIST_IMAGE_DEFINITION = True if IMAGE_DEFINITION else False  # 実際にイメージがあるかは、実行時に確認する
-
 # Ubuntuノードにつけるタグ
 UBUNTU_TAG = "serial:6000"
 
@@ -242,6 +239,7 @@ runcmd:
 
   # chnage ownership of /srv/tftp
   - chown -R tftp:tftp /srv/tftp
+  - chmod -R 777 /srv/tftp
 
   # enable and start services
   - systemctl enable isc-dhcp-server
@@ -490,7 +488,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         ma_switch = lab.get_node_by_label(MA_SWITCH_LABEL)
         if ma_switch is None:
             logger.error(f"MA switch node '{MA_SWITCH_LABEL}' not found")
-            return
+            return []
 
         nodes = []
 
@@ -513,14 +511,6 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
             nodes.append(node)
 
         return nodes
-
-
-
-
-
-
-
-
 
 
 
@@ -581,17 +571,13 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         logger.info(f"Lab '{LAB_NAME}' deleted")
 
 
+    def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
+        image_defs = client.definitions.image_definitions()
+        image_def_ids = [img['id'] for img in image_defs]
+        return image_def_id in image_def_ids
+
+
     def create_lab(client: ClientLibrary) -> None:
-
-        global EXIST_IMAGE_DEFINITION
-
-        # 指定されたimage_definitionが存在するか確認
-        if EXIST_IMAGE_DEFINITION:
-            image_defs = client.definitions.image_definitions()
-            image_def_ids = [img['id'] for img in image_defs]
-            if IMAGE_DEFINITION not in image_def_ids:
-                logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML. Use default image.")
-                EXIST_IMAGE_DEFINITION = False
 
         # ラボを新規作成
         lab = client.create_lab(title=LAB_NAME)
@@ -656,8 +642,10 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=-40, y=-120)
 
         # 起動イメージを指定する
-        if EXIST_IMAGE_DEFINITION:
+        if is_exist_image_definition(client, IMAGE_DEFINITION):
             ubuntu_node.image_definition = IMAGE_DEFINITION
+        else:
+            logger.warning(f"Image definition '{IMAGE_DEFINITION}' not found. Using default image for node definition '{NODE_DEFINITION}'")
 
         # 初期状態はインタフェースが存在しないので追加、3本足にする
         #
@@ -718,25 +706,6 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
 
         # タグを設定する
         ubuntu_node.add_tag(tag=UBUNTU_TAG)
-
-        # arcosノードを作る
-        arcos_node_1 = lab.create_node(label="PE1", node_definition="arcos", x=-160, y=120)
-
-        # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
-        for i in range(9):
-            arcos_node_1.create_interface(i, wait=True)
-
-        # ma1インタフェースのMACアドレスを設定する
-        ma_iface = arcos_node_1.get_interface_by_label('ma1')
-        if ma_iface is None:
-            logger.error("Failed to get ma1 interface of arcos node")
-        else:
-            # MACアドレスを設定する
-            ma_iface.mac_address = "52:54:00:00:00:01"
-
-        # arcosノードとma switchを接続する
-        lab.connect_two_nodes(arcos_node_1, ma_switch_node)
-
 
         logger.info(f"Lab '{LAB_NAME}' created successfully")
         logger.info(f"id: {lab.id}")

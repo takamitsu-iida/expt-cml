@@ -328,11 +328,16 @@ if __name__ == '__main__':
         logger.info(f"Lab '{LAB_NAME}' deleted")
 
 
-    def create_lab(client: ClientLibrary) -> None:
-        # 指定されたimage_definitionが存在するか確認して、なければ終了する
+    def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
         image_defs = client.definitions.image_definitions()
         image_def_ids = [img['id'] for img in image_defs]
-        if IMAGE_DEFINITION not in image_def_ids:
+        return image_def_id in image_def_ids
+
+
+    def create_lab(client: ClientLibrary) -> None:
+
+        # 指定されたimage_definitionが存在するか確認して、なければ終了する
+        if not is_exist_image_definition(client, IMAGE_DEFINITION):
             logger.error(f"Specified image definition '{IMAGE_DEFINITION}' not found in CML.")
             return 1
 

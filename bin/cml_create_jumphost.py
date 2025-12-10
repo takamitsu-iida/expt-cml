@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 #
-# virl2_clientを使ってラボを作成するスクリプトです。
-# 踏み台となるUbuntuノードを一つ作成します。
+# 踏み台として動作するUbuntuノードを一つ作成します。
 #
 # Ubuntuは3本足で構成します。
 #  - ens2: 外部接続用（NATに接続）
@@ -12,11 +11,14 @@
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
 SCRIPT_DESCRIPTION = 'create jump host lab'
 
-# 管理LANのスイッチのラベル
-MA_SWITCH_LABEL = "ma-switch"
-
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
 LAB_TITLE = "jump_host_lab"
+
+# ラボのデスクリプション
+LAB_DESCRIPTION = "Jump host lab created by cml_create_jumphost.py"
+
+# 管理LANのスイッチのラベル
+MA_SWITCH_LABEL = "ma-switch"
 
 # ノード定義
 NODE_DEFINITION = "ubuntu"
@@ -206,7 +208,7 @@ runcmd:
     include "/etc/dhcp/dhcpd.hosts";
     EOS
 
-  # create dhcpd.hosts
+  # create /etc/dhcp/dhcpd.hosts
   - |
     cat << 'EOS' > /etc/dhcp/dhcpd.hosts
     {% for rid in [1, 2, 11, 12, 13, 14, 15, 16, 17, 18] %}
@@ -244,8 +246,10 @@ runcmd:
   # enable and start services
   - systemctl enable isc-dhcp-server
   - systemctl start isc-dhcp-server
+
   - systemctl enable tftpd-hpa
   - systemctl start tftpd-hpa
+
   - systemctl restart rsyslog
 
 """.strip()
@@ -374,149 +378,6 @@ logger.addHandler(file_handler)
 #
 if __name__ == '__main__':
 
-    def indent_string(text: str, num_spaces: int = 6) -> str:
-        """文字列の行頭にスペースを挿入する"""
-        lines = text.splitlines()  # 文字列を改行で分割
-        indented_lines = [" "*num_spaces + line for line in lines]  # 各行の先頭にスペースを追加
-        return "\n".join(indented_lines)  # 改行で連結して返す
-
-
-    def create_router_config() -> str:
-
-        P_CONFIG = \
-"""
-version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
-features feature ARCOS_RIOT
- supported false
-!
-features feature ARCOS_ICMP_SRC_REWRITE
- supported true
-!
-features feature ARCOS_SUBIF
- supported true
-!
-features feature ARCOS_QoS
- supported false
-!
-features feature ARCOS_MPLS
- supported true
-!
-features feature ARCOS_SFLOW
- supported true
-!
-system hostname P{{ rid }}
-system login-banner "ArcOS (c) Arrcus, Inc."
-system clock timezone-name Asia/Tokyo
-system ssh-server enable true
-system cli commit-message true
-system netconf-server enable false
-system netconf-server transport ssh enable false
-system restconf-server enable false
-system aaa authentication admin-user admin-password $6$45.xtCxp$NHORwpgM4fwL1b.9uKcL7J89ZoOcQ6zhauB1ZivfEcWsxmFybTtdq57tQ8oxGZePYAootxKC6L6NTIZwdxpth0
-system rib IPV6
-!
-system rib IPV4
-!
-interface ma1
- type    ethernetCsmacd
- mtu     1500
- enabled true
- subinterface 0
- exit
-!
-network-instance default
-!
-network-instance management
- interface ma1
- !
-!
-lldp interface ma1
-!
-routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
- prefix 0.0.0.0/8 8..32
- !
- prefix 127.0.0.0/8 8..32
- !
- prefix 192.0.0.0/24 24..32
- !
- prefix 224.0.0.0/4 exact
- !
- prefix 224.0.0.0/24 exact
- !
- prefix 240.0.0.0/4 4..32
- !
-!
-routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
- prefix ::/128 exact
- !
- prefix ::1/128 exact
- !
- prefix ff00::/8 exact
- !
- prefix ff02::/16 exact
- !
-!
-""".strip()
-
-        # router id
-        rid = 1
-        p_template = Template(P_CONFIG)
-        P1_CONFIG = p_template.render({ "rid": rid })
-
-        rid = 2
-        P2_CONFIG = p_template.render({ "rid": rid })
-
-        # 行頭にインデントを追加
-        P1_CONFIG = indent_string(P1_CONFIG)
-        P2_CONFIG = indent_string(P2_CONFIG)
-
-        return {
-            "P1_CONFIG": P1_CONFIG,
-            "P2_CONFIG": P2_CONFIG
-        }
-
-
-    def create_arcos_nodes(lab: Lab) -> list[Node]:
-
-        #
-        #  PE11----P1----PE13
-        #       \/    \/
-        #       /\    /\
-        #  PE12----P2----PE14
-        #
-
-        ma_switch = lab.get_node_by_label(MA_SWITCH_LABEL)
-        if ma_switch is None:
-            logger.error(f"MA switch node '{MA_SWITCH_LABEL}' not found")
-            return []
-
-        nodes = []
-
-        # P1とP2を作る
-        for rid in [1, 2]:
-            node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=-160 + (rid-1)*160, y=120)
-
-            # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
-            for i in range(9):
-                node.create_interface(i, wait=True)
-
-            # ma1インタフェースのMACアドレスを設定する
-            ma_iface = node.get_interface_by_label('ma1')
-            if ma_iface is None:
-                logger.error("Failed to get ma1 interface of arcos node")
-            else:
-                # MACアドレスを設定する
-                ma_iface.mac_address = f"52:54:00:00:00:{rid:02d}"
-
-            nodes.append(node)
-
-        return nodes
-
-
-
-
-
-
     def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
         base_params = {
             'border_color': '#00000000',
@@ -571,16 +432,17 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         lab.remove()
         logger.info(f"Lab '{title}' deleted")
 
+
     def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
         image_defs = client.definitions.image_definitions()
         image_def_ids = [img['id'] for img in image_defs]
         return image_def_id in image_def_ids
 
 
-    def create_lab(client: ClientLibrary, title: str) -> None:
+    def create_lab(client: ClientLibrary, title: str, description: str) -> None:
 
         # ラボを新規作成
-        lab = client.create_lab(title=title, description="Jump host lab created by cml_create_jumphost.py")
+        lab = client.create_lab(title=title, description=description)
 
         # 外部接続用のNATを作る
         ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=-40, y=-240)
@@ -683,12 +545,6 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
             "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY,
         }
 
-        # ルータ設定を作成する
-        router_configs = create_router_config()
-
-        # ルータ設定をコンテキストに追加する
-        context.update(router_configs)
-
         # Ubuntuに設定するcloud-init.yamlのテキストを作る
         config_text = ubuntu_template.render(context)
 
@@ -719,7 +575,8 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         parser.add_argument('--delete', action='store_true', default=False, help='Delete lab')
         parser.add_argument('--stop', action='store_true', default=False, help='Stop lab')
         parser.add_argument('--start', action='store_true', default=False, help='Start lab')
-        parser.add_argument('--title', type=str, default=LAB_TITLE, help='Lab title (default: jump_host_lab)')
+        parser.add_argument('--title', type=str, default=LAB_TITLE, help=f'Lab title (default: {LAB_TITLE})')
+        parser.add_argument('--description', type=str, default=LAB_DESCRIPTION, help=f'Lab description (default: {LAB_DESCRIPTION})')
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -738,7 +595,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         # 接続を待機する
         client.is_system_ready(wait=True)
 
-        # 既存のラボがあれば取得する
+        # 指定されたタイトルのラボを取得する
         lab = get_lab_by_title(client, args.title)
 
         if args.start:
@@ -758,7 +615,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
             if lab:
                 logger.info(f"Lab '{args.title}' already exists")
                 delete_lab(lab)
-            create_lab(client, args.title)
+            create_lab(client, args.title, args.description)
 
     #
     # 実行

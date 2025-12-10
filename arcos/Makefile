@@ -3,6 +3,9 @@
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
+# ラボタイトル
+LAB_TITLE = arcos_test_lab
+
 
 ####################################################
 # 以下、変更不要
@@ -14,13 +17,16 @@ SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = ntools-test
 
 lab: ## ラボをCML上に作成する
-	../bin/cml_create_jumphost.py --create
+	../bin/cml_create_jumphost.py --create --title "$(LAB_TITLE)"
 
 stop: ## ラボを停止する
-	../bin/cml_create_jumphost.py --stop
+	../bin/cml_create_jumphost.py --stop --title "$(LAB_TITLE)"
 
 delete: ## ラボを削除する
-	../bin/cml_create_jumphost.py --delete
+	../bin/cml_create_jumphost.py --delete --title "$(LAB_TITLE)"
+
+ztp: ## arcosの初期設定ファイルをjumphostにアップロードし、ZTPを実行する
+	../bin/cml_create_jumphost.py --ztp --title "$(LAB_TITLE)"
 
 upload: ## arcosの初期設定ファイルをjumphostにアップロードする
 	# @rsync -avz -e "ssh ${SSH_OPTS}" $(IMAGE_TAR_GZ) image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}

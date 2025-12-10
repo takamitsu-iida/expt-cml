@@ -16,7 +16,7 @@ SCRIPT_DESCRIPTION = 'create jump host lab'
 MA_SWITCH_LABEL = "ma-switch"
 
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
-LAB_NAME = "jump_host_lab"
+LAB_TITLE = "jump_host_lab"
 
 # ノード定義
 NODE_DEFINITION = "ubuntu"
@@ -546,30 +546,30 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
     def start_lab(lab: Lab) -> None:
         state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
         if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
-            logger.info(f"Starting lab '{LAB_NAME}'")
+            logger.info(f"Starting lab '{lab.title}'")
             lab.start(wait=True)
-            logger.info(f"Lab '{LAB_NAME}' started")
+            logger.info(f"Lab '{lab.title}' started")
         else:
-            logger.info(f"Lab '{LAB_NAME}' is already running")
+            logger.info(f"Lab '{lab.title}' is already running")
 
 
     def stop_lab(lab: Lab) -> None:
         state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
         if state == 'STARTED':
-            logger.info(f"Stopping lab '{LAB_NAME}'")
+            logger.info(f"Stopping lab '{lab.title}'")
             lab.stop(wait=True)
-            logger.info(f"Lab '{LAB_NAME}' stopped")
+            logger.info(f"Lab '{lab.title}' stopped")
         else:
-            logger.info(f"Lab '{LAB_NAME}' is not running")
+            logger.info(f"Lab '{lab.title}' is not running")
 
 
     def delete_lab(lab: Lab) -> None:
-        logger.info(f"Deleting lab '{LAB_NAME}'")
+        title = lab.title
+        logger.info(f"Deleting lab '{title}'")
         stop_lab(lab)
         lab.wipe()
         lab.remove()
-        logger.info(f"Lab '{LAB_NAME}' deleted")
-
+        logger.info(f"Lab '{title}' deleted")
 
     def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
         image_defs = client.definitions.image_definitions()
@@ -577,10 +577,10 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         return image_def_id in image_def_ids
 
 
-    def create_lab(client: ClientLibrary) -> None:
+    def create_lab(client: ClientLibrary, title: str) -> None:
 
         # ラボを新規作成
-        lab = client.create_lab(title=LAB_NAME)
+        lab = client.create_lab(title=title, description="Jump host lab created by cml_create_jumphost.py")
 
         # 外部接続用のNATを作る
         ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=-40, y=-240)
@@ -707,7 +707,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         # タグを設定する
         ubuntu_node.add_tag(tag=UBUNTU_TAG)
 
-        logger.info(f"Lab '{LAB_NAME}' created successfully")
+        logger.info(f"Lab '{title}' created successfully")
         logger.info(f"id: {lab.id}")
 
 
@@ -719,7 +719,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         parser.add_argument('--delete', action='store_true', default=False, help='Delete lab')
         parser.add_argument('--stop', action='store_true', default=False, help='Stop lab')
         parser.add_argument('--start', action='store_true', default=False, help='Start lab')
-        parser.add_argument('--testbed', action='store_true', default=False, help='Show pyATS testbed')  # --- IGNORE ---
+        parser.add_argument('--title', type=str, default=LAB_TITLE, help='Lab title (default: jump_host_lab)')
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -739,30 +739,26 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         client.is_system_ready(wait=True)
 
         # 既存のラボがあれば取得する
-        lab = get_lab_by_title(client, LAB_NAME)
+        lab = get_lab_by_title(client, args.title)
 
         if args.start:
-            start_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            start_lab(lab) if lab else logger.error(f"Lab '{args.title}' not found")
             return
 
         if args.stop:
-            stop_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            stop_lab(lab) if lab else logger.error(f"Lab '{args.title}' not found")
             return
 
         if args.delete:
-            delete_lab(lab) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
-            return
-
-        if args.testbed:
-            print(lab.get_pyats_testbed()) if lab else logger.error(f"Lab '{LAB_NAME}' not found")
+            delete_lab(lab) if lab else logger.error(f"Lab '{args.title}' not found")
             return
 
         if args.create:
             # 既存のラボがあれば削除する
             if lab:
-                logger.info(f"Lab '{LAB_NAME}' already exists")
+                logger.info(f"Lab '{args.title}' already exists")
                 delete_lab(lab)
-            create_lab(client)
+            create_lab(client, args.title)
 
     #
     # 実行

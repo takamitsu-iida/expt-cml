@@ -12,6 +12,9 @@
 # スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
 SCRIPT_DESCRIPTION = 'create jump host lab'
 
+# 管理LANのスイッチのラベル
+MA_SWITCH_LABEL = "ma-switch"
+
 # ラボの名前、既存で同じタイトルのラボがあれば削除してから作成する
 LAB_NAME = "jump_host_lab"
 
@@ -21,13 +24,14 @@ NODE_DEFINITION = "ubuntu"
 # イメージ定義
 # これはCMLのバージョンによって異なるので注意
 # 2025年12月 CML2.9 でのUbuntu 24.04のイメージ定義
+# このイメージ定義が存在しない場合はデフォルトのイメージを使用する
 IMAGE_DEFINITION = "ubuntu-24-04-20250503"
 
 # イメージ定義がCMLにあるかどうかのフラグ
-EXIST_IMAGE_DEFINITION = True if IMAGE_DEFINITION else False  # 実際にイメージがあるか、実行時に確認する
+EXIST_IMAGE_DEFINITION = True if IMAGE_DEFINITION else False  # 実際にイメージがあるかは、実行時に確認する
 
-# ノードにつけるタグ
-NODE_TAG = "serial:6000"
+# Ubuntuノードにつけるタグ
+UBUNTU_TAG = "serial:6000"
 
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うホスト名
 UBUNTU_HOSTNAME = "jumphost"
@@ -106,16 +110,6 @@ write_files:
             dhcp4: false
             dhcp6: false
             addresses: [ 192.168.254.100/24 ]
-
-  - path: /srv/tftp/P1.cfg
-    permissions: '0666'
-    content: |
-{{ P1_CONFIG }}
-
-  - path: /srv/tftp/P2.cfg
-    permissions: '0666'
-    content: |
-{{ P2_CONFIG }}
 
 runcmd:
 
@@ -218,30 +212,6 @@ runcmd:
   # create dhcpd.hosts
   - |
     cat << 'EOS' > /etc/dhcp/dhcpd.hosts
-    {{ DHCP_CONFIG }}
-    EOS
-
-  # enable DHCP server on ens4
-  - sed -i 's/^INTERFACESv4=""/INTERFACESv4="ens4"/' /etc/default/isc-dhcp-server
-
-  # syslog settings for dhcpd
-  - sed -i '0,/^\\*\\.\\*;auth,authpriv\\.none[[:space:]]\\+-\\/var\\/log\\/syslog$/s//*.*;auth,authpriv,local7.none   -\\/var\\/log\\/syslog/' /etc/rsyslog.d/50-default.conf
-  - sed -i '/^#user\\.\\*/a local7.*                        -/var/log/dhcpd.log' /etc/rsyslog.d/50-default.conf
-
-  # chnage ownership of /srv/tftp
-  - chown -R tftp:tftp /srv/tftp
-
-  # enable and start services
-  - systemctl enable isc-dhcp-server
-  - systemctl start isc-dhcp-server
-  - systemctl enable tftpd-hpa
-  - systemctl start tftpd-hpa
-  - systemctl restart rsyslog
-
-""".strip()
-
-
-DHCP_CONFIG_J2 = """
     {% for rid in [1, 2, 11, 12, 13, 14, 15, 16, 17, 18] %}
     {% if rid in [1, 2] %}
     host P{{ rid }} {
@@ -259,10 +229,28 @@ DHCP_CONFIG_J2 = """
         option arrcus_opt.config-url "tftp://192.168.254.100/PE{{ rid }}.cfg";
         {% endif %}
     }
-{% endfor %}
+    {% endfor %}
+    EOS
+
+  # enable DHCP server on ens4
+  - sed -i 's/^INTERFACESv4=""/INTERFACESv4="ens4"/' /etc/default/isc-dhcp-server
+
+  # エスケープが多すぎて見づらいが、rsyslogの設定の一部を変更してlocal7のログを/var/log/dhcpd.logに出力するようにする
+  # syslog settings for dhcpd
+  - sed -i '0,/^\\*\\.\\*;auth,authpriv\\.none[[:space:]]\\+-\\/var\\/log\\/syslog$/s//*.*;auth,authpriv,local7.none   -\\/var\\/log\\/syslog/' /etc/rsyslog.d/50-default.conf
+  - sed -i '/^#user\\.\\*/a local7.*                        -/var/log/dhcpd.log' /etc/rsyslog.d/50-default.conf
+
+  # chnage ownership of /srv/tftp
+  - chown -R tftp:tftp /srv/tftp
+
+  # enable and start services
+  - systemctl enable isc-dhcp-server
+  - systemctl start isc-dhcp-server
+  - systemctl enable tftpd-hpa
+  - systemctl start tftpd-hpa
+  - systemctl restart rsyslog
+
 """.strip()
-
-
 
 
 ###########################################################
@@ -286,7 +274,7 @@ try:
     # SSL Verification disabled のログが鬱陶しいので、ERRORのみに抑制
     logging.getLogger("virl2_client.virl2_client").setLevel(logging.ERROR)
     from virl2_client import ClientLibrary
-    from virl2_client.models.lab import Lab
+    from virl2_client.models.lab import Lab, Node
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -397,7 +385,8 @@ if __name__ == '__main__':
 
     def create_router_config() -> str:
 
-        P_CONFIG = """
+        P_CONFIG = \
+"""
 version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
 features feature ARCOS_RIOT
  supported false
@@ -489,6 +478,55 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         }
 
 
+    def create_arcos_nodes(lab: Lab) -> list[Node]:
+
+        #
+        #  PE11----P1----PE13
+        #       \/    \/
+        #       /\    /\
+        #  PE12----P2----PE14
+        #
+
+        ma_switch = lab.get_node_by_label(MA_SWITCH_LABEL)
+        if ma_switch is None:
+            logger.error(f"MA switch node '{MA_SWITCH_LABEL}' not found")
+            return
+
+        nodes = []
+
+        # P1とP2を作る
+        for rid in [1, 2]:
+            node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=-160 + (rid-1)*160, y=120)
+
+            # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
+            for i in range(9):
+                node.create_interface(i, wait=True)
+
+            # ma1インタフェースのMACアドレスを設定する
+            ma_iface = node.get_interface_by_label('ma1')
+            if ma_iface is None:
+                logger.error("Failed to get ma1 interface of arcos node")
+            else:
+                # MACアドレスを設定する
+                ma_iface.mac_address = f"52:54:00:00:00:{rid:02d}"
+
+            nodes.append(node)
+
+        return nodes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
         base_params = {
             'border_color': '#00000000',
@@ -571,7 +609,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         ]
 
         # ma switchを作る
-        ma_switch_node = lab.create_node(label="ma-switch", node_definition="unmanaged_switch", x=-40, y=0)
+        ma_switch_node = lab.create_node(label=MA_SWITCH_LABEL, node_definition="unmanaged_switch", x=-40, y=0)
         for i in range(16):
             ma_switch_node.create_interface(i, wait=True)
 
@@ -621,8 +659,18 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         if EXIST_IMAGE_DEFINITION:
             ubuntu_node.image_definition = IMAGE_DEFINITION
 
-        # 初期状態はインタフェースが存在しないので追加する
-        # ３本足あればよい
+        # 初期状態はインタフェースが存在しないので追加、3本足にする
+        #
+        #  external nat
+        #     |
+        #    (ens2)
+        #     |
+        #    Ubuntu-(ens3)----bridge1 (to Windows Hyper-V host)
+        #     |
+        #    (ens4)
+        #     |
+        #   ma-switch (to lab devices)
+        #
         for i in range(3):
             ubuntu_node.create_interface(i, wait=True)
 
@@ -635,9 +683,6 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         # ubuntuとma switchを接続する
         lab.connect_two_nodes(ubuntu_node, ma_switch_node)
 
-        # DHCP設定のテンプレートをレンダリングする
-        dhcp_config = Template(DHCP_CONFIG_J2).render()
-
         # Ubuntuのcloud-initテンプレートを取得する
         ubuntu_template = Template(UBUNTU_CONFIG_J2)
 
@@ -648,7 +693,6 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
             "UBUNTU_USERNAME": UBUNTU_USERNAME,
             "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
             "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY,
-            "DHCP_CONFIG": dhcp_config,
         }
 
         # ルータ設定を作成する
@@ -673,8 +717,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         ]
 
         # タグを設定する
-        # "serial:6000"
-        ubuntu_node.add_tag(tag=NODE_TAG)
+        ubuntu_node.add_tag(tag=UBUNTU_TAG)
 
         # arcosノードを作る
         arcos_node_1 = lab.create_node(label="PE1", node_definition="arcos", x=-160, y=120)
@@ -688,6 +731,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         if ma_iface is None:
             logger.error("Failed to get ma1 interface of arcos node")
         else:
+            # MACアドレスを設定する
             ma_iface.mac_address = "52:54:00:00:00:01"
 
         # arcosノードとma switchを接続する
@@ -753,5 +797,5 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
 
     #
     # 実行
-    #
+    ##
     main()

@@ -18,9 +18,9 @@ CONTAINER_NAME = ntools-test
 
 jumphost: ## 踏み台サーバをCML上に作成する
 	../bin/cml_create_jumphost.py --create --title "$(LAB_TITLE)"
-	../bin/cml_create_jumphost.py --start
+	../bin/cml_create_jumphost.py --start --title "$(LAB_TITLE)"
 
-upload: ## 踏み台サーバに設定ファイルをアップロードする
+upload: ## 踏み台サーバに設定ファイルをアップロードする（踏み台サーバの起動後に実行すること）
 	../bin/cml_create_arcos_lab.py --upload
 
 stop: ## ラボを停止する
@@ -31,6 +31,3 @@ delete: ## ラボを削除する
 
 ztp: ## arcosの初期設定ファイルをjumphostにアップロードし、ZTPを実行する
 	../bin/cml_create_jumphost.py --ztp --title "$(LAB_TITLE)"
-
-upload: ## arcosの初期設定ファイルをjumphostにアップロードする
-	# @rsync -avz -e "ssh ${SSH_OPTS}" $(IMAGE_TAR_GZ) image_definition.yaml node_definition.yaml ${INSTALL_SCRIPT} admin@${CML_HOST}:${CML_UPLOAD_DIR}

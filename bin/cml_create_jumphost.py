@@ -87,6 +87,7 @@ packages:
   - direnv
   - isc-dhcp-server
   - tftpd-hpa
+  - tftp-hpa
 
 write_files:
   #

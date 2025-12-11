@@ -240,7 +240,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
     }
 
 
-def create_arcos_nodes(lab: Lab) -> list[Node]:
+def create_nodes_1(lab: Lab) -> list[Node]:
 
     #
     #  PE11----P1----PE13
@@ -254,11 +254,13 @@ def create_arcos_nodes(lab: Lab) -> list[Node]:
         logger.error(f"MA switch node '{MA_SWITCH_LABEL}' not found")
         return []
 
-    nodes = []
+    x_pos = 0
+    y_pos = 0
 
     # P1とP2を作る
+    p_nodes = []
     for rid in [1, 2]:
-        node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=-160 + (rid-1)*160, y=120)
+        node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=x_pos + (rid-1)*160, y=y_pos)
 
         # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
         for i in range(9):
@@ -272,9 +274,35 @@ def create_arcos_nodes(lab: Lab) -> list[Node]:
             # MACアドレスを設定する
             ma_iface.mac_address = f"52:54:00:00:00:{rid:02d}"
 
-        nodes.append(node)
+        p_nodes.append(node)
 
-    return nodes
+    # PE11, PE12, PE13, PE14ノードを作る
+    pe_nodes = []
+    for rid in [11, 12, 13, 14]:
+        node = lab.create_node(label=f"PE{rid}", node_definition="arcos", x=x_pos + ((rid-11)%2)*160, y=y_pos + (rid-11)//2*160 + 120)
+
+        # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
+        for i in range(9):
+            node.create_interface(i, wait=True)
+
+        # ma1インタフェースのMACアドレスを設定する
+        ma_iface = node.get_interface_by_label('ma1')
+        if ma_iface is None:
+            logger.error("Failed to get ma1 interface of arcos node")
+        else:
+            # MACアドレスを設定する
+            ma_iface.mac_address = f"52:54:00:00:01:{rid:02d}"
+
+        pe_nodes.append(node)
+
+
+    # P1, P2をPEルータと接続する
+    for i, p_node in enumerate(p_nodes):
+        for j, pe_node in enumerate(pe_nodes):
+            lab.connect_two_nodes(p_node, pe_node)
+
+
+    return p_nodes + pe_nodes
 
 
 def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
@@ -347,8 +375,6 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
     if lab is None:
         lab = client.create_lab(title=title, description=description)
 
-    # ルータ設定を作成する
-    router_configs = create_router_config()
 
 
 

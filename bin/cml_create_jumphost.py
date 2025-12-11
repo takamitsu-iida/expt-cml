@@ -462,6 +462,11 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
 
     # ma switchを作る
     ma_switch_node = lab.create_node(label=MA_SWITCH_LABEL, node_definition="unmanaged_switch", x=0, y=0)
+
+    # リンクを非表示にする
+    ma_switch_node.hide_links = True
+
+    # インタフェースを作成する
     for i in range(16):
         ma_switch_node.create_interface(i, wait=True)
 

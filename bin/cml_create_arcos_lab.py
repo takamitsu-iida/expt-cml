@@ -16,14 +16,18 @@ LAB_DESCRIPTION = "ArcOS test lab created by cml_create_arcos_lab.py"
 # 管理LANのスイッチのラベル
 MA_SWITCH_LABEL = "ma-switch"
 
-# 踏み台サーバの管理IPアドレス
-JUMPHOST_MGMT_IP = "192.168.0.100"
-
-# 踏み台サーバに接続するためのユーザ名
-JUMPHOST_USERNAME = "cisco"
-
 # ArcOSのノード定義名
 NODE_DEFINITION = "arcos"
+
+# ローカルファイルから踏み台サーバに関する情報を取得する
+
+try:
+    from cml_create_jumphost import UBUNTU_HOSTNAME, UBUNTU_USERNAME, UBUNTU_ENS3
+except ImportError:
+    UBUNTU_HOSTNAME = "jumphost"
+    UBUNTU_USERNAME = "cisco"
+    UBUNTU_ENS3 = "192.168.0.100/24"
+
 
 ###########################################################
 
@@ -34,7 +38,9 @@ import argparse
 import logging
 import os
 import sys
+
 from pathlib import Path
+
 
 #
 # 外部ライブラリのインポート
@@ -146,18 +152,10 @@ logger.addHandler(file_handler)
 #
 # ここからスクリプト
 #
-if __name__ == '__main__':
 
-    def indent_string(text: str, num_spaces: int = 6) -> str:
-        """文字列の行頭にスペースを挿入する"""
-        lines = text.splitlines()  # 文字列を改行で分割
-        indented_lines = [" "*num_spaces + line for line in lines]  # 各行の先頭にスペースを追加
-        return "\n".join(indented_lines)  # 改行で連結して返す
+def create_router_config() -> str:
 
-
-    def create_router_config() -> str:
-
-        P_CONFIG = \
+    P_CONFIG_J2 = \
 """
 version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
 features feature ARCOS_RIOT
@@ -232,138 +230,193 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
 !
 """.strip()
 
-        # router id
-        rid = 1
-        p_template = Template(P_CONFIG)
-        P1_CONFIG = p_template.render({ "rid": rid })
+    p_config_template = Template(P_CONFIG_J2)
+    P1_CONFIG = p_config_template.render({ "rid": 1 })
+    P2_CONFIG = p_config_template.render({ "rid": 2 })
 
-        rid = 2
-        P2_CONFIG = p_template.render({ "rid": rid })
-
-        # 行頭にインデントを追加
-        P1_CONFIG = indent_string(P1_CONFIG)
-        P2_CONFIG = indent_string(P2_CONFIG)
-
-        return {
-            "P1_CONFIG": P1_CONFIG,
-            "P2_CONFIG": P2_CONFIG
-        }
+    return {
+        "P1_CONFIG": P1_CONFIG,
+        "P2_CONFIG": P2_CONFIG
+    }
 
 
-    def create_arcos_nodes(lab: Lab) -> list[Node]:
+def create_arcos_nodes(lab: Lab) -> list[Node]:
 
-        #
-        #  PE11----P1----PE13
-        #       \/    \/
-        #       /\    /\
-        #  PE12----P2----PE14
-        #
+    #
+    #  PE11----P1----PE13
+    #       \/    \/
+    #       /\    /\
+    #  PE12----P2----PE14
+    #
 
-        ma_switch = lab.get_node_by_label(MA_SWITCH_LABEL)
-        if ma_switch is None:
-            logger.error(f"MA switch node '{MA_SWITCH_LABEL}' not found")
-            return []
+    ma_switch = lab.get_node_by_label(MA_SWITCH_LABEL)
+    if ma_switch is None:
+        logger.error(f"MA switch node '{MA_SWITCH_LABEL}' not found")
+        return []
 
-        nodes = []
+    nodes = []
 
-        # P1とP2を作る
-        for rid in [1, 2]:
-            node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=-160 + (rid-1)*160, y=120)
+    # P1とP2を作る
+    for rid in [1, 2]:
+        node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=-160 + (rid-1)*160, y=120)
 
-            # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
-            for i in range(9):
-                node.create_interface(i, wait=True)
+        # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
+        for i in range(9):
+            node.create_interface(i, wait=True)
 
-            # ma1インタフェースのMACアドレスを設定する
-            ma_iface = node.get_interface_by_label('ma1')
-            if ma_iface is None:
-                logger.error("Failed to get ma1 interface of arcos node")
-            else:
-                # MACアドレスを設定する
-                ma_iface.mac_address = f"52:54:00:00:00:{rid:02d}"
-
-            nodes.append(node)
-
-        return nodes
-
-
-    def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
-        base_params = {
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
-            'x1': 0.0,
-            'y1': 0.0,
-            'z_index': 0
-        }
-        if params:
-            base_params.update(params)
-        lab.create_annotation('text', **base_params)
-
-
-    def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
-        labs = client.find_labs_by_title(title)
-        return labs[0] if labs else None
-
-
-    def start_lab(lab: Lab) -> None:
-        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-        if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
-            logger.info(f"Starting lab '{lab.title}'")
-            lab.start(wait=True)
-            logger.info(f"Lab '{lab.title}' started")
+        # ma1インタフェースのMACアドレスを設定する
+        ma_iface = node.get_interface_by_label('ma1')
+        if ma_iface is None:
+            logger.error("Failed to get ma1 interface of arcos node")
         else:
-            logger.info(f"Lab '{lab.title}' is already running")
+            # MACアドレスを設定する
+            ma_iface.mac_address = f"52:54:00:00:00:{rid:02d}"
+
+        nodes.append(node)
+
+    return nodes
 
 
-    def stop_lab(lab: Lab) -> None:
-        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-        if state == 'STARTED':
-            logger.info(f"Stopping lab '{lab.title}'")
-            lab.stop(wait=True)
-            logger.info(f"Lab '{lab.title}' stopped")
-        else:
-            logger.info(f"Lab '{lab.title}' is not running")
+def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
+    base_params = {
+        'border_color': '#00000000',
+        'border_style': '',
+        'rotation': 0,
+        'text_bold': False,
+        'text_content': text_content,
+        'text_font': 'monospace',
+        'text_italic': False,
+        'text_size': 12,
+        'text_unit': 'pt',
+        'thickness': 1,
+        'x1': 0.0,
+        'y1': 0.0,
+        'z_index': 0
+    }
+    if params:
+        base_params.update(params)
+    lab.create_annotation('text', **base_params)
 
 
-    def delete_lab(lab: Lab) -> None:
-        title = lab.title
-        logger.info(f"Deleting lab '{title}'")
-        stop_lab(lab)
-        lab.wipe()
-        lab.remove()
-        logger.info(f"Lab '{title}' deleted")
-
-    def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
-        image_defs = client.definitions.image_definitions()
-        image_def_ids = [img['id'] for img in image_defs]
-        return image_def_id in image_def_ids
+def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
+    labs = client.find_labs_by_title(title)
+    return labs[0] if labs else None
 
 
-    def create_lab(client: ClientLibrary, title: str, description: str) -> None:
-
-        # ラボを取得する
-        lab = get_lab_by_title(client, title)
-
-        # 無ければ作成する
-        if lab is None:
-            lab = client.create_lab(title=title, description=description)
-
-        # ルータ設定を作成する
-        router_configs = create_router_config()
+def start_lab(lab: Lab) -> None:
+    state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+    if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
+        logger.info(f"Starting lab '{lab.title}'")
+        lab.start(wait=True)
+        logger.info(f"Lab '{lab.title}' started")
+    else:
+        logger.info(f"Lab '{lab.title}' is already running")
 
 
+def stop_lab(lab: Lab) -> None:
+    state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+    if state == 'STARTED':
+        logger.info(f"Stopping lab '{lab.title}'")
+        lab.stop(wait=True)
+        logger.info(f"Lab '{lab.title}' stopped")
+    else:
+        logger.info(f"Lab '{lab.title}' is not running")
 
-        logger.info(f"Lab '{title}' created successfully")
-        logger.info(f"id: {lab.id}")
 
+def delete_lab(lab: Lab) -> None:
+    title = lab.title
+    logger.info(f"Deleting lab '{title}'")
+    stop_lab(lab)
+    lab.wipe()
+    lab.remove()
+    logger.info(f"Lab '{title}' deleted")
+
+def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
+    image_defs = client.definitions.image_definitions()
+    image_def_ids = [img['id'] for img in image_defs]
+    return image_def_id in image_def_ids
+
+
+def create_lab(client: ClientLibrary, title: str, description: str) -> None:
+
+    # ラボを取得する
+    lab = get_lab_by_title(client, title)
+
+    # 無ければ作成する
+    if lab is None:
+        lab = client.create_lab(title=title, description=description)
+
+    # ルータ設定を作成する
+    router_configs = create_router_config()
+
+
+
+    logger.info(f"Lab '{title}' created successfully")
+    logger.info(f"id: {lab.id}")
+
+
+
+def scp_config(config_content: str, remote_path: str) -> None:
+    """SCPコマンドを使ってルータの設定をデプロイする"""
+
+    #
+    # TODO: paramikoを使ってSCPで送り込むようにした方がよい？
+    #
+
+    import subprocess  # コンフィグファイルをSCPで送り込むため
+    import tempfile    # 一時ファイルを作成するため
+
+    UBUNTU_ADDRESS = UBUNTU_ENS3.split('/')[0]
+
+    try:
+        # 一時ファイルに書き込み
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.conf') as tmp:
+            tmp.write(config_content)
+            tmp_path = tmp.name
+
+        logger.info(f"Copying config to {UBUNTU_USERNAME}@{UBUNTU_ADDRESS}:{remote_path}")
+
+        # scpでファイル転送
+        subprocess.run([
+            'scp',
+            '-o', 'StrictHostKeyChecking=no',  # 初回接続時のホスト確認をスキップ
+            tmp_path,
+            f'{UBUNTU_USERNAME}@{UBUNTU_ADDRESS}:{remote_path}'
+        ], check=True, capture_output=True, text=True)
+
+        logger.info(f"Config deployed successfully to {remote_path}")
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to deploy config: {e.stderr}")
+        raise
+    finally:
+        # 一時ファイル削除
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def upload_configs_to_jumphost(lab: Lab) -> None:
+
+    # jumphostが起動していることを確認する
+
+    jumphost = lab.get_node_by_label(UBUNTU_HOSTNAME)
+    if jumphost is None:
+        logger.error("Jumphost node not found in the lab")
+        return
+
+    if jumphost.state() != 'STARTED':
+        logger.error("Jumphost is not running. Please start the jumphost before uploading configs.")
+        return
+
+    configs = create_router_config()
+    scp_config(configs["P1_CONFIG"], "/srv/tftp/P1.conf")
+    scp_config(configs["P2_CONFIG"], "/srv/tftp/P2.conf")
+
+
+
+
+
+if __name__ == '__main__':
 
     def main() -> None:
 
@@ -375,6 +428,7 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
         parser.add_argument('--start', action='store_true', default=False, help='Start lab')
         parser.add_argument('--title', type=str, default=LAB_TITLE, help=f'Lab title (default: {LAB_TITLE})')
         parser.add_argument('--description', type=str, default=LAB_DESCRIPTION, help=f'Lab description (default: {LAB_DESCRIPTION})')
+        parser.add_argument('--upload', action='store_true', default=False, help='Upload configuration files to jumphost')
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -409,11 +463,11 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
             return
 
         if args.create:
-            # 既存のラボがあれば削除する
-            if lab:
-                logger.info(f"Lab '{args.title}' already exists")
-                delete_lab(lab)
             create_lab(client, args.title, args.description)
+            return
+
+        if args.upload:
+            pass
 
     #
     # 実行

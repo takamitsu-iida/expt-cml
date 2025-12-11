@@ -41,6 +41,10 @@ UBUNTU_USERNAME = "cisco"
 # Ubuntuノードに与える初期設定のテンプレートのコンテキストで使うパスワード
 UBUNTU_PASSWORD = "cisco"
 
+# UbuntuのIPアドレス
+UBUNTU_ENS3 = "192.168.0.100/24"
+UBUNTU_ENS4 = "192.168.254.100/24"
+
 # id_rsa.pubの中身をそのまま貼り付けます
 # SSH_PUBLIC_KEY = "YOUR_SSH_PUBLIC_KEY_HERE"
 SSH_PUBLIC_KEY = "AAAAB3NzaC1yc2EAAAADAQABAAABgQDdnRSDloG0LXnwXEoiy5YU39Sm6xTfvcpNm7az6An3rCfn2QC2unIWyN6sFWbKurGoZtA6QdKc8iSPvYPMjrS6P6iBW/cUJcoU8Y8BwUCnK33iKdCfkDWVDdNGN7joQ6DejhKTICTmcBJmwN9utJQVcagCO66Y76Xauub5WHs9BdAvpr+FCQh0eEQ7WZF1BQvH+bPXGmRxPQ8ViHvlUdgsVEq6kv9e/plh0ziXmkBXAw0bdquWu1pArX76jugQ4LXEJKgmQW/eBNiDgHv540nIH5nPkJ7OYwr8AbRCPX52vWhOr500U4U9n2FIVtMKkyVLHdLkx5kZ+cRJgOdOfMp8vaiEGI6Afl/q7+6n17SpXpXjo4G/NOE/xnjZ787jDwOkATiUGfCqLFaITaGsVcUL0vK2Nxb/tV5a2Rh1ELULIzPP0Sw5X2haIBLUKmQ/lmgbUDG6fqmb1z8XTon1DJQSLQXiojinknBKcMH4JepCrsYTAkpOsF6Y98sZKNIkAqU= iida@FCCLS0008993-00"
@@ -104,11 +108,11 @@ write_files:
           ens3:
             dhcp4: false
             dhcp6: false
-            addresses: [ 192.168.0.100/24 ]
+            addresses: [ {{ UBUNTU_ENS3 }} ]
           ens4:
             dhcp4: false
             dhcp6: false
-            addresses: [ 192.168.254.100/24 ]
+            addresses: [ {{ UBUNTU_ENS4 }} ]
 
 runcmd:
 
@@ -376,196 +380,199 @@ logger.addHandler(file_handler)
 #
 # ここからスクリプト
 #
+
+def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
+    base_params = {
+        'border_color': '#00000000',
+        'border_style': '',
+        'rotation': 0,
+        'text_bold': False,
+        'text_content': text_content,
+        'text_font': 'monospace',
+        'text_italic': False,
+        'text_size': 12,
+        'text_unit': 'pt',
+        'thickness': 1,
+        'x1': 0.0,
+        'y1': 0.0,
+        'z_index': 0
+    }
+    if params:
+        base_params.update(params)
+    lab.create_annotation('text', **base_params)
+
+
+def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
+    labs = client.find_labs_by_title(title)
+    return labs[0] if labs else None
+
+
+def start_lab(lab: Lab) -> None:
+    state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+    if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
+        logger.info(f"Starting lab '{lab.title}'")
+        lab.start(wait=True)
+        logger.info(f"Lab '{lab.title}' started")
+    else:
+        logger.info(f"Lab '{lab.title}' is already running")
+
+
+def stop_lab(lab: Lab) -> None:
+    state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
+    if state == 'STARTED':
+        logger.info(f"Stopping lab '{lab.title}'")
+        lab.stop(wait=True)
+        logger.info(f"Lab '{lab.title}' stopped")
+    else:
+        logger.info(f"Lab '{lab.title}' is not running")
+
+
+def delete_lab(lab: Lab) -> None:
+    title = lab.title
+    logger.info(f"Deleting lab '{title}'")
+    stop_lab(lab)
+    lab.wipe()
+    lab.remove()
+    logger.info(f"Lab '{title}' deleted")
+
+
+def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
+    image_defs = client.definitions.image_definitions()
+    image_def_ids = [img['id'] for img in image_defs]
+    return image_def_id in image_def_ids
+
+
+def create_lab(client: ClientLibrary, title: str, description: str) -> None:
+
+    # ラボを新規作成
+    lab = client.create_lab(title=title, description=description)
+
+    # 外部接続用のNATを作る
+    ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=-40, y=-240)
+
+    # bridge1を作る
+    bridge1_node = lab.create_node(label="bridge1", node_definition="external_connector", x=120, y=-120)
+    bridge1_node.configuration = [
+        {
+            'name': 'default',
+            'content': 'bridge1'
+        }
+    ]
+
+    # ma switchを作る
+    ma_switch_node = lab.create_node(label=MA_SWITCH_LABEL, node_definition="unmanaged_switch", x=-40, y=0)
+    for i in range(16):
+        ma_switch_node.create_interface(i, wait=True)
+
+    #
+    # アノテーション
+    #
+
+    # 楕円形のアノテーションを作成する
+    lab.create_annotation('ellipse', **{
+        'border_color': '#808080FF',
+        'border_style': '',
+        'color': '#E2D6D6',
+        'rotation': 0,
+        'thickness': 2,
+        'x1': 320.0,
+        'y1': -120.0,
+        'x2': 40.0,
+        'y2': 40.0,
+        'z_index': 0
+    })
+
+    # 直線のアノテーションを作成する
+    lab.create_annotation('line', **{
+        'border_color': '#808080FF',
+        'border_style': '',
+        'color': '#FFFFFFFF',
+        'line_end': None,
+        'line_start': None,
+        'thickness': 1,
+        'x1': 120.0,
+        'y1': -120.0,
+        'x2': 280.0,
+        'y2': -120.0,
+        'z_index': 0
+    })
+
+    # テキストのアノテーションを作成する
+    create_text_annotation(lab, "192.168.0.0/24", {'x1': 80.0, 'y1': -160.0, 'z_index': 1})
+    create_text_annotation(lab, "192.168.0.0/24", {'x1': -200.0, 'y1': 0.0, 'z_index': 1})
+    create_text_annotation(lab, ".100", {'text_size': 16, 'text_bold': True, 'x1': 0.0, 'y1': -80.0, 'z_index': 1})
+    create_text_annotation(lab, "Hyper-V host\n192.168.0.198/24", {'x1': 280.0, 'y1': -160.0, 'z_index': 1})
+
+    # ubuntuのインスタンスを作る
+    ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=-40, y=-120)
+
+    # 起動イメージを指定する
+    if is_exist_image_definition(client, IMAGE_DEFINITION):
+        ubuntu_node.image_definition = IMAGE_DEFINITION
+    else:
+        logger.warning(f"Image definition '{IMAGE_DEFINITION}' not found. Using default image for node definition '{NODE_DEFINITION}'")
+
+    # 初期状態はインタフェースが存在しないので追加、3本足にする
+    #
+    #  external nat
+    #     |
+    #    (ens2)
+    #     |
+    #    Ubuntu-(ens3)----bridge1 (to Windows Hyper-V host)
+    #     |
+    #    (ens4)
+    #     |
+    #   ma-switch (to lab devices)
+    #
+    for i in range(3):
+        ubuntu_node.create_interface(i, wait=True)
+
+    # ubuntuとNATを接続する
+    lab.connect_two_nodes(ubuntu_node, ext_conn_node)
+
+    # ubuntuとbridge1を接続する
+    lab.connect_two_nodes(ubuntu_node, bridge1_node)
+
+    # ubuntuとma switchを接続する
+    lab.connect_two_nodes(ubuntu_node, ma_switch_node)
+
+    # Ubuntuのcloud-initテンプレートを取得する
+    ubuntu_template = Template(UBUNTU_CONFIG_J2)
+
+    # テンプレートに渡すコンテキストオブジェクト
+    context = {
+        "CML_ADDRESS": CML_ADDRESS,
+        "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
+        "UBUNTU_USERNAME": UBUNTU_USERNAME,
+        "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
+        "UBUNTU_ENS3": UBUNTU_ENS3,
+        "UBUNTU_ENS4": UBUNTU_ENS4,
+        "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY,
+    }
+
+    # Ubuntuに設定するcloud-init.yamlのテキストを作る
+    config_text = ubuntu_template.render(context)
+
+    # ノードのconfigにcloud-init.yamlのテキストを設定する
+    ubuntu_node.configuration = [
+        {
+            'name': 'user-data',
+            'content': config_text
+        },
+        {
+            'name': 'network-config',
+            'content': '#network-config'
+        }
+    ]
+
+    # タグを設定する
+    ubuntu_node.add_tag(tag=UBUNTU_TAG)
+
+    logger.info(f"Lab '{title}' created successfully")
+    logger.info(f"id: {lab.id}")
+
+
 if __name__ == '__main__':
-
-    def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
-        base_params = {
-            'border_color': '#00000000',
-            'border_style': '',
-            'rotation': 0,
-            'text_bold': False,
-            'text_content': text_content,
-            'text_font': 'monospace',
-            'text_italic': False,
-            'text_size': 12,
-            'text_unit': 'pt',
-            'thickness': 1,
-            'x1': 0.0,
-            'y1': 0.0,
-            'z_index': 0
-        }
-        if params:
-            base_params.update(params)
-        lab.create_annotation('text', **base_params)
-
-
-    def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
-        labs = client.find_labs_by_title(title)
-        return labs[0] if labs else None
-
-
-    def start_lab(lab: Lab) -> None:
-        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-        if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
-            logger.info(f"Starting lab '{lab.title}'")
-            lab.start(wait=True)
-            logger.info(f"Lab '{lab.title}' started")
-        else:
-            logger.info(f"Lab '{lab.title}' is already running")
-
-
-    def stop_lab(lab: Lab) -> None:
-        state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-        if state == 'STARTED':
-            logger.info(f"Stopping lab '{lab.title}'")
-            lab.stop(wait=True)
-            logger.info(f"Lab '{lab.title}' stopped")
-        else:
-            logger.info(f"Lab '{lab.title}' is not running")
-
-
-    def delete_lab(lab: Lab) -> None:
-        title = lab.title
-        logger.info(f"Deleting lab '{title}'")
-        stop_lab(lab)
-        lab.wipe()
-        lab.remove()
-        logger.info(f"Lab '{title}' deleted")
-
-
-    def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
-        image_defs = client.definitions.image_definitions()
-        image_def_ids = [img['id'] for img in image_defs]
-        return image_def_id in image_def_ids
-
-
-    def create_lab(client: ClientLibrary, title: str, description: str) -> None:
-
-        # ラボを新規作成
-        lab = client.create_lab(title=title, description=description)
-
-        # 外部接続用のNATを作る
-        ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=-40, y=-240)
-
-        # bridge1を作る
-        bridge1_node = lab.create_node(label="bridge1", node_definition="external_connector", x=120, y=-120)
-        bridge1_node.configuration = [
-            {
-                'name': 'default',
-                'content': 'bridge1'
-            }
-        ]
-
-        # ma switchを作る
-        ma_switch_node = lab.create_node(label=MA_SWITCH_LABEL, node_definition="unmanaged_switch", x=-40, y=0)
-        for i in range(16):
-            ma_switch_node.create_interface(i, wait=True)
-
-        #
-        # アノテーション
-        #
-
-        # 楕円形のアノテーションを作成する
-        lab.create_annotation('ellipse', **{
-            'border_color': '#808080FF',
-            'border_style': '',
-            'color': '#E2D6D6',
-            'rotation': 0,
-            'thickness': 2,
-            'x1': 320.0,
-            'y1': -120.0,
-            'x2': 40.0,
-            'y2': 40.0,
-            'z_index': 0
-        })
-
-        # 直線のアノテーションを作成する
-        lab.create_annotation('line', **{
-            'border_color': '#808080FF',
-            'border_style': '',
-            'color': '#FFFFFFFF',
-            'line_end': None,
-            'line_start': None,
-            'thickness': 1,
-            'x1': 120.0,
-            'y1': -120.0,
-            'x2': 280.0,
-            'y2': -120.0,
-            'z_index': 0
-        })
-
-        # テキストのアノテーションを作成する
-        create_text_annotation(lab, "192.168.0.0/24", {'x1': 80.0, 'y1': -160.0, 'z_index': 1})
-        create_text_annotation(lab, "192.168.0.0/24", {'x1': -200.0, 'y1': 0.0, 'z_index': 1})
-        create_text_annotation(lab, ".100", {'text_size': 16, 'text_bold': True, 'x1': 0.0, 'y1': -80.0, 'z_index': 1})
-        create_text_annotation(lab, "Hyper-V host\n192.168.0.198/24", {'x1': 280.0, 'y1': -160.0, 'z_index': 1})
-
-        # ubuntuのインスタンスを作る
-        ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=-40, y=-120)
-
-        # 起動イメージを指定する
-        if is_exist_image_definition(client, IMAGE_DEFINITION):
-            ubuntu_node.image_definition = IMAGE_DEFINITION
-        else:
-            logger.warning(f"Image definition '{IMAGE_DEFINITION}' not found. Using default image for node definition '{NODE_DEFINITION}'")
-
-        # 初期状態はインタフェースが存在しないので追加、3本足にする
-        #
-        #  external nat
-        #     |
-        #    (ens2)
-        #     |
-        #    Ubuntu-(ens3)----bridge1 (to Windows Hyper-V host)
-        #     |
-        #    (ens4)
-        #     |
-        #   ma-switch (to lab devices)
-        #
-        for i in range(3):
-            ubuntu_node.create_interface(i, wait=True)
-
-        # ubuntuとNATを接続する
-        lab.connect_two_nodes(ubuntu_node, ext_conn_node)
-
-        # ubuntuとbridge1を接続する
-        lab.connect_two_nodes(ubuntu_node, bridge1_node)
-
-        # ubuntuとma switchを接続する
-        lab.connect_two_nodes(ubuntu_node, ma_switch_node)
-
-        # Ubuntuのcloud-initテンプレートを取得する
-        ubuntu_template = Template(UBUNTU_CONFIG_J2)
-
-        # テンプレートに渡すコンテキストオブジェクト
-        context = {
-            "CML_ADDRESS": CML_ADDRESS,
-            "UBUNTU_HOSTNAME": UBUNTU_HOSTNAME,
-            "UBUNTU_USERNAME": UBUNTU_USERNAME,
-            "UBUNTU_PASSWORD": UBUNTU_PASSWORD,
-            "SSH_PUBLIC_KEY": SSH_PUBLIC_KEY,
-        }
-
-        # Ubuntuに設定するcloud-init.yamlのテキストを作る
-        config_text = ubuntu_template.render(context)
-
-        # ノードのconfigにcloud-init.yamlのテキストを設定する
-        ubuntu_node.configuration = [
-            {
-                'name': 'user-data',
-                'content': config_text
-            },
-            {
-                'name': 'network-config',
-                'content': '#network-config'
-            }
-        ]
-
-        # タグを設定する
-        ubuntu_node.add_tag(tag=UBUNTU_TAG)
-
-        logger.info(f"Lab '{title}' created successfully")
-        logger.info(f"id: {lab.id}")
-
 
     def main() -> None:
 

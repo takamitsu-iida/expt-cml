@@ -16,8 +16,12 @@ INSTALL_SCRIPT = cml_install_image.sh
 SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = ntools-test
 
-lab: ## ラボをCML上に作成する
+jumphost: ## 踏み台サーバをCML上に作成する
 	../bin/cml_create_jumphost.py --create --title "$(LAB_TITLE)"
+	../bin/cml_create_jumphost.py --start
+
+upload: ## 踏み台サーバに設定ファイルをアップロードする
+	../bin/cml_create_arcos_lab.py --upload
 
 stop: ## ラボを停止する
 	../bin/cml_create_jumphost.py --stop --title "$(LAB_TITLE)"

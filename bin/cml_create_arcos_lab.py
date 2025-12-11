@@ -331,6 +331,7 @@ def delete_lab(lab: Lab) -> None:
     lab.remove()
     logger.info(f"Lab '{title}' deleted")
 
+
 def is_exist_image_definition(client: ClientLibrary, image_def_id: str) -> bool:
     image_defs = client.definitions.image_definitions()
     image_def_ids = [img['id'] for img in image_defs]
@@ -404,8 +405,8 @@ def upload_configs_to_jumphost(lab: Lab) -> None:
         logger.error("Jumphost node not found in the lab")
         return
 
-    if jumphost.state() != 'STARTED':
-        logger.error("Jumphost is not running. Please start the jumphost before uploading configs.")
+    if jumphost.state not in  ['STARTED', 'BOOTED']:  # STARTED / STOPPED / DEFINED_ON_CORE
+        logger.error(f"Jumphost is not running. Please start the jumphost before uploading configs. Current state: {jumphost.state}")
         return
 
     configs = create_router_config()

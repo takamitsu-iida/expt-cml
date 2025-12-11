@@ -356,7 +356,7 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
 
 
 
-def scp_config(config_content: str, remote_path: str) -> None:
+def scp_to_jumphost(config_content: str, remote_path: str) -> None:
     """SCPコマンドを使ってルータの設定をデプロイする"""
 
     #
@@ -409,8 +409,8 @@ def upload_configs_to_jumphost(lab: Lab) -> None:
         return
 
     configs = create_router_config()
-    scp_config(configs["P1_CONFIG"], "/srv/tftp/P1.conf")
-    scp_config(configs["P2_CONFIG"], "/srv/tftp/P2.conf")
+    scp_to_jumphost(configs["P1_CONFIG"], "/srv/tftp/P1.conf")
+    scp_to_jumphost(configs["P2_CONFIG"], "/srv/tftp/P2.conf")
 
 
 
@@ -467,7 +467,8 @@ if __name__ == '__main__':
             return
 
         if args.upload:
-            pass
+            upload_configs_to_jumphost(lab) if lab else logger.error(f"Lab '{args.title}' not found")
+            return
 
     #
     # 実行

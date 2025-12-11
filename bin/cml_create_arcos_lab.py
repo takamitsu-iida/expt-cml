@@ -374,6 +374,8 @@ def scp_to_jumphost(config_content: str, remote_path: str) -> None:
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.conf') as tmp:
             tmp.write(config_content)
             tmp_path = tmp.name
+            # 送信前にローカルファイルのパーミッションを設定
+            os.chmod(tmp_path, 0o644)
 
         logger.info(f"Copying config to {UBUNTU_USERNAME}@{UBUNTU_ADDRESS}:{remote_path}")
 

@@ -52,7 +52,7 @@ try:
     # SSL Verification disabled のログが鬱陶しいので、ERRORのみに抑制
     logging.getLogger("virl2_client.virl2_client").setLevel(logging.ERROR)
     from virl2_client import ClientLibrary
-    from virl2_client.models.lab import Lab, Node
+    from virl2_client.models.lab import Lab, Node, NodeNotFound
 except ImportError as e:
     logging.critical(str(e))
     sys.exit(-1)
@@ -240,6 +240,36 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
     }
 
 
+def connect_ma_switch(lab: Lab, nodes: list[Node]) -> None:
+    try:
+        ma_switch = lab.get_node_by_label(MA_SWITCH_LABEL)
+    except NodeNotFound:
+        logger.error(f"MA switch node '{MA_SWITCH_LABEL}' not found")
+        return []
+
+    for node in nodes:
+        ma_iface = node.get_interface_by_label('ma1')
+        if ma_iface is None:
+            logger.error(f"Failed to get ma1 interface of node '{node.label}'")
+            continue
+
+        # MAスイッチの最初のインタフェースを取得する
+        ma_switch_iface = None
+        for iface in ma_switch.interfaces():
+            if not iface.is_connected():
+                ma_switch_iface = iface
+                break
+
+        if ma_switch_iface is None:
+            logger.error(f"No available interface on MA switch '{MA_SWITCH_LABEL}' to connect to node '{node.label}'")
+            continue
+
+        # ノードのma1インタフェースとMAスイッチのインタフェースを接続する
+        link = lab.create_link(ma_iface, ma_switch_iface, wait=True)
+
+
+
+
 def create_nodes_1(lab: Lab) -> list[Node]:
 
     #
@@ -249,18 +279,20 @@ def create_nodes_1(lab: Lab) -> list[Node]:
     #  PE12----P2----PE14
     #
 
-    ma_switch = lab.get_node_by_label(MA_SWITCH_LABEL)
-    if ma_switch is None:
-        logger.error(f"MA switch node '{MA_SWITCH_LABEL}' not found")
-        return []
+    x_grid_width = 6*40
+    y_grid_width = 4*40
 
+    # 初期座標、これがP1ノードの位置になる
     x_pos = 0
-    y_pos = 0
+    y_pos = y_grid_width
 
     # P1とP2を作る
     p_nodes = []
     for rid in [1, 2]:
-        node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=x_pos + (rid-1)*160, y=y_pos)
+        node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=x_pos, y=y_pos)
+
+        # Pルータにタグを付ける
+        node.add_tag("P")
 
         # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
         for i in range(9):
@@ -274,12 +306,19 @@ def create_nodes_1(lab: Lab) -> list[Node]:
             # MACアドレスを設定する
             ma_iface.mac_address = f"52:54:00:00:00:{rid:02d}"
 
+        # Y座標を下にずらす
+        y_pos += y_grid_width
+
         p_nodes.append(node)
 
-    # PE11, PE12, PE13, PE14ノードを作る
+    # Y座標をもとに戻して、X座標を左にずらす
+    x_pos = -x_grid_width
+    y_pos = y_grid_width
+
+    # 左側にあるPE11, PE12ノードを作る
     pe_nodes = []
-    for rid in [11, 12, 13, 14]:
-        node = lab.create_node(label=f"PE{rid}", node_definition="arcos", x=x_pos + ((rid-11)%2)*160, y=y_pos + (rid-11)//2*160 + 120)
+    for rid in [11, 12]:
+        node = lab.create_node(label=f"PE{rid}", node_definition="arcos", x=x_pos, y=y_pos)
 
         # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
         for i in range(9):
@@ -293,14 +332,52 @@ def create_nodes_1(lab: Lab) -> list[Node]:
             # MACアドレスを設定する
             ma_iface.mac_address = f"52:54:00:00:01:{rid:02d}"
 
+        # Y座標を下にずらす
+        y_pos += y_grid_width
+
+        # PEノードをリストに追加
         pe_nodes.append(node)
 
 
-    # P1, P2をPEルータと接続する
-    for i, p_node in enumerate(p_nodes):
-        for j, pe_node in enumerate(pe_nodes):
-            lab.connect_two_nodes(p_node, pe_node)
+    # 右側にあるPE13, PE14ノードを作る
+    x_pos = x_grid_width
+    y_pos = y_grid_width
+    for rid in [13, 14]:
+        node = lab.create_node(label=f"PE{rid}", node_definition="arcos", x=x_pos, y=y_pos)
 
+        # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
+        for i in range(9):
+            node.create_interface(i, wait=True)
+
+        # ma1インタフェースのMACアドレスを設定する
+        ma_iface = node.get_interface_by_label('ma1')
+        if ma_iface is None:
+            logger.error("Failed to get ma1 interface of arcos node")
+        else:
+            # MACアドレスを設定する
+            ma_iface.mac_address = f"52:54:00:00:01:{rid:02d}"
+
+        # Y座標を下にずらす
+        y_pos += y_grid_width
+
+        # PEノードをリストに追加
+        pe_nodes.append(node)
+
+
+    # ルータ間を接続する
+    pe_intf_num = 1
+    for p_node in p_nodes:
+        p_intf_num = 1
+        for pe_node in pe_nodes:
+            p_node_intf = p_node.get_interface_by_label(f'swp{p_intf_num}')
+            pe_node_intf = pe_node.get_interface_by_label(f'swp{pe_intf_num}')
+            if p_node_intf is None or pe_node_intf is None:
+                logger.error("Failed to get swp interface of arcos node")
+            else:
+                lab.create_link(p_node_intf, pe_node_intf, wait=True)
+            p_intf_num += 1
+
+        pe_intf_num += 1
 
     return p_nodes + pe_nodes
 
@@ -375,8 +452,14 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
     if lab is None:
         lab = client.create_lab(title=title, description=description)
 
+    # 構成パターン1
+    nodes = create_nodes_1(lab)
+    if not nodes:
+        logger.error("Failed to create nodes")
+        return
 
-
+    # MAスイッチに接続する
+    connect_ma_switch(lab, nodes)
 
     logger.info(f"Lab '{title}' created successfully")
     logger.info(f"id: {lab.id}")

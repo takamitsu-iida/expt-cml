@@ -449,10 +449,10 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
     lab = client.create_lab(title=title, description=description)
 
     # 外部接続用のNATを作る
-    ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=-40, y=-240)
+    ext_conn_node = lab.create_node(label="ext-conn-0", node_definition="external_connector", x=0, y=-240)
 
     # bridge1を作る
-    bridge1_node = lab.create_node(label="bridge1", node_definition="external_connector", x=120, y=-120)
+    bridge1_node = lab.create_node(label="bridge1", node_definition="external_connector", x=160, y=-120)
     bridge1_node.configuration = [
         {
             'name': 'default',
@@ -461,7 +461,7 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
     ]
 
     # ma switchを作る
-    ma_switch_node = lab.create_node(label=MA_SWITCH_LABEL, node_definition="unmanaged_switch", x=-40, y=0)
+    ma_switch_node = lab.create_node(label=MA_SWITCH_LABEL, node_definition="unmanaged_switch", x=0, y=0)
     for i in range(16):
         ma_switch_node.create_interface(i, wait=True)
 
@@ -469,14 +469,14 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
     # アノテーション
     #
 
-    # 楕円形のアノテーションを作成する
+    # 楕円形のアノテーションを作成する(Hyper-V hostを囲む)
     lab.create_annotation('ellipse', **{
         'border_color': '#808080FF',
         'border_style': '',
         'color': '#E2D6D6',
         'rotation': 0,
         'thickness': 2,
-        'x1': 320.0,
+        'x1': 360.0,
         'y1': -120.0,
         'x2': 40.0,
         'y2': 40.0,
@@ -491,21 +491,21 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
         'line_end': None,
         'line_start': None,
         'thickness': 1,
-        'x1': 120.0,
+        'x1': 180.0,
         'y1': -120.0,
-        'x2': 280.0,
+        'x2': 320.0,
         'y2': -120.0,
         'z_index': 0
     })
 
     # テキストのアノテーションを作成する
-    create_text_annotation(lab, "192.168.0.0/24", {'x1': 80.0, 'y1': -160.0, 'z_index': 1})
-    create_text_annotation(lab, "192.168.0.0/24", {'x1': -200.0, 'y1': 0.0, 'z_index': 1})
+    create_text_annotation(lab, "192.168.0.0/24", {'x1': 120.0, 'y1': -160.0, 'z_index': 1})
+    create_text_annotation(lab, "192.168.0.0/24", {'x1': -160.0, 'y1': 0.0, 'z_index': 1})
     create_text_annotation(lab, ".100", {'text_size': 16, 'text_bold': True, 'x1': 0.0, 'y1': -80.0, 'z_index': 1})
-    create_text_annotation(lab, "Hyper-V host\n192.168.0.198/24", {'x1': 280.0, 'y1': -160.0, 'z_index': 1})
+    create_text_annotation(lab, "Hyper-V host\n192.168.0.198/24", {'x1': 320.0, 'y1': -160.0, 'z_index': 1})
 
     # ubuntuのインスタンスを作る
-    ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=-40, y=-120)
+    ubuntu_node = lab.create_node(label=UBUNTU_HOSTNAME, node_definition="ubuntu", x=0, y=-120)
 
     # 起動イメージを指定する
     if is_exist_image_definition(client, IMAGE_DEFINITION):

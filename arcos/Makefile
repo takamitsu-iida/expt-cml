@@ -18,10 +18,13 @@ CONTAINER_NAME = ntools-test
 
 jumphost: ## 踏み台サーバをCML上に作成する
 	../bin/cml_create_jumphost.py --create --title "$(LAB_TITLE)"
-	../bin/cml_create_jumphost.py --start --title "$(LAB_TITLE)"
+	#../bin/cml_create_jumphost.py --start --title "$(LAB_TITLE)"
 
 upload: ## 踏み台サーバに設定ファイルをアップロードする（踏み台サーバの起動後に実行すること）
 	../bin/cml_create_arcos_lab.py --upload
+
+arcos: ## arcosノードをCML上に作成する
+	../bin/cml_create_arcos_lab.py --create --title "$(LAB_TITLE)"
 
 stop: ## ラボを停止する
 	../bin/cml_create_jumphost.py --stop --title "$(LAB_TITLE)"

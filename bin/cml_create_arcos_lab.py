@@ -265,7 +265,7 @@ def connect_ma_switch(lab: Lab, nodes: list[Node]) -> None:
             continue
 
         # ノードのma1インタフェースとMAスイッチのインタフェースを接続する
-        lab.create_link(ma_iface, ma_switch_iface, label="", wait=True)
+        lab.create_link(ma_iface, ma_switch_iface, wait=True)
 
 
 def create_nodes_1(lab: Lab) -> list[Node]:

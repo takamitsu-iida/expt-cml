@@ -506,7 +506,7 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
     # テキストのアノテーションを作成する
     create_text_annotation(lab, "192.168.0.0/24", {'x1': 120.0, 'y1': -160.0, 'z_index': 1})
     create_text_annotation(lab, "192.168.0.0/24", {'x1': -160.0, 'y1': 0.0, 'z_index': 1})
-    create_text_annotation(lab, ".100", {'text_size': 16, 'text_bold': True, 'x1': 0.0, 'y1': -80.0, 'z_index': 1})
+    create_text_annotation(lab, ".100", {'text_size': 16, 'text_bold': True, 'x1': 40.0, 'y1': -80.0, 'z_index': 1})
     create_text_annotation(lab, "Hyper-V host\n192.168.0.198/24", {'x1': 320.0, 'y1': -160.0, 'z_index': 1})
 
     # ubuntuのインスタンスを作る

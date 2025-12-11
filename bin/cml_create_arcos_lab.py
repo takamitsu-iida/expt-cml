@@ -357,7 +357,7 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
 
 
 
-def scp_to_jumphost(config_content: str, remote_path: str) -> None:
+def scp_to_jumphost(config_content: str, remote_path: str, mode: str = '644') -> None:
     """SCPコマンドを使ってルータの設定をデプロイする"""
 
     #
@@ -374,17 +374,25 @@ def scp_to_jumphost(config_content: str, remote_path: str) -> None:
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.conf') as tmp:
             tmp.write(config_content)
             tmp_path = tmp.name
-            # 送信前にローカルファイルのパーミッションを設定
-            os.chmod(tmp_path, 0o644)
-
-        logger.info(f"Copying config to {UBUNTU_USERNAME}@{UBUNTU_ADDRESS}:{remote_path}")
 
         # scpでファイル転送
+        logger.info(f"Copying config to {UBUNTU_USERNAME}@{UBUNTU_ADDRESS}:{remote_path}")
+
         subprocess.run([
             'scp',
             '-o', 'StrictHostKeyChecking=no',  # 初回接続時のホスト確認をスキップ
             tmp_path,
             f'{UBUNTU_USERNAME}@{UBUNTU_ADDRESS}:{remote_path}'
+        ], check=True, capture_output=True, text=True)
+
+        # パーミッション設定
+        logger.info(f"Setting permissions {mode} on {remote_path}")
+
+        subprocess.run([
+            'ssh',
+            '-o', 'StrictHostKeyChecking=no',
+            f'{UBUNTU_USERNAME}@{UBUNTU_ADDRESS}',
+            f'chmod {mode} {remote_path}'
         ], check=True, capture_output=True, text=True)
 
         logger.info(f"Config deployed successfully to {remote_path}")

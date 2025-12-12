@@ -26,6 +26,9 @@ upload: ## 踏み台サーバに設定ファイルをアップロードする（
 arcos: ## arcosノードをCML上に作成する
 	../bin/cml_create_arcos_lab.py --create --title "$(LAB_TITLE)"
 
+start: ## ラボを開始する
+	../bin/cml_create_jumphost.py --start --title "$(LAB_TITLE)"
+
 stop: ## ラボを停止する
 	../bin/cml_create_jumphost.py --stop --title "$(LAB_TITLE)"
 

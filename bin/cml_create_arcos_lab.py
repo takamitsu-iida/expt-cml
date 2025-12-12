@@ -41,7 +41,6 @@ import sys
 
 from pathlib import Path
 
-
 #
 # 外部ライブラリのインポート
 #
@@ -289,8 +288,13 @@ def create_nodes_1(lab: Lab) -> list[Node]:
     for rid in [1, 2]:
         node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=x_pos, y=y_pos)
 
-        # Pルータにタグを付ける
+        # Pルータにはスマートタグを付ける
         node.add_tag("P")
+
+        # PATTY用シリアルコンソールのタグを付ける
+        # 6001 -> P1
+        # 6002 -> P2
+        node.add_tag(f"serial:600{rid}")
 
         # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
         for i in range(9):
@@ -318,6 +322,11 @@ def create_nodes_1(lab: Lab) -> list[Node]:
     for rid in [11, 12]:
         node = lab.create_node(label=f"PE{rid}", node_definition="arcos", x=x_pos, y=y_pos)
 
+        # PATTY用シリアルコンソールのタグを付ける
+        # 6011 -> P11
+        # 6012 -> P12
+        node.add_tag(f"serial:60{rid}")
+
         # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
         for i in range(9):
             node.create_interface(i, wait=True)
@@ -342,6 +351,11 @@ def create_nodes_1(lab: Lab) -> list[Node]:
     y_pos = y_grid_width
     for rid in [13, 14]:
         node = lab.create_node(label=f"PE{rid}", node_definition="arcos", x=x_pos, y=y_pos)
+
+        # PATTY用シリアルコンソールのタグを付ける
+        # 6013 -> P13
+        # 6014 -> P14
+        node.add_tag(f"serial:60{rid}")
 
         # arcosノードのインタフェースを追加する（この時点ではまだMACアドレスは不明）
         for i in range(9):

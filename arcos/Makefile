@@ -6,6 +6,8 @@ help:
 # ラボタイトル
 LAB_TITLE = arcos_test_lab
 
+# ラボのデスクリプション
+DESCRIPTION = arcos lab for testing
 
 ####################################################
 # 以下、変更不要
@@ -17,7 +19,7 @@ SSH_OPTS = -p 1122 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 CONTAINER_NAME = ntools-test
 
 jumphost: ## 踏み台サーバをCML上に作成する
-	../bin/cml_create_jumphost.py --create --title "$(LAB_TITLE)"
+	../bin/cml_create_jumphost.py --create --title "$(LAB_TITLE)" --description "$(DESCRIPTION)"
 	#../bin/cml_create_jumphost.py --start --title "$(LAB_TITLE)"
 
 upload: ## 踏み台サーバに設定ファイルをアップロードする（踏み台サーバの起動後に実行すること）

@@ -152,7 +152,7 @@ logger.addHandler(file_handler)
 # ここからスクリプト
 #
 
-def create_router_config() -> str:
+def create_router_config_1() -> str:
 
     P_CONFIG_J2 = \
 """
@@ -183,7 +183,15 @@ system cli commit-message true
 system netconf-server enable false
 system netconf-server transport ssh enable false
 system restconf-server enable false
-system aaa authentication admin-user admin-password $6$45.xtCxp$NHORwpgM4fwL1b.9uKcL7J89ZoOcQ6zhauB1ZivfEcWsxmFybTtdq57tQ8oxGZePYAootxKC6L6NTIZwdxpth0
+system aaa authentication admin-user admin-password $6$cY9EPmy0Nms9aP1k$Z2HzLTQGLpu5mlYx/dw0rWlsXM.Y3D56m7OBSkNWdpEuJC/Htnk36jPDGZ8yqNgsOzWbo3qQDEcxz8LJ3rnim0
+system aaa authentication user admin
+ password $6$vNZR.uPPRaj9w2YE$fT8DCzLZ8yyad7UleD/lkRRwo038UD/j1JM0.QIAlZ9IG.2QscG7BnO7KALU6O8BGtjtWAQgPWpqlkCsm/IVu/
+ role     SYSTEM_ROLE_ADMIN
+!
+system aaa authentication user cisco
+ password $6$3eknMONEms3fQwFn$/bdFD9rIta5JPFzyDMBsWsJxxAyBQcpK8QCokRc1aAP3puQ9EZvLOMoNpKNhf63QT4x5bytzOfaH1jUBNnBYC0
+ role     SYSTEM_ROLE_ADMIN
+!
 system rib IPV6
 !
 system rib IPV4
@@ -195,13 +203,385 @@ interface ma1
  subinterface 0
  exit
 !
+{% for iface_num in range(1,5) %}
+interface swp{{ iface_num }}
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 router-advertisement suppress true
+  ipv4 enabled false
+  enabled true
+ exit
+!
+{% endfor %}
+interface loopback0
+ type    softwareLoopback
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 address 2001:db8:ffff::{{ rid }}
+   prefix-length 128
+  exit
+  ipv4 enabled true
+  ipv4 address 10.0.255.{{ rid }}
+   prefix-length 32
+  exit
+  enabled true
+ exit
+!
 network-instance default
+ protocol BGP MAIN
+  global as           65000
+  global router-id    10.0.255.{{ rid }}
+  global cluster-id   0.0.0.1
+  global graceful-restart enabled true
+  global afi-safi L3VPN_IPV6_UNICAST
+  !
+  global afi-safi L3VPN_IPV4_UNICAST
+  !
+  global srv6 locator MAIN
+  {% if rid == 1 %}
+  neighbor 2001:db8:ffff::2
+  {% else %}
+  neighbor 2001:db8:ffff::1
+  {% endif %}
+   peer-as 65000
+   transport local-address 2001:db8:ffff::{{ rid }}
+   afi-safi L3VPN_IPV6_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+   exit
+  !
+  {% for neighbor_id in range(11, 15) %}
+  neighbor 2001:db8:ffff::{{ neighbor_id }}
+   peer-group pe
+   exit
+  !
+  {% endfor %}
+  peer-group pe
+   peer-as 65000
+   transport local-address 2001:db8:ffff::{{ rid }}
+   route-reflector route-reflector-client true
+   afi-safi L3VPN_IPV6_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+  !
+ !
+ protocol ISIS MAIN
+  global net [ 49.0000.0000.0000.000{{ rid }}.00 ]
+  global graceful-restart enabled true
+  global af IPV6 UNICAST
+   enabled true
+   exit
+  !
+  global af IPV4 UNICAST
+   enabled false
+   exit
+  !
+  global srv6 enabled true
+  global srv6 locator MAIN
+  !
+  level 1
+   enabled true
+   exit
+  !
+  level 2
+   enabled true
+   exit
+  !
+  {% for iface_num in range(1,5) %}
+  interface swp{{ iface_num }}
+   enabled      true
+   network-type POINT_TO_POINT
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+  {% endfor %}
+  interface loopback0
+   enabled true
+   passive true
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+ !
+ srv6 locator MAIN
+  locator-node-length 16
+  prefix              fd00:0:0:{{ rid }}::/64
+ !
 !
 network-instance management
  interface ma1
  !
 !
 lldp interface ma1
+!
+lldp interface swp1
+!
+lldp interface swp2
+!
+lldp interface swp3
+!
+lldp interface swp4
+!
+routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
+ prefix 0.0.0.0/8 8..32
+ !
+ prefix 127.0.0.0/8 8..32
+ !
+ prefix 192.0.0.0/24 24..32
+ !
+ prefix 224.0.0.0/4 exact
+ !
+ prefix 224.0.0.0/24 exact
+ !
+ prefix 240.0.0.0/4 4..32
+ !
+!
+routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
+ prefix ::/128 exact
+ !
+ prefix ::1/128 exact
+ !
+ prefix ff00::/8 exact
+ !
+ prefix ff02::/16 exact
+ !
+!
+""".strip()
+
+    PE_CONFIG_J2 = \
+"""
+version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
+features feature ARCOS_RIOT
+ supported false
+!
+features feature ARCOS_ICMP_SRC_REWRITE
+ supported true
+!
+features feature ARCOS_SUBIF
+ supported true
+!
+features feature ARCOS_QoS
+ supported false
+!
+features feature ARCOS_MPLS
+ supported true
+!
+features feature ARCOS_SFLOW
+ supported true
+!
+system hostname PE{{ rid }}
+system login-banner "ArcOS (c) Arrcus, Inc."
+system clock timezone-name Asia/Tokyo
+system ssh-server enable true
+system ssh-server permit-root-login true
+system cli commit-message true
+system netconf-server enable false
+system netconf-server transport ssh enable false
+system restconf-server enable false
+system aaa authentication admin-user admin-password $6$q.g4YxQzck5YdWdt$7ePZ1heUAqjJ9g2u07LQTxtA8D4K.B11I8jRmeLLHFLhJYRTkoHfPx/E.Fun/U2adMLRPEiWSdoR5L.lncKZ/.
+system aaa authentication user cisco
+ password $6$bFtJofvHxD3pDH1M$msEMHJgm2cYWhP2rfwsOz27XB6Mf04WLOcdYYGb7JLJQFqmNhCydmU/S6xCfVqVFiDBr07kNvpudfM8zxKxxp/
+ role     SYSTEM_ROLE_ADMIN
+!
+system rib IPV6
+!
+system rib IPV4
+!
+interface ma1
+ type    ethernetCsmacd
+ mtu     1500
+ enabled true
+ subinterface 0
+ exit
+!
+{% for iface_num in range(1,3) %}
+interface swp{{ iface_num }}
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 router-advertisement suppress true
+  ipv4 enabled false
+ exit
+!
+{% endfor %}
+{% for iface_num in range(3,5) %}
+interface swp{{ iface_num }}
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+!
+{% endfor %}
+!
+interface loopback0
+ type    softwareLoopback
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 address 2001:db8:ffff::{{ rid }}
+   prefix-length 128
+  exit
+  ipv4 enabled true
+  ipv4 address 10.0.255.{{ rid }}
+   prefix-length 32
+  exit
+  enabled true
+ exit
+!
+network-instance default
+ protocol BGP MAIN
+  global as           65000
+  global router-id    10.0.255.{{ rid }}
+  global graceful-restart enabled true
+  global afi-safi L3VPN_IPV6_UNICAST
+  !
+  global afi-safi L3VPN_IPV4_UNICAST
+  !
+  global srv6 locator MAIN
+  neighbor 2001:db8:ffff::1
+   peer-group rr
+   exit
+  !
+  neighbor 2001:db8:ffff::2
+   peer-group rr
+   exit
+  !
+  peer-group rr
+   peer-as 65000
+   transport local-address 2001:db8:ffff::{{ rid }}
+   afi-safi L3VPN_IPV6_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+  !
+ !
+ protocol ISIS MAIN
+  global net [ 49.0000.0000.0000.00{{ rid }}.00 ]
+  global graceful-restart enabled true
+  global af IPV6 UNICAST
+   enabled true
+   exit
+  !
+  global af IPV4 UNICAST
+   enabled false
+   exit
+  !
+  global srv6 enabled true
+  global srv6 locator MAIN
+  !
+  level 1
+   enabled true
+   exit
+  !
+  level 2
+   enabled false
+   exit
+  !
+  {% for iface_num in range(1,3) %}
+  interface swp{{ iface_num }}
+   enabled      true
+   network-type POINT_TO_POINT
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+  {% endfor %}
+  interface loopback0
+   enabled true
+   passive true
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+ !
+ srv6 locator MAIN
+  locator-node-length 16
+  prefix              fd00:0:0:{{ rid }}::/64
+ !
+!
+network-instance management
+ interface ma1
+ !
+!
+lldp interface ma1
+!
+lldp interface swp1
+!
+lldp interface swp2
+!
+lldp interface swp3
+!
+lldp interface swp4
 !
 routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
  prefix 0.0.0.0/8 8..32
@@ -230,12 +610,15 @@ routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
 """.strip()
 
     p_config_template = Template(P_CONFIG_J2)
-    P1_CONFIG = p_config_template.render({ "rid": 1 })
-    P2_CONFIG = p_config_template.render({ "rid": 2 })
+    pe_config_template = Template(PE_CONFIG_J2)
 
     return {
-        "P1_CONFIG": P1_CONFIG,
-        "P2_CONFIG": P2_CONFIG
+        "P1_CONFIG": p_config_template.render({ "rid": 1 }),
+        "P2_CONFIG": p_config_template.render({ "rid": 2 }),
+        "PE11_CONFIG": pe_config_template.render({ "rid": 11 }),
+        "PE12_CONFIG": pe_config_template.render({ "rid": 12 }),
+        "PE13_CONFIG": pe_config_template.render({ "rid": 13 }),
+        "PE14_CONFIG": pe_config_template.render({ "rid": 14 }),
     }
 
 
@@ -285,17 +668,17 @@ fd00:0:0:{{ router number}}::/64
 """.strip()
     create_text_annotation(lab, text_content, {'text_bold': True, 'x1': -80, 'y1': 400, 'z_index': 1})
 
-    # CEルータのアドレスを示すテキストアノテーションを作成する
-    create_text_annotation(lab, "172.16.11.0/24", {'x1': -440.0, 'y1': 120.0, 'z_index': 1})
-    create_text_annotation(lab, "172.16.12.0/24", {'x1': -440.0, 'y1': 280.0, 'z_index': 1})
-    create_text_annotation(lab, "172.16.13.0/24", {'x1': 320.0, 'y1': 120.0, 'z_index': 1})
-    create_text_annotation(lab, "172.16.14.0/24", {'x1': 320.0, 'y1': 280.0, 'z_index': 1})
-
-    # レクタングルアノテーションを作成する
+    # VPNの領域をレクタングルアノテーションを作成する
     create_rectangle_annotation(lab, {'x1': -520.0, 'y1': 120.0, 'x2': 280.0, 'y2': 80.0, 'z_index': 1})
     create_rectangle_annotation(lab, {'x1': -520.0, 'y1': 280.0, 'x2': 280.0, 'y2': 80.0, 'z_index': 1})
     create_rectangle_annotation(lab, {'x1': 240.0, 'y1': 120.0, 'x2': 280.0, 'y2': 80.0, 'z_index': 1})
     create_rectangle_annotation(lab, {'x1': 240.0, 'y1': 280.0, 'x2': 280.0, 'y2': 80.0, 'z_index': 1})
+
+    # CEルータのアドレスを示すテキストアノテーションを作成する
+    create_text_annotation(lab, "172.16.11.0/24", {'x1': -440.0, 'y1': 120.0, 'z_index': 2})
+    create_text_annotation(lab, "172.16.12.0/24", {'x1': -440.0, 'y1': 280.0, 'z_index': 2})
+    create_text_annotation(lab, "172.16.13.0/24", {'x1': 320.0, 'y1': 120.0, 'z_index': 2})
+    create_text_annotation(lab, "172.16.14.0/24", {'x1': 320.0, 'y1': 280.0, 'z_index': 2})
 
     #
     #  PE11----P1----PE13
@@ -641,7 +1024,7 @@ def upload_configs_to_jumphost(lab: Lab) -> None:
         logger.error(f"Jumphost is not running. Please start the jumphost before uploading configs. Current state: {jumphost.state}")
         return
 
-    configs = create_router_config()
+    configs = create_router_config_1()
     scp_to_jumphost(configs["P1_CONFIG"], "/srv/tftp/P1.conf")
     scp_to_jumphost(configs["P2_CONFIG"], "/srv/tftp/P2.conf")
 

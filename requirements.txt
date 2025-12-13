@@ -14,7 +14,9 @@ pyyaml
 tabulate
 
 # pyATS フルインストール、virl2_clientからpyATSを使うために必要
-pyats[full]==25.2.0
+# バージョン一覧
+# https://pypi.org/project/pyats/#history
+pyats[full]==25.11
 
 # MCP Python SDK
 # 便利だけど、現状ではFastMCPしか使わないのでコメントアウト

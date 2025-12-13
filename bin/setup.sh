@@ -1,7 +1,8 @@
 #!/bin/bash
 # ----------------------------------------------------------------------
 # install.sh: 依存ツール (python, pip, direnv) のインストール、
-#             Python依存性のインストール、設定ファイル生成を一括で実行します。
+#             設定ファイルテンプレートのコピー、Python依存性のインストール、
+#             設定ファイル生成を一括で実行します。
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
@@ -21,7 +22,7 @@ cd "$PROJECT_ROOT" || { echo "エラー: プロジェクトルート $PROJECT_RO
 SETUP_CONFIG_SCRIPT="$SCRIPT_DIR/setup_config.py"
 REQUIREMENTS_FILE="$PROJECT_ROOT/requirements.txt"
 ENVRC_FILE="$PROJECT_ROOT/.envrc"
-ENVRC_SAMPLE_FILE="$PROJECT_ROOT/.envrc.sample" # ★ 追加
+ENVRC_SAMPLE_FILE="$PROJECT_ROOT/.envrc.sample"
 
 echo "--- セットアップを開始します (プロジェクトルート: $PROJECT_ROOT) ---"
 echo "このスクリプトは、必要な開発ツールをシステムにインストールするため、"
@@ -114,11 +115,10 @@ setup_direnv_hook() {
 
 # direnvの設定ファイル（.envrc）を処理する関数
 setup_envrc() {
-    # ★ .envrc が既に存在するかチェック ★
+    # ... (変更なし) ...
     if [ -f "$ENVRC_FILE" ]; then
         echo "⚠️ $ENVRC_FILE が既に存在します。上書きを避けるため、スキップします。"
 
-    # ★ .envrc.sample が存在するかチェックしてコピー ★
     elif [ -f "$ENVRC_SAMPLE_FILE" ]; then
         echo "--- $ENVRC_SAMPLE_FILE を $ENVRC_FILE としてコピーします ---"
         cp "$ENVRC_SAMPLE_FILE" "$ENVRC_FILE"
@@ -127,20 +127,34 @@ setup_envrc() {
     else
         echo "❌ $ENVRC_FILE も $ENVRC_SAMPLE_FILE も見つかりません。direnvの設定をスキップします。"
 
-        # 以前の回答にあったフォールバックメッセージを再掲
         echo "プロジェクトのPython仮想環境を使用するには、手動で .envrc を作成してください。推奨内容:"
         echo "    export VIRTUAL_ENV_DISABLE_PROMPT=1"
         echo "    layout python"
         return
     fi
 
-    # direnvにこのディレクトリを信頼させる
     if command -v direnv >/dev/null && [ -f "$ENVRC_FILE" ]; then
         echo "--- direnvにこのディレクトリを信頼させます ---"
-        # .envrcが存在するディレクトリ（PROJECT_ROOT）で allow を実行
         direnv allow .
     fi
 }
+
+# 汎用的な設定ファイルテンプレートをコピーする関数を新設
+copy_config_file() {
+    local sample_file="$1"
+    local dest_file="$2"
+
+    if [ -f "$dest_file" ]; then
+        echo "⚠️ 設定ファイル $dest_file は既に存在します。上書きを避けるためスキップしました。"
+    elif [ -f "$sample_file" ]; then
+        echo "--- $sample_file を $dest_file としてコピーします ---"
+        cp "$sample_file" "$dest_file"
+        echo "✅ 設定ファイル $dest_file を生成しました。"
+    else
+        echo "❌ テンプレート $sample_file が見つかりません。コピーをスキップしました。"
+    fi
+}
+
 
 # Pythonの依存関係をインストールする関数
 install_python_deps() {
@@ -198,11 +212,16 @@ setup_direnv_hook
 # 3. direnvの設定ファイル（.envrc）の処理
 setup_envrc
 
-# 4. Pythonの依存関係をインストール
+# ★ 4. その他の設定ファイルテンプレートをコピー (新しいステップ)
+echo "--- その他の設定ファイルテンプレートのコピーを開始します ---"
+copy_config_file "intman.yaml.sample" "intman.yaml"
+copy_config_file "deadman.conf.sample" "deadman.conf"
+
+# 5. Pythonの依存関係をインストール
 install_python_deps
 if [ $? -ne 0 ]; then exit 1; fi
 
-# 5. 設定ファイル生成スクリプトの実行
+# 6. 設定ファイル生成スクリプトの実行
 run_config_script
 if [ $? -ne 0 ]; then exit 1; fi
 

@@ -14,3 +14,9 @@ export BROWSER=/usr/bin/wslview
 # RADKit
 # export RADKIT_ROOT="$HOME/git/expt-radkit/radkit"
 # export PATH="$RADKIT_ROOT/bin:$PATH"
+
+# bin/cml_env が存在すれば、それを読み込んで環境変数にする
+# cml_env は bin/setup_config.py によって生成されます
+if [ -f "bin/cml_env" ]; then
+    source bin/cml_env
+fi

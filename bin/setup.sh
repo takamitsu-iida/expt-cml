@@ -19,7 +19,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT" || { echo "エラー: プロジェクトルート $PROJECT_ROOT に移動できませんでした。" >&2; exit 1; }
 
 # スクリプトと設定ファイルのパスを定義
-SETUP_CONFIG_SCRIPT="$SCRIPT_DIR/setup_config.py"
+SETUP_CONFIG_SCRIPT="$SCRIPT_DIR/setup.py"
 REQUIREMENTS_FILE="$PROJECT_ROOT/requirements.txt"
 ENVRC_FILE="$PROJECT_ROOT/.envrc"
 ENVRC_SAMPLE_FILE="$PROJECT_ROOT/.envrc.sample"

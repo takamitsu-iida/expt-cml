@@ -388,7 +388,7 @@ hostname CE1{rid}
 clock timezone JST 9 0
 !
 interface Ethernet0/0
- ip address 172.16.{rid}.100/24
+ ip address 172.16.{rid}.100 255.255.255.0
  no shutdown
 !
 ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
@@ -445,7 +445,7 @@ hostname CE1{rid}
 clock timezone JST 9 0
 !
 interface Ethernet0/0
- ip address 172.16.{rid}.100/24
+ ip address 172.16.{rid}.100 255.255.255.0
  no shutdown
 !
 ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1

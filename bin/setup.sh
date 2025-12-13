@@ -141,13 +141,13 @@ install_python_deps() {
 
 # 設定ファイル生成スクリプトを実行する関数
 run_config_script() {
-    if [ ! -f "setup_config.py" ]; then
-        echo "❌ setup_config.py が見つかりません。設定ファイルの作成をスキップします。"
+    if [ ! -f "setup.py" ]; then
+        echo "❌ setup.py が見つかりません。設定ファイルの作成をスキップします。"
         return 1
     fi
 
     echo "--- サーバー接続情報の設定を開始します ---"
-    python3 setup_config.py
+    python3 setup.py
 
     if [ $? -ne 0 ]; then
         echo "❌ 設定ファイルの作成中にエラーが発生しました。"

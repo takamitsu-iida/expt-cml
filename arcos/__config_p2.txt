@@ -1,0 +1,323 @@
+version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
+features feature ARCOS_RIOT
+ supported false
+!
+features feature ARCOS_ICMP_SRC_REWRITE
+ supported true
+!
+features feature ARCOS_SUBIF
+ supported true
+!
+features feature ARCOS_QoS
+ supported false
+!
+features feature ARCOS_MPLS
+ supported true
+!
+features feature ARCOS_SFLOW
+ supported true
+!
+system hostname P2
+system login-banner "ArcOS (c) Arrcus, Inc."
+system clock timezone-name Asia/Tokyo
+system ssh-server enable true
+system cli commit-message true
+system netconf-server enable false
+system netconf-server transport ssh enable false
+system restconf-server enable false
+system aaa authentication admin-user admin-password $6$P8wMlQhdG9szxY9h$7R44KgzcBhz6rv9Ceci4GkmX1fK3RG5Hb4V8ShSml6mC6khQ2MnRvTSihnjfSeFKYs.GDZoyV9gkuh04qqd0x1
+system aaa authentication user admin
+ password $6$NzRNg4eovyJK5dGm$h/HbMJtTEjJ/Nl.vJZ5J06VxSnjvcR1Me0YFu4aOA27JjHTwPQRLTYg.N5ahnCAWj9uYuC9tXTI2M3vRj/WPG/
+ role     SYSTEM_ROLE_ADMIN
+!
+system aaa authentication user cisco
+ password $6$Lt8FhvLuTN3lJqfZ$SeRbJcxYtFyOvdweE4YgM1pxwAi70CH1g/u937KR.4bhGBqBe.Z1uDMdYTbv5xGgaSD329Uk3hQ.LolaYrsjs.
+ role     SYSTEM_ROLE_ADMIN
+!
+system rib IPV6
+!
+system rib IPV4
+!
+interface ma1
+ type    ethernetCsmacd
+ mtu     1500
+ enabled true
+ subinterface 0
+ exit
+!
+interface swp1
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 router-advertisement suppress true
+  ipv4 enabled false
+  enabled true
+ exit
+!
+interface swp2
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 router-advertisement suppress true
+  ipv4 enabled false
+  enabled true
+ exit
+!
+interface swp3
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 router-advertisement suppress true
+  ipv4 enabled false
+  enabled true
+ exit
+!
+interface swp4
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 router-advertisement suppress true
+  ipv4 enabled false
+  enabled true
+ exit
+!
+interface loopback0
+ type    softwareLoopback
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv6 enabled true
+  ipv6 address 2001:db8:ffff::2
+   prefix-length 128
+  exit
+  ipv4 enabled true
+  ipv4 address 10.0.255.2
+   prefix-length 32
+  exit
+  enabled true
+ exit
+!
+network-instance default
+ protocol BGP MAIN
+  global as           65000
+  global router-id    10.0.255.2
+  global cluster-id   0.0.0.1
+  global sid-allocation-mode INSTANCE_SID
+  global graceful-restart enabled true
+  global afi-safi L3VPN_IPV6_UNICAST
+  !
+  global afi-safi L3VPN_IPV4_UNICAST
+  !
+  global srv6 locator MAIN
+  neighbor 2001:db8:ffff::1
+   peer-as 65000
+   transport local-address 2001:db8:ffff::2
+   afi-safi L3VPN_IPV6_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+   exit
+  !
+  neighbor 2001:db8:ffff::11
+   peer-group pe
+   exit
+  !
+  neighbor 2001:db8:ffff::12
+   peer-group pe
+   exit
+  !
+  neighbor 2001:db8:ffff::13
+   peer-group pe
+   exit
+  !
+  neighbor 2001:db8:ffff::14
+   peer-group pe
+   exit
+  !
+  peer-group pe
+   peer-as 65000
+   transport local-address 2001:db8:ffff::2
+   route-reflector route-reflector-client true
+   afi-safi L3VPN_IPV6_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+   afi-safi L3VPN_IPV4_UNICAST
+    extended-nexthop enable true
+    exit
+   !
+  !
+ !
+ protocol ISIS MAIN
+  global net [ 49.0000.0000.0000.0002.00 ]
+  global graceful-restart enabled true
+  global af IPV6 UNICAST
+   enabled true
+   exit
+  !
+  global af IPV4 UNICAST
+   enabled false
+   exit
+  !
+  global srv6 enabled true
+  global srv6 locator MAIN
+  !
+  level 1
+   enabled true
+   exit
+  !
+  level 2
+   enabled true
+   exit
+  !
+  interface swp1
+   enabled      true
+   network-type POINT_TO_POINT
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+  interface swp2
+   enabled      true
+   network-type POINT_TO_POINT
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+  interface swp3
+   enabled      true
+   network-type POINT_TO_POINT
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+  interface swp4
+   enabled      true
+   network-type POINT_TO_POINT
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+  interface loopback0
+   enabled true
+   passive true
+   af IPV6 UNICAST
+    enabled true
+   !
+   af IPV4 UNICAST
+    enabled false
+   !
+   level 1
+    enabled true
+    exit
+   !
+   level 2
+    enabled false
+    exit
+   !
+   exit
+  !
+ !
+ srv6 locator MAIN
+  locator-node-length 16
+  prefix              fd00:0:0:2::/64
+ !
+!
+network-instance management
+ interface ma1
+ !
+!
+lldp interface ma1
+!
+lldp interface swp1
+!
+lldp interface swp2
+!
+lldp interface swp3
+!
+lldp interface swp4
+!
+routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
+ prefix 0.0.0.0/8 8..32
+ !
+ prefix 127.0.0.0/8 8..32
+ !
+ prefix 192.0.0.0/24 24..32
+ !
+ prefix 224.0.0.0/4 exact
+ !
+ prefix 224.0.0.0/24 exact
+ !
+ prefix 240.0.0.0/4 4..32
+ !
+!
+routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
+ prefix ::/128 exact
+ !
+ prefix ::1/128 exact
+ !
+ prefix ff00::/8 exact
+ !
+ prefix ff02::/16 exact
+ !
+!

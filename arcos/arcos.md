@@ -1254,8 +1254,8 @@ interface swp1,2,3,4
 enabled true
 mtu 3000
 subinterface 0
-ipv4 enabled true
-ipv4 unnumbered interface loopback0 subinterface 0
+ipv4 enabled false
+no ipv4 address
 ipv6 enabled true
 ipv6 router-advertisement suppress true
 
@@ -1385,27 +1385,105 @@ exit
 
 
 
+PルータのBGP設定
 
+network-instance default protocol BGP MAIN
 
-
-
-
-
-
-network-instance default
-protocol BGP MAIN
 global router-id 10.0.255.{{ ルータ番号 }}
 global as 65000
-global cluster-id 1
+global cluster-id 0.0.0.1
 global graceful-restart enabled true
 global srv6 locator MAIN
 global sid-allocation-mode INSTANCE_SID
+
 global afi-safi L3VPN_IPV6_UNICAST
 exit
+
 global afi-safi L3VPN_IPV4_UNICAST
 exit
 
+neighbor 2001:db8:ffff::{{ もう一台のPルータのルータ番号 }}
+peer-as 65000
+transport local-address 2001:db8:ffff::{{ 自分のルータ番号 }}
 
+afi-safi L3VPN_IPV6_UNICAST
+extended-nexthop enable true
+exit
+
+afi-safi L3VPN_IPV4_UNICAST
+extended-nexthop enable true
+exit
+
+top
+network-instance default protocol BGP MAIN
+peer-group pe
+transport local-address 2001:db8:ffff::{{ 自分のルータ番号 }}
+peer-as 65000
+route-reflector route-reflector-client true
+afi-safi L3VPN_IPV4_UNICAST
+extended-nexthop enable true
+exit
+afi-safi L3VPN_IPV6_UNICAST
+extended-nexthop enable true
+exit
+
+top
+network-instance default protocol BGP MAIN
+neighbor 2001:db8:ffff::11
+peer-group pe
+exit
+
+neighbor 2001:db8:ffff::12
+peer-group pe
+exit
+
+neighbor 2001:db8:ffff::12
+peer-group pe
+exit
+
+neighbor 2001:db8:ffff::13
+peer-group pe
+exit
+
+
+PEルータのBGP設定
+
+top
+network-instance default protocol BGP MAIN
+global router-id 10.0.255.{{ ルータ番号 }}
+global as 65000
+global graceful-restart enabled true
+global srv6 locator MAIN
+global sid-allocation-mode INSTANCE_SID
+
+global afi-safi L3VPN_IPV6_UNICAST
+exit
+
+global afi-safi L3VPN_IPV4_UNICAST
+exit
+
+peer-group rr
+transport local-address 2001:db8:ffff::{{ 自分のルータ番号 }}
+peer-as 65000
+
+afi-safi L3VPN_IPV4_UNICAST
+extended-nexthop enable true
+exit
+
+afi-safi L3VPN_IPV6_UNICAST
+extended-nexthop enable true
+exit
+
+top
+network-instance default protocol BGP MAIN
+
+neighbor 2001:db8:ffff::1
+peer-group rr
+exit
+
+neighbor 2001:db8:ffff::2
+peer-group rr
+exit
 
 
 

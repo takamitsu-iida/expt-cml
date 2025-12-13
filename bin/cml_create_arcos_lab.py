@@ -285,6 +285,18 @@ fd00:0:0:{{ router number}}::/64
 """.strip()
     create_text_annotation(lab, text_content, {'text_bold': True, 'x1': -80, 'y1': 400, 'z_index': 1})
 
+    # CEルータのアドレスを示すテキストアノテーションを作成する
+    create_text_annotation(lab, "172.16.11.0/24", {'x1': -440.0, 'y1': 120.0, 'z_index': 1})
+    create_text_annotation(lab, "172.16.12.0/24", {'x1': -440.0, 'y1': 280.0, 'z_index': 1})
+    create_text_annotation(lab, "172.16.13.0/24", {'x1': 320.0, 'y1': 120.0, 'z_index': 1})
+    create_text_annotation(lab, "172.16.14.0/24", {'x1': 320.0, 'y1': 280.0, 'z_index': 1})
+
+    # レクタングルアノテーションを作成する
+    create_rectangle_annotation(lab, {'x1': -520.0, 'y1': 120.0, 'x2': 280.0, 'y2': 80.0, 'z_index': 1})
+    create_rectangle_annotation(lab, {'x1': -520.0, 'y1': 280.0, 'x2': 280.0, 'y2': 80.0, 'z_index': 1})
+    create_rectangle_annotation(lab, {'x1': 240.0, 'y1': 120.0, 'x2': 280.0, 'y2': 80.0, 'z_index': 1})
+    create_rectangle_annotation(lab, {'x1': 240.0, 'y1': 280.0, 'x2': 280.0, 'y2': 80.0, 'z_index': 1})
+
     #
     #  PE11----P1----PE13
     #       \/    \/
@@ -361,6 +373,33 @@ fd00:0:0:{{ router number}}::/64
         # PEノードをリストに追加
         pe_nodes.append(node)
 
+        # CEルータをPEの左側に作る
+        ce = lab.create_node(f"CE1{rid}", "iol-xe", node.x - x_grid_width, node.y, wait=True)
+        ce.add_tag(tag=f"serial:61{rid}")
+        for _ in range(4):
+            ce.create_interface(_, wait=True)
+        ce.configuration = [{
+            'name': 'ios_config.txt',
+            'content': \
+f"""
+!
+hostname CE1{rid}
+!
+clock timezone JST 9 0
+!
+interface Ethernet0/0
+ ip address 172.16.{rid}.100/24
+ no shutdown
+!
+ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
+!
+""".strip()
+        }]
+
+        ce_eth = ce.get_interface_by_label("Ethernet0/0")
+        pe_eth = node.get_interface_by_label("swp3")
+        lab.create_link(ce_eth, pe_eth, wait=True)
+
 
     # 右側にあるPE13, PE14ノードを作る
     x_pos = x_grid_width
@@ -390,6 +429,33 @@ fd00:0:0:{{ router number}}::/64
 
         # PEノードをリストに追加
         pe_nodes.append(node)
+
+        # CEルータをPEの右側に作る
+        ce = lab.create_node(f"CE1{rid}", "iol-xe", node.x + x_grid_width, node.y, wait=True)
+        ce.add_tag(tag=f"serial:61{rid}")
+        for _ in range(4):
+            ce.create_interface(_, wait=True)
+        ce.configuration = [{
+            'name': 'ios_config.txt',
+            'content': \
+f"""
+!
+hostname CE1{rid}
+!
+clock timezone JST 9 0
+!
+interface Ethernet0/0
+ ip address 172.16.{rid}.100/24
+ no shutdown
+!
+ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
+!
+""".strip()
+        }]
+        ce_eth = ce.get_interface_by_label("Ethernet0/0")
+        pe_eth = node.get_interface_by_label("swp3")
+        lab.create_link(ce_eth, pe_eth, wait=True)
+
 
 
     # ルータ間を接続する
@@ -429,6 +495,25 @@ def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> 
     if params:
         base_params.update(params)
     lab.create_annotation('text', **base_params)
+
+
+def create_rectangle_annotation(lab: Lab, params: dict = None) -> None:
+    base_params = {
+        'border_color': '#F5F8F8',
+        'border_radius': 0,
+        'border_style': '',
+        'color': '#F5F8F8',
+        'rotation': 0,
+        'thickness': 1,
+        'x1': 0.0,
+        'y1': 0.0,
+        'x2': 0.0,
+        'y2': 0.0,
+        'z_index': 1
+    }
+    if params:
+        base_params.update(params)
+    lab.create_annotation('rectangle', **base_params)
 
 
 def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:

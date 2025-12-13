@@ -345,7 +345,7 @@ sed -i -e "s/^#PasswordAuthentication yes\$/PasswordAuthentication yes/" /etc/ss
 
 ### アカウント追加
 
-コックピットからアカウント追加します。
+コックピットからアカウント追加します。普段使っているアカウントに合わせておくと使いやすくなります。
 
 グループとして `sudo` と `admin` を加えておきます。
 
@@ -500,6 +500,19 @@ cd /var/lib/libvirt/images/virl-base-images
 
 ```
 cd /var/local/virl2/dropfolder
+```
+
+<br><br>
+
+## このリポジトリ expt-cml について
+
+CMLを使うときには、このリポジトリをクローンすると便利です。
+
+クローンしたら、
+必要となるPython仮想環境の作成、設定ファイルの作成など、まとめて処理するスクリプトを実行します。
+
+```bash
+bin/setup.sh
 ```
 
 <br><br>

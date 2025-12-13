@@ -13,15 +13,17 @@ bin/cml_env
 # .envrc.sampleをコピーして使うか、bin/setup.pyで生成する
 .envrc
 
-# ログファイル
+# bin/open_terminal.shでログを残したときのファイル
 terminal_log*.txt
 
+# ログディレクトリ
+log/
+
+# cisco_radkit関連の一時ファイル
 *.tgz
 cisco*.sh
-
 wheels_dir/
 radkit/
-log/
 
 # makeで自動生成したCMLのイメージ定義ファイルは無視する
 frr/image_definition.yaml

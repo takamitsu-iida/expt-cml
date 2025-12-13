@@ -1117,7 +1117,7 @@ network-instance management
  interface ma1
  !
 !
-network-instance vrf-1
+enetwork-instance vrf-1
  type L3VRF
  table-connection DIRECTLY_CONNECTED BGP IPV4
  !
@@ -1486,6 +1486,17 @@ peer-group rr
 exit
 
 
+設定を外にバックアップ
 
+root@PE11# show running-config | save PE11.cfg
+
+root@PE11# scp vrf management PE11.cfg cisco@192.168.254.100:
+The authenticity of host '192.168.254.100 (192.168.254.100)' can't be established.
+ED25519 key fingerprint is SHA256:sPuXcDlKojPQueUCXuNdL3MzagY3GGF5187hjFMvYZk.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '192.168.254.100' (ED25519) to the list of known hosts.
+cisco@192.168.254.100's password:
+PE11.cfg                                      100% 4856     6.1MB/s   00:00
 
 -->

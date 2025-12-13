@@ -453,6 +453,18 @@ interface swp{{ iface_num }}
  enabled true
 !
 {% endfor -%}
+interface swp3
+ type    ethernetCsmacd
+ mtu     3000
+ enabled true
+ subinterface 0
+  ipv4 enabled true
+  ipv4 address 172.16.{{ rid }}.1
+   prefix-length 24
+  exit
+  enabled true
+ exit
+!
 interface loopback0
  type    softwareLoopback
  mtu     3000
@@ -570,6 +582,32 @@ network-instance default
 !
 network-instance management
  interface ma1
+ !
+!
+network-instance vrf-1
+ type L3VRF
+ table-connection DIRECTLY_CONNECTED BGP IPV4
+ !
+ interface swp3
+ !
+ protocol BGP vrf-1
+  global router-id    10.0.255.{{ rid }}
+  global route-distinguisher 10.0.25.{{ rid }}:1
+  global sid-allocation-mode INSTANCE_SID
+  global afi-safi IPV4_UNICAST
+   graceful-restart enabled true
+   network 172.16.{{ rid }}.0/24
+   !
+   rt-afi-safi L3VPN_IPV4_UNICAST
+    route-target 65000:1 both
+     exit
+    !
+    exit
+   !
+  !
+  global afi-safi IPV6_UNICAST
+  !
+  global srv6 locator MAIN
  !
 !
 lldp interface ma1
@@ -747,7 +785,7 @@ fd00:0:0:{{ router number}}::/64
             logger.error("Failed to get ma1 interface of arcos node")
         else:
             # MACアドレスを設定する
-            ma_iface.mac_address = f"52:54:00:00:01:{rid:02d}"
+            ma_iface.mac_address = f"52:54:00:00:00:{rid:02d}"
 
         # Y座標を下にずらす
         y_pos += y_grid_width
@@ -804,7 +842,7 @@ ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
             logger.error("Failed to get ma1 interface of arcos node")
         else:
             # MACアドレスを設定する
-            ma_iface.mac_address = f"52:54:00:00:01:{rid:02d}"
+            ma_iface.mac_address = f"52:54:00:00:00:{rid:02d}"
 
         # Y座標を下にずらす
         y_pos += y_grid_width

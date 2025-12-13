@@ -1,6 +1,7 @@
 # githubのpythonテンプレート
 # https://github.com/github/gitignore
 
+# intman.pyおよびdeadman.pyが使う設定ファイル
 intman.yaml
 deadman.conf
 

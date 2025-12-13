@@ -1,18 +1,17 @@
 #!/bin/bash
-# ----------------------------------------------------------------------
-# install.sh: 依存ツール (python, pip, direnv) のインストール、
-#             設定ファイルテンプレートのコピー、Python依存性のインストール、
-#             設定ファイル生成を一括で実行します。
-# ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
-# ★ 実行場所非依存のための修正 (変更なし) ★
+# setup.sh
+#   - 依存ツール (python, pip, direnv) のインストール
+#   - 設定ファイルテンプレートのコピー
+#   - Python依存性のインストール、
+#   - 設定ファイル生成
 # ----------------------------------------------------------------------
 
-# スクリプトが格納されているディレクトリの絶対パスを取得
+# このスクリプトが格納されているディレクトリの絶対パスを取得
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 
-# プロジェクトのルートディレクトリを特定 (install.shがbinディレクトリにあると仮定)
+# プロジェクトのルートディレクトリを特定 (setup.shがbinディレクトリにあると仮定)
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # 実行ディレクトリをプロジェクトルートに移動
@@ -24,20 +23,23 @@ REQUIREMENTS_FILE="$PROJECT_ROOT/requirements.txt"
 ENVRC_FILE="$PROJECT_ROOT/.envrc"
 ENVRC_SAMPLE_FILE="$PROJECT_ROOT/.envrc.sample"
 
-echo "--- セットアップを開始します (プロジェクトルート: $PROJECT_ROOT) ---"
-echo "このスクリプトは、必要な開発ツールをシステムにインストールするため、"
+echo ""
+echo "----------------------------------------------------"
+echo "セットアップを開始します。"
+echo "このスクリプトは必要な開発ツールをシステムにインストールするため、"
 echo "管理者権限 (sudo) を必要とすることがあります。"
 echo "----------------------------------------------------"
+echo ""
 
 # 必要なパッケージをインストールする関数
 install_tools() {
-    # ... (変更なし) ...
     local packages_to_install=()
     local install_cmd=""
 
     if ! command -v python3 >/dev/null; then
         packages_to_install+=(python3)
     fi
+
     if ! command -v direnv >/dev/null; then
         packages_to_install+=(direnv)
     fi
@@ -86,7 +88,6 @@ install_tools() {
 
 # direnvをシェルにフックする関数
 setup_direnv_hook() {
-    # ... (変更なし) ...
     local hook_line='eval "$(direnv hook bash)"'
     local rc_file=""
 
@@ -103,7 +104,6 @@ setup_direnv_hook() {
 
     if ! grep -q "$hook_line" "$rc_file"; then
         echo "" >> "$rc_file"
-        echo "# direnv hook added by install.sh" >> "$rc_file"
         echo "$hook_line" >> "$rc_file"
         echo "✅ direnvフックを $rc_file に追記しました。"
         echo "変更を有効にするため、このターミナルセッションを再起動するか、"
@@ -115,7 +115,6 @@ setup_direnv_hook() {
 
 # direnvの設定ファイル（.envrc）を処理する関数
 setup_envrc() {
-    # ... (変更なし) ...
     if [ -f "$ENVRC_FILE" ]; then
         echo "⚠️ $ENVRC_FILE が既に存在します。上書きを避けるため、スキップします。"
 
@@ -126,10 +125,7 @@ setup_envrc() {
 
     else
         echo "❌ $ENVRC_FILE も $ENVRC_SAMPLE_FILE も見つかりません。direnvの設定をスキップします。"
-
-        echo "プロジェクトのPython仮想環境を使用するには、手動で .envrc を作成してください。推奨内容:"
-        echo "    export VIRTUAL_ENV_DISABLE_PROMPT=1"
-        echo "    layout python"
+        echo "プロジェクトのPython仮想環境を使用するには、手動で .envrc を作成してください。"
         return
     fi
 
@@ -139,7 +135,7 @@ setup_envrc() {
     fi
 }
 
-# 汎用的な設定ファイルテンプレートをコピーする関数を新設
+# 設定ファイルテンプレートをコピーする関数
 copy_config_file() {
     local sample_file="$1"
     local dest_file="$2"
@@ -155,10 +151,8 @@ copy_config_file() {
     fi
 }
 
-
 # Pythonの依存関係をインストールする関数
 install_python_deps() {
-    # ... (変更なし) ...
     if [ ! -f "$REQUIREMENTS_FILE" ]; then
         echo "⚠️ $REQUIREMENTS_FILE が見つかりません。Python依存性のインストールをスキップします。"
         return 0
@@ -183,7 +177,6 @@ install_python_deps() {
 
 # 設定ファイル生成スクリプトを実行する関数
 run_config_script() {
-    # ... (変更なし) ...
     if [ ! -f "$SETUP_CONFIG_SCRIPT" ]; then
         echo "❌ $SETUP_CONFIG_SCRIPT が見つかりません。設定ファイルの作成をスキップします。"
         return 1
@@ -212,7 +205,7 @@ setup_direnv_hook
 # 3. direnvの設定ファイル（.envrc）の処理
 setup_envrc
 
-# ★ 4. その他の設定ファイルテンプレートをコピー (新しいステップ)
+# 4. その他の設定ファイルテンプレートをコピー
 echo "--- その他の設定ファイルテンプレートのコピーを開始します ---"
 copy_config_file "intman.yaml.sample" "intman.yaml"
 copy_config_file "deadman.conf.sample" "deadman.conf"
@@ -229,4 +222,5 @@ if [ $? -ne 0 ]; then exit 1; fi
 echo "✅ 全てのセットアップが正常に完了しました！"
 echo "---"
 echo "次のステップ: 新しいターミナルを開くか、'source ~/.bashrc' を実行してから、プロジェクト作業を開始してください。"
+
 exit 0

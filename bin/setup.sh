@@ -1,20 +1,39 @@
 #!/bin/bash
 # ----------------------------------------------------------------------
-# setup.sh: 依存ツール (python, pip, direnv) のインストール、
+# install.sh: 依存ツール (python, pip, direnv) のインストール、
 #             Python依存性のインストール、設定ファイル生成を一括で実行します。
 # ----------------------------------------------------------------------
 
-# 実行前に管理者権限が必要であることを通知
+# ----------------------------------------------------------------------
+# ★ 実行場所非依存のための修正 (変更なし) ★
+# ----------------------------------------------------------------------
+
+# スクリプトが格納されているディレクトリの絶対パスを取得
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+
+# プロジェクトのルートディレクトリを特定 (install.shがbinディレクトリにあると仮定)
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# 実行ディレクトリをプロジェクトルートに移動
+cd "$PROJECT_ROOT" || { echo "エラー: プロジェクトルート $PROJECT_ROOT に移動できませんでした。" >&2; exit 1; }
+
+# スクリプトと設定ファイルのパスを定義
+SETUP_CONFIG_SCRIPT="$SCRIPT_DIR/setup_config.py"
+REQUIREMENTS_FILE="$PROJECT_ROOT/requirements.txt"
+ENVRC_FILE="$PROJECT_ROOT/.envrc"
+ENVRC_SAMPLE_FILE="$PROJECT_ROOT/.envrc.sample" # ★ 追加
+
+echo "--- セットアップを開始します (プロジェクトルート: $PROJECT_ROOT) ---"
 echo "このスクリプトは、必要な開発ツールをシステムにインストールするため、"
 echo "管理者権限 (sudo) を必要とすることがあります。"
 echo "----------------------------------------------------"
 
 # 必要なパッケージをインストールする関数
 install_tools() {
+    # ... (変更なし) ...
     local packages_to_install=()
     local install_cmd=""
 
-    # 必要なツール（python3, pip3, direnv）の有無をチェック
     if ! command -v python3 >/dev/null; then
         packages_to_install+=(python3)
     fi
@@ -33,7 +52,6 @@ install_tools() {
     if command -v apt >/dev/null; then
         echo "--> Debian/Ubuntu環境を検出"
         sudo apt update
-        # python3-pip, direnvをインストール (python3-venvは通常python3に含まれる)
         install_cmd="sudo apt install -y python3 python3-pip python3-venv direnv"
 
     # RHEL/Fedora/CentOS (dnf/yum)
@@ -56,7 +74,6 @@ install_tools() {
         exit 1
     fi
 
-    # インストールコマンドを実行
     if [ -n "$install_cmd" ]; then
         eval "$install_cmd"
         if [ $? -ne 0 ]; then
@@ -66,8 +83,9 @@ install_tools() {
     fi
 }
 
-# direnvをシェルにフックする関数 (前回のものと変更なし)
+# direnvをシェルにフックする関数
 setup_direnv_hook() {
+    # ... (変更なし) ...
     local hook_line='eval "$(direnv hook bash)"'
     local rc_file=""
 
@@ -94,33 +112,44 @@ setup_direnv_hook() {
     fi
 }
 
-# direnvの設定ファイル（.envrc）を処理する関数 (前回のものと変更なし)
+# direnvの設定ファイル（.envrc）を処理する関数
 setup_envrc() {
-    if [ -f .envrc ]; then
-        echo "⚠️ .envrc が既に存在します。上書きを避けるため、自動設定はスキップします。"
-        echo "プロジェクトのPython仮想環境を使用するには、手動で以下の行を .envrc に追記してください:"
+    # ★ .envrc が既に存在するかチェック ★
+    if [ -f "$ENVRC_FILE" ]; then
+        echo "⚠️ $ENVRC_FILE が既に存在します。上書きを避けるため、スキップします。"
+
+    # ★ .envrc.sample が存在するかチェックしてコピー ★
+    elif [ -f "$ENVRC_SAMPLE_FILE" ]; then
+        echo "--- $ENVRC_SAMPLE_FILE を $ENVRC_FILE としてコピーします ---"
+        cp "$ENVRC_SAMPLE_FILE" "$ENVRC_FILE"
+        echo "✅ $ENVRC_FILE ファイルを生成しました。"
+
+    else
+        echo "❌ $ENVRC_FILE も $ENVRC_SAMPLE_FILE も見つかりません。direnvの設定をスキップします。"
+
+        # 以前の回答にあったフォールバックメッセージを再掲
+        echo "プロジェクトのPython仮想環境を使用するには、手動で .envrc を作成してください。推奨内容:"
         echo "    export VIRTUAL_ENV_DISABLE_PROMPT=1"
         echo "    layout python"
-    else
-        echo "export VIRTUAL_ENV_DISABLE_PROMPT=1" > .envrc
-        echo 'layout python' >> .envrc
-        echo "✅ .envrc ファイルを作成しました。direnvが環境を自動で設定します。"
+        return
     fi
 
-    if command -v direnv >/dev/null; then
+    # direnvにこのディレクトリを信頼させる
+    if command -v direnv >/dev/null && [ -f "$ENVRC_FILE" ]; then
         echo "--- direnvにこのディレクトリを信頼させます ---"
+        # .envrcが存在するディレクトリ（PROJECT_ROOT）で allow を実行
         direnv allow .
     fi
 }
 
 # Pythonの依存関係をインストールする関数
 install_python_deps() {
-    if [ ! -f "../requirements.txt" ]; then
-        echo "⚠️ requirements.txt が見つかりません。Python依存性のインストールをスキップします。"
+    # ... (変更なし) ...
+    if [ ! -f "$REQUIREMENTS_FILE" ]; then
+        echo "⚠️ $REQUIREMENTS_FILE が見つかりません。Python依存性のインストールをスキップします。"
         return 0
     fi
 
-    # 仮想環境が有効であることを確認 (direnvが動作しない環境へのフォールバックを兼ねる)
     if [ -z "$VIRTUAL_ENV" ]; then
         echo "--- 仮想環境 (.venv) を作成します ---"
         python3 -m venv .venv
@@ -128,26 +157,26 @@ install_python_deps() {
     fi
 
     echo "--- requirements.txtからPythonモジュールをインストール中 ---"
-    python3 -m pip install -r ../requirements.txt
+    python3 -m pip install -r "$REQUIREMENTS_FILE"
 
     if [ $? -ne 0 ]; then
         echo "❌ Python依存性のインストール中にエラーが発生しました。"
         return 1
     fi
 
-    # スクリプト内で activate した場合、ディアクティベートは不要
     return 0
 }
 
 # 設定ファイル生成スクリプトを実行する関数
 run_config_script() {
-    if [ ! -f "setup.py" ]; then
-        echo "❌ setup.py が見つかりません。設定ファイルの作成をスキップします。"
+    # ... (変更なし) ...
+    if [ ! -f "$SETUP_CONFIG_SCRIPT" ]; then
+        echo "❌ $SETUP_CONFIG_SCRIPT が見つかりません。設定ファイルの作成をスキップします。"
         return 1
     fi
 
     echo "--- サーバー接続情報の設定を開始します ---"
-    python3 setup.py
+    python3 "$SETUP_CONFIG_SCRIPT"
 
     if [ $? -ne 0 ]; then
         echo "❌ 設定ファイルの作成中にエラーが発生しました。"

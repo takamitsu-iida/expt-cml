@@ -3,7 +3,14 @@
 
 intman.yaml
 deadman.conf
+
+# CML環境設定ファイル
+# cml_env.sampleをコピーして使うか、bin/setup.pyで生成する
 bin/cml_env
+
+# direnv環境設定ファイル
+# .envrc.sampleをコピーして使うか、bin/setup.pyで生成する
+.envrc
 
 # ログファイル
 terminal_log*.txt

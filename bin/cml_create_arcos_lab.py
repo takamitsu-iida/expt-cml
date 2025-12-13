@@ -269,6 +269,22 @@ def connect_ma_switch(lab: Lab, nodes: list[Node]) -> None:
 
 def create_nodes_1(lab: Lab) -> list[Node]:
 
+    # テキストアノテーションを作成する
+    text_content = \
+"""
+loopback0アドレス割当
+10.0.255.{{ router number }}/32
+2001:db8:ffff::{{ router number }}/128
+""".strip()
+    create_text_annotation(lab, text_content, {'text_bold': True, 'x1': -400, 'y1': 400, 'z_index': 1})
+
+    text_content = \
+"""
+SRv6ロケータ MAIN
+fd00:0:0:{{ router number}}::/64
+""".strip()
+    create_text_annotation(lab, text_content, {'text_bold': True, 'x1': -80, 'y1': 400, 'z_index': 1})
+
     #
     #  PE11----P1----PE13
     #       \/    \/

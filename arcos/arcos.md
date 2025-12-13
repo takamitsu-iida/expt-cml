@@ -457,6 +457,65 @@ MTU長は3000程度に抑えるのが良さそうです。
 
 <br><br>
 
+## ip unnumberedは動かない
+
+IPV4であればip unnumberedは設定できます。
+
+隣接ルータとの疎通も問題ありません。
+
+ISISを使えばribも作れるのですが、
+Linuxのルーティングテーブルに反映されないので、通信できません。
+
+こんな感じでribにエントリができていても、
+
+```text
+root@PE12# show network-instance default rib IPV4 ipv4-entries entry 10.0.255.11/32
+ipv4-entries entry 10.0.255.11/32
+ best-protocol ISIS
+ hw-update install-ack false
+ hw-update status-code 0
+ hw-update version 0
+ origin ISIS isis-default@MAIN
+  metric       20
+  pref         115
+  label-pref   114
+  tag          0
+  route-type   ISIS_L1
+  nhid         8
+  last-updated 2025-12-12T19:23:42.80796-00:00
+  flags        ""
+  opaque-data  0
+  next-hop
+   pathid           5
+   type             IPV4
+   next-hop         10.0.255.2
+   network-instance default
+   interface        swp2
+   weight           100
+   flags            ATTACH
+  next-hop
+   pathid           7
+   type             IPV4
+   next-hop         10.0.255.1
+   network-instance default
+   interface        swp1
+   weight           100
+   flags            ATTACH
+```
+
+実際にはLinuxに経路が渡っていないので通信できません。
+
+```text
+root@PE12# ping 10.0.255.11
+RTNETLINK answers: Network is unreachable
+PING 10.0.255.11 (10.0.255.11) from 10.0.255.12 swp1: 56(84) bytes of data.
+^C
+--- 10.0.255.11 ping statistics ---
+2 packets transmitted, 0 received, 100% packet loss, time 1017ms
+```
+
+<br><br>
+
 ## cliコマンド
 
 `config` コンフィグモードに遷移します。
@@ -467,7 +526,9 @@ MTU長は3000程度に抑えるのが良さそうです。
 
 `show configuration` コミット前の編集されている設定を表示します。
 
-`show network-instance default protocol ISIS core interface * state`
+`show configuration running` ランニングコンフィグを表示します（コンフィグモードでも使えます）
+
+`show network-instance default protocol ISIS MAIN interface * state`
 
 `show network-instance default rib IPV4 ipv4-entries entry displaylevel 1` ルーティングテーブルをシンプルに表示します。
 
@@ -1148,3 +1209,205 @@ NEIGHBOR ADDRESS  AS     STATE        PEER AS   ELAPSED TIME    AFI SAFI NAME   
 - SR-MPLSで動かす
 - 初期コンフィグをZTPで渡す
 - NETCONFで設定する
+
+
+<!--
+
+system hostname <ルータ名>
+system aaa authentication admin-user admin-password
+
+system clock timezone-name Asia/Tokyo
+system ssh-server enable true
+system ssh-server permit-root-login true
+system aaa authentication user cisco role SYSTEM_ROLE_ADMIN password cisco123
+exit
+system aaa authentication user admin role SYSTEM_ROLE_ADMIN password <パスワード>
+exit
+
+interface loopback0
+enabled true
+mtu 3000
+subinterface 0
+enabled true
+ipv4 enabled true
+ipv4 address 10.0.255.{{ ルータ番号 }} prefix-length 32
+exit
+ipv6 enabled true
+ipv6 address 2001:db8:ffff::{{ ルータ番号 }} prefix-length 128
+exit
+top
+
+
+interface swp1 enabled true
+exit
+
+interface swp2 enabled true
+exit
+
+interface swp3 enabled true
+exit
+
+interface swp4 enabled true
+exit
+
+interface swp1,2,3,4
+enabled true
+mtu 3000
+subinterface 0
+ipv4 enabled true
+ipv4 unnumbered interface loopback0 subinterface 0
+ipv6 enabled true
+ipv6 router-advertisement suppress true
+
+top
+network-instance default
+srv6 locator MAIN
+locator-node-length 16
+prefix fd00:0:0:{{ ルータ番号 }}::/64
+top
+
+top
+network-instance default
+protocol ISIS MAIN
+global net 49.0000.0000.0000.00{{ ルータ番号2桁 }}.00
+global graceful-restart enabled true
+
+global af IPV6 UNICAST enabled true
+exit
+
+global af IPV4 UNICAST enabled true
+exit
+
+global srv6 enabled true
+
+global srv6 locator MAIN
+exit
+
+level 1 enabled true
+exit
+
+level 2 enabled false
+exit
+
+top
+network-instance default protocol ISIS MAIN
+interface swp1
+enabled true
+network-type POINT_TO_POINT
+
+af IPV6 UNICAST enabled true
+exit
+
+af IPV4 UNICAST enabled true
+exit
+
+level 1 enabled true
+exit
+
+level 2 enabled false
+exit
+
+
+top
+network-instance default protocol ISIS MAIN
+interface swp2
+enabled true
+network-type POINT_TO_POINT
+
+af IPV6 UNICAST enabled true
+exit
+
+af IPV4 UNICAST enabled true
+exit
+
+level 1 enabled true
+exit
+
+level 2 enabled false
+exit
+
+top
+network-instance default protocol ISIS MAIN
+interface swp3
+enabled true
+network-type POINT_TO_POINT
+
+af IPV6 UNICAST enabled true
+exit
+
+af IPV4 UNICAST enabled true
+exit
+
+level 1 enabled true
+exit
+
+level 2 enabled false
+exit
+
+
+top
+network-instance default protocol ISIS MAIN
+interface swp4
+enabled true
+network-type POINT_TO_POINT
+
+af IPV6 UNICAST enabled true
+exit
+
+af IPV4 UNICAST enabled true
+exit
+
+level 1 enabled true
+exit
+
+level 2 enabled false
+exit
+
+
+top
+network-instance default protocol ISIS MAIN
+
+interface loopback0
+enabled true
+passive true
+
+af IPV6 UNICAST enabled true
+exit
+
+af IPV4 UNICAST enabled true
+exit
+
+level 1 enabled true
+exit
+
+level 2 enabled false
+exit
+
+
+
+
+
+
+
+
+
+
+network-instance default
+protocol BGP MAIN
+global router-id 10.0.255.{{ ルータ番号 }}
+global as 65000
+global cluster-id 1
+global graceful-restart enabled true
+global srv6 locator MAIN
+global sid-allocation-mode INSTANCE_SID
+global afi-safi L3VPN_IPV6_UNICAST
+exit
+global afi-safi L3VPN_IPV4_UNICAST
+exit
+
+
+
+
+
+
+-->

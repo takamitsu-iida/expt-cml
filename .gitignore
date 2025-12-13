@@ -3,7 +3,9 @@
 
 intman.yaml
 deadman.conf
+bin/cml_env
 
+# ログファイル
 terminal_log*.txt
 
 *.tgz

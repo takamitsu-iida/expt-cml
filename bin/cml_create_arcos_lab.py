@@ -203,7 +203,7 @@ interface ma1
  subinterface 0
  exit
 !
-{% for iface_num in range(1,5) %}
+{% for iface_num in range(1,5) -%}
 interface swp{{ iface_num }}
  type    ethernetCsmacd
  mtu     3000
@@ -215,7 +215,7 @@ interface swp{{ iface_num }}
   enabled true
  exit
 !
-{% endfor %}
+{% endfor -%}
 interface loopback0
  type    softwareLoopback
  mtu     3000
@@ -243,11 +243,11 @@ network-instance default
   global afi-safi L3VPN_IPV4_UNICAST
   !
   global srv6 locator MAIN
-  {% if rid == 1 %}
+  {% if rid == 1 -%}
   neighbor 2001:db8:ffff::2
-  {% else %}
+  {% else -%}
   neighbor 2001:db8:ffff::1
-  {% endif %}
+  {% endif -%}
    peer-as 65000
    transport local-address 2001:db8:ffff::{{ rid }}
    afi-safi L3VPN_IPV6_UNICAST
@@ -260,12 +260,12 @@ network-instance default
    !
    exit
   !
-  {% for neighbor_id in range(11, 15) %}
+  {% for neighbor_id in range(11, 15) -%}
   neighbor 2001:db8:ffff::{{ neighbor_id }}
    peer-group pe
    exit
   !
-  {% endfor %}
+  {% endfor -%}
   peer-group pe
    peer-as 65000
    transport local-address 2001:db8:ffff::{{ rid }}
@@ -302,7 +302,7 @@ network-instance default
    enabled true
    exit
   !
-  {% for iface_num in range(1,5) %}
+  {% for iface_num in range(1,5) -%}
   interface swp{{ iface_num }}
    enabled      true
    network-type POINT_TO_POINT
@@ -322,7 +322,7 @@ network-instance default
    !
    exit
   !
-  {% endfor %}
+  {% endfor -%}
   interface loopback0
    enabled true
    passive true
@@ -434,7 +434,7 @@ interface ma1
  subinterface 0
  exit
 !
-{% for iface_num in range(1,3) %}
+{% for iface_num in range(1,3) -%}
 interface swp{{ iface_num }}
  type    ethernetCsmacd
  mtu     3000
@@ -445,15 +445,14 @@ interface swp{{ iface_num }}
   ipv4 enabled false
  exit
 !
-{% endfor %}
-{% for iface_num in range(3,5) %}
+{% endfor -%}
+{% for iface_num in range(3,5) -%}
 interface swp{{ iface_num }}
  type    ethernetCsmacd
  mtu     3000
  enabled true
 !
-{% endfor %}
-!
+{% endfor -%}
 interface loopback0
  type    softwareLoopback
  mtu     3000
@@ -523,7 +522,7 @@ network-instance default
    enabled false
    exit
   !
-  {% for iface_num in range(1,3) %}
+  {% for iface_num in range(1,3) -%}
   interface swp{{ iface_num }}
    enabled      true
    network-type POINT_TO_POINT
@@ -543,7 +542,7 @@ network-instance default
    !
    exit
   !
-  {% endfor %}
+  {% endfor -%}
   interface loopback0
    enabled true
    passive true
@@ -638,7 +637,7 @@ def connect_ma_switch(lab: Lab, nodes: list[Node]) -> None:
         # MAスイッチの最初のインタフェースを取得する
         ma_switch_iface = None
         for iface in ma_switch.interfaces():
-            if not iface.is_connected():
+            if not iface.connected:
                 ma_switch_iface = iface
                 break
 
@@ -1025,11 +1024,13 @@ def upload_configs_to_jumphost(lab: Lab) -> None:
         return
 
     configs = create_router_config_1()
-    scp_to_jumphost(configs["P1_CONFIG"], "/srv/tftp/P1.conf")
-    scp_to_jumphost(configs["P2_CONFIG"], "/srv/tftp/P2.conf")
 
-
-
+    scp_to_jumphost(configs["P1_CONFIG"], "/srv/tftp/P1.cfg")
+    scp_to_jumphost(configs["P2_CONFIG"], "/srv/tftp/P2.cfg")
+    scp_to_jumphost(configs["PE11_CONFIG"], "/srv/tftp/PE11.cfg")
+    scp_to_jumphost(configs["PE12_CONFIG"], "/srv/tftp/PE12.cfg")
+    scp_to_jumphost(configs["PE13_CONFIG"], "/srv/tftp/PE13.cfg")
+    scp_to_jumphost(configs["PE14_CONFIG"], "/srv/tftp/PE14.cfg")
 
 
 if __name__ == '__main__':

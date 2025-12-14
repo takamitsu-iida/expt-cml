@@ -2,7 +2,7 @@
 
 from ncclient import manager
 from ncclient.transport.errors import AuthenticationError, TransportError
-from ncclient.operations.rpc import RPCError # RPCErrorも明示的にインポート
+from ncclient.operations.rpc import RPCError
 import xml.dom.minidom
 
 # --- 接続情報の設定 ---
@@ -11,10 +11,15 @@ TARGET_PORT = 830
 TARGET_USER = "cisco"
 TARGET_PASS = "cisco123"
 
-# フィルターは使用せず、設定データソースのみを指定する
-# <get-config> はフィルターを省略すると全設定を取得する
-NETCONF_GET_CONFIG_SOURCE = 'running'
-NETCONF_GET_FILTER = "<filter/>" # ただし、get_configではフィルターを省略する
+# 💥 変更点: インターフェースの状態を取得するための <get> フィルタ
+# 'interfaces-state' は、標準の ietf-interfaces モデルで状態データが格納される場所です。
+NETCONF_GET_FILTER = """
+<filter type="subtree">
+    <interfaces-state xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+        <interface/>
+    </interfaces-state>
+</filter>
+"""
 
 def connect_to_netconf_device():
     conn = None
@@ -34,21 +39,17 @@ def connect_to_netconf_device():
 
         print(f"✅ NETCONFセッションが確立されました。セッションID: {conn.session_id}")
 
-        # --- データの取得 (get-config に変更) ---
-        print(f"\n➡️ <get-config> RPCを送信中 (ソース: <{NETCONF_GET_CONFIG_SOURCE}>)...")
+        # --- データの取得 (get-config から get に戻す) ---
+        print("\n➡️ <get> RPCを送信中 (インターフェース状態フィルタ)...")
 
-        # 💥 修正: conn.get から conn.get_config に変更。
-        # source パラメータは必須。filter は空のまま、または省略。
-        result = conn.get_config(
-            source=NETCONF_GET_CONFIG_SOURCE,
-            # filter=NETCONF_GET_FILTER # ArcOSが filter を嫌うため、ここでは省略
-        )
+        # 💥 変更点: conn.get_config から conn.get に変更
+        result = conn.get(filter=NETCONF_GET_FILTER)
 
         # --- 結果の整形と表示 ---
         xml_output = result.xml
         dom = xml.dom.minidom.parseString(xml_output)
 
-        print("\n--- 取得結果 (NETCONF XML) ---")
+        print("\n--- 取得結果 (インターフェース状態 NETCONF XML) ---")
         print(dom.toprettyxml(indent="  "))
         print("\n...NETCONF通信が成功しました。")
 
@@ -56,8 +57,9 @@ def connect_to_netconf_device():
         print("❌ 認証エラー: ユーザー名またはパスワードが正しくありません。")
     except TransportError as e:
         print(f"❌ 接続/トランスポートエラーが発生しました: {e}")
-    except RPCError as e: # RPCErrorを明示的に捕捉
+    except RPCError as e:
         print(f"❌ NETCONF RPCエラーが発生しました: {e}")
+        print("💡 ヒント: ArcOSが標準のietf-interfacesをサポートしていない可能性があります。")
     except Exception as e:
         print(f"❌ 致命的なエラーが発生しました: {e}")
     finally:

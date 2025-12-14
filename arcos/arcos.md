@@ -664,31 +664,15 @@ CiscoやFRRの実装はデフォルトのままで（設定しなくて）大丈
 
 ## NETCONF
 
-動いていません。
+できること
 
-netmiko、scrapli、ncclientを試しましたが、いずれもダメです。
+- SSHプロキシを経由せず、直接SSHで接続
+- コンフィグの全文取得
 
-試しにsshでポート830に接続してみると、こうなります。
+できないこと
 
-```text
-iida@s400win:~/git/expt-cml/arcos$ ssh 192.168.254.1 -p 830 -l cisco
-Warning: Permanently added '192.168.0.100' (ECDSA) to the list of known hosts.
-Warning: Permanently added '[192.168.254.1]:830' (ECDSA) to the list of known hosts.
-ArcOS (c) Arrcus, Inc.
-cisco@192.168.254.1's password:
-PTY allocation request failed on channel 0
-Only NETCONF sessions are allowed on this port.
-Connection to 192.168.254.1 closed.
-```
-
-NETCONFの場合でも、
-
-'Only NETCONF sessions are allowed on this port.'
-
-で切られるんだけど、jumphost経由の通信だとそうなるのかな。
-
-
-
+- jump hostを経由したProxy SSHでのNETCONF利用（netmiko、scrapli、ncclientいずれもダメ）
+- 状態データの取得
 
 <!--
 

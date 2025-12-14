@@ -164,6 +164,9 @@ install_python_deps() {
         source .venv/bin/activate
     fi
 
+    echo "--- pipを最新バージョンにアップグレード中 ---"
+    python3 -m pip install --upgrade pip
+
     echo "--- requirements.txtからPythonモジュールをインストール中 ---"
     python3 -m pip install -r "$REQUIREMENTS_FILE"
 

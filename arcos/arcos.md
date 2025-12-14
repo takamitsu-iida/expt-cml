@@ -618,9 +618,9 @@ L3VPN over SRv6を検証します。
 
 踏み台サーバに置いた設定をZero Touch Provisioningで配信します。
 
-[P1](/arcos/config/P1.cfg)　　[P2](/arcos/config/P2.cfg)
+[P1.cfg](/arcos/config/P1.cfg)　　[P2.cfg](/arcos/config/P2.cfg)　　[PE11.cfg](/arcos/config/PE11.cfg)　　[PE12.cfg](/arcos/config/PE12.cfg)　　[PE13.cfg](/arcos/config/PE13.cfg)　　[PE14.cfg](/arcos/config/PE14.cfg)
 
-[PE11](/arcos/config/PE11.cfg)　　[PE12](/arcos/config/PE12.cfg)　　[PE13](/arcos/config/PE13.cfg)　　[PE14](/arcos/config/PE14.cfg)
+<br>
 
 重要なのはここ。
 
@@ -655,8 +655,39 @@ CiscoやFRRの実装はデフォルトのままで（設定しなくて）大丈
 
 ## 次に試すこと
 
-- SR-MPLSで動かす
-- NETCONFで設定する
+- NETCONF
+- SR-MPLS
+- ISIS FlexAlgo
+
+
+<br><br>
+
+## NETCONF
+
+動いていません。
+
+netmiko、scrapli、ncclientを試しましたが、いずれもダメです。
+
+試しにsshでポート830に接続してみると、こうなります。
+
+```text
+iida@s400win:~/git/expt-cml/arcos$ ssh 192.168.254.1 -p 830 -l cisco
+Warning: Permanently added '192.168.0.100' (ECDSA) to the list of known hosts.
+Warning: Permanently added '[192.168.254.1]:830' (ECDSA) to the list of known hosts.
+ArcOS (c) Arrcus, Inc.
+cisco@192.168.254.1's password:
+PTY allocation request failed on channel 0
+Only NETCONF sessions are allowed on this port.
+Connection to 192.168.254.1 closed.
+```
+
+NETCONFの場合でも、
+
+'Only NETCONF sessions are allowed on this port.'
+
+で切られるんだけど、jumphost経由の通信だとそうなるのかな。
+
+
 
 
 <!--
@@ -946,5 +977,18 @@ Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
 Warning: Permanently added '192.168.254.100' (ED25519) to the list of known hosts.
 cisco@192.168.254.100's password:
 PE11.cfg                                      100% 4856     6.1MB/s   00:00
+
+
+
+
+NETCONF
+
+注意：ArcOSでは、部分的な設定変更はできない
+注意：デフォルトのポートは830
+注意：デフォルトのアイドルタイムアウトは0なので、タイムアウトしない
+
+system netconf-server enable true
+system netconf-server transport ssh enable true
+system netconf-server transport ssh timeout 60
 
 -->

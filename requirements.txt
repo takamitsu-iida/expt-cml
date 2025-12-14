@@ -13,6 +13,13 @@ pyyaml
 # tabulate ラボ一覧表示に利用
 tabulate
 
+# SSHクライアント
+paramiko
+
+# NETCONFクライアント
+scrapli
+scrapli_netconf
+
 # pyATS フルインストール、virl2_clientからpyATSを使うために必要
 # バージョン一覧
 # https://pypi.org/project/pyats/#history

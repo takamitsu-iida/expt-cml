@@ -689,6 +689,16 @@ def connect_ma_switch(lab: Lab, nodes: list[Node]) -> None:
 
 def create_nodes_1(lab: Lab) -> list[Node]:
 
+    def delete_node(label: str) -> None:
+        try:
+            node = lab.get_node_by_label(label)
+            if node.is_booted:
+                node.stop(wait=True)
+            node.wipe(wait=True)
+            node.remove()
+        except NodeNotFound:
+            pass
+
     # テキストアノテーションを作成する
     text_content = \
 """
@@ -696,6 +706,8 @@ loopback0アドレス割当
 10.0.255.{{ router number }}/32
 2001:db8:ffff::{{ router number }}/128
 """.strip()
+
+
     create_text_annotation(lab, text_content, {'text_bold': True, 'x1': -400, 'y1': 400, 'z_index': 1})
 
     text_content = \
@@ -703,6 +715,7 @@ loopback0アドレス割当
 SRv6ロケータ MAIN
 fd00:0:0:{{ router number}}::/64
 """.strip()
+
     create_text_annotation(lab, text_content, {'text_bold': True, 'x1': -80, 'y1': 400, 'z_index': 1})
 
     # VPNの領域をレクタングルアノテーションを作成する
@@ -734,6 +747,7 @@ fd00:0:0:{{ router number}}::/64
     # P1とP2を作る
     p_nodes = []
     for rid in [1, 2]:
+        delete_node(f"P{rid}")
         node = lab.create_node(label=f"P{rid}", node_definition="arcos", x=x_pos, y=y_pos)
 
         # Pルータにはスマートタグを付ける
@@ -768,6 +782,7 @@ fd00:0:0:{{ router number}}::/64
     # 左側にあるPE11, PE12ノードを作る
     pe_nodes = []
     for rid in [11, 12]:
+        delete_node(f"PE{rid}")
         node = lab.create_node(label=f"PE{rid}", node_definition="arcos", x=x_pos, y=y_pos)
 
         # PATTY用シリアルコンソールのタグを付ける
@@ -794,6 +809,7 @@ fd00:0:0:{{ router number}}::/64
         pe_nodes.append(node)
 
         # CEルータをPEの左側に作る
+        delete_node(f"CE1{rid}")
         ce = lab.create_node(f"CE1{rid}", "iol-xe", node.x - x_grid_width, node.y, wait=True)
         ce.add_tag(tag=f"serial:61{rid}")
         for _ in range(4):
@@ -825,6 +841,7 @@ ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
     x_pos = x_grid_width
     y_pos = y_grid_width
     for rid in [13, 14]:
+        delete_node(f"PE{rid}")
         node = lab.create_node(label=f"PE{rid}", node_definition="arcos", x=x_pos, y=y_pos)
 
         # PATTY用シリアルコンソールのタグを付ける
@@ -851,6 +868,7 @@ ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
         pe_nodes.append(node)
 
         # CEルータをPEの右側に作る
+        delete_node(f"CE1{rid}")
         ce = lab.create_node(f"CE1{rid}", "iol-xe", node.x + x_grid_width, node.y, wait=True)
         ce.add_tag(tag=f"serial:61{rid}")
         for _ in range(4):
@@ -876,8 +894,6 @@ ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
         pe_eth = node.get_interface_by_label("swp3")
         lab.create_link(ce_eth, pe_eth, wait=True)
 
-
-
     # ルータ間を接続する
     pe_intf_num = 1
     for p_node in p_nodes:
@@ -897,6 +913,13 @@ ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
 
 
 def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> None:
+
+    existing_annotations = lab.annotations()
+
+    for annotation in existing_annotations:
+        if annotation.type == 'text' and annotation.text_content == text_content:
+                return
+
     base_params = {
         'border_color': '#00000000',
         'border_style': '',
@@ -918,6 +941,17 @@ def create_text_annotation(lab: Lab, text_content: str, params: dict = None) -> 
 
 
 def create_rectangle_annotation(lab: Lab, params: dict = None) -> None:
+
+    existing_annotations = lab.annotations()
+
+    for annotation in existing_annotations:
+        if (annotation.type == 'rectangle' and
+            annotation.x1 == params.get('x1', 0.0) and
+            annotation.y1 == params.get('y1', 0.0) and
+            annotation.x2 == params.get('x2', 0.0) and
+            annotation.y2 == params.get('y2', 0.0)):
+                return
+
     base_params = {
         'border_color': '#F5F8F8',
         'border_radius': 0,
@@ -942,13 +976,10 @@ def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
 
 
 def start_lab(lab: Lab) -> None:
-    state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-    if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
-        logger.info(f"Starting lab '{lab.title}'")
-        lab.start(wait=True)
-        logger.info(f"Lab '{lab.title}' started")
-    else:
-        logger.info(f"Lab '{lab.title}' is already running")
+    # 状態にかかわらず起動する
+    logger.info(f"Starting lab '{lab.title}'")
+    lab.start(wait=True)
+    logger.info(f"Lab '{lab.title}' started")
 
 
 def stop_lab(lab: Lab) -> None:

@@ -122,6 +122,13 @@ runcmd:
     cat - << 'EOS' >> /etc/hosts
     #
     {{ CML_ADDRESS }} cml
+    #
+    192.168.254.1 P1
+    192.168.254.2 P2
+    192.168.254.11 PE11
+    192.168.254.12 PE12
+    192.168.254.13 PE13
+    192.168.254.14 PE14
     EOS
 
   # Resize terminal window
@@ -409,13 +416,10 @@ def get_lab_by_title(client: ClientLibrary, title: str) -> Lab | None:
 
 
 def start_lab(lab: Lab) -> None:
-    state = lab.state()  # STARTED / STOPPED / DEFINED_ON_CORE
-    if state == 'STOPPED' or state == 'DEFINED_ON_CORE':
-        logger.info(f"Starting lab '{lab.title}'")
-        lab.start(wait=True)
-        logger.info(f"Lab '{lab.title}' started")
-    else:
-        logger.info(f"Lab '{lab.title}' is already running")
+    # 状態にかかわらず起動する
+    logger.info(f"Starting lab '{lab.title}'")
+    lab.start(wait=True)
+    logger.info(f"Lab '{lab.title}' started")
 
 
 def stop_lab(lab: Lab) -> None:
@@ -505,7 +509,7 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
 
     # テキストのアノテーションを作成する
     create_text_annotation(lab, "192.168.0.0/24", {'x1': 120.0, 'y1': -160.0, 'z_index': 1})
-    create_text_annotation(lab, "192.168.0.0/24", {'x1': -160.0, 'y1': 0.0, 'z_index': 1})
+    create_text_annotation(lab, "192.168.254.0/24", {'x1': -160.0, 'y1': 0.0, 'z_index': 1})
     create_text_annotation(lab, ".100", {'text_size': 16, 'text_bold': True, 'x1': 40.0, 'y1': -80.0, 'z_index': 1})
     create_text_annotation(lab, "Hyper-V host\n192.168.0.198/24", {'x1': 320.0, 'y1': -160.0, 'z_index': 1})
 

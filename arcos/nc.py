@@ -11,18 +11,12 @@ TARGET_PORT = 830
 TARGET_USER = "cisco"
 TARGET_PASS = "cisco123"
 
-# 💥 変更点: OpenConfigインターフェースモデルに基づくフィルタ
-# インターフェース全体の状態データ (state) を取得します。
+# 💥 変更点: OpenConfigインターフェースモデルに基づく、より単純なフィルタ (設定データと状態データの両方を含むパス)
 OPENCONFIG_INTERFACE_NAMESPACE = "http://openconfig.net/yang/interfaces"
 
 NETCONF_GET_FILTER = f"""
 <filter type="subtree">
-    <interfaces xmlns="{OPENCONFIG_INTERFACE_NAMESPACE}">
-        <interface>
-            <name/>
-            <state/>
-        </interface>
-    </interfaces>
+    <interfaces xmlns="{OPENCONFIG_INTERFACE_NAMESPACE}"/>
 </filter>
 """
 
@@ -45,9 +39,9 @@ def connect_to_netconf_device():
         print(f"✅ NETCONFセッションが確立されました。セッションID: {conn.session_id}")
 
         # --- データの取得 ---
-        print("\n➡️ <get> RPCを送信中 (OpenConfig インターフェース状態フィルタ)...")
+        print("\n➡️ <get> RPCを送信中 (OpenConfig 汎用インターフェースフィルタ)...")
 
-        # ncclientはフィルタを渡すと自動的に <rpc><get><filter>...</filter></get></rpc> を作成します
+        # 💥 修正: OpenConfigのトップレベルコンテナのみを指定
         result = conn.get(filter=NETCONF_GET_FILTER)
 
         # --- 結果の整形と表示 ---
@@ -64,7 +58,26 @@ def connect_to_netconf_device():
         print(f"❌ 接続/トランスポートエラーが発生しました: {e}")
     except RPCError as e:
         print(f"❌ NETCONF RPCエラーが発生しました: {e}")
-        print("💡 ヒント: OpenConfigモデルのパスまたはネームスペースが、このArcOSバージョンと異なる可能性があります。")
+        # 💥 最終手段: フィルターなしの <get> を再試行
+        if "unknown-element" in str(e):
+             print("\n💡 OpenConfigフィルタが拒否されました。フィルターなしの全ステータス取得を再試行します (OpenConfigのルール違反の可能性)。")
+
+             try:
+                 print("\n➡️ <get> RPCを送信中 (フィルターなし、全ステータスデータ)...")
+                 # フィルターを None に設定
+                 full_status_result = conn.get(filter=None)
+
+                 full_xml_output = full_status_result.xml
+                 full_dom = xml.dom.minidom.parseString(full_xml_output)
+                 print("\n--- 取得結果 (フィルターなし全ステータス NETCONF XML) ---")
+                 print(full_dom.toprettyxml(indent="  "))
+                 print("\n...全ステータスデータの取得に成功しました。インターフェース情報を手動で探してください。")
+                 return # 成功したので終了
+             except RPCError as full_e:
+                 print(f"❌ フィルターなしの <get> も失敗しました: {full_e}")
+             except Exception as full_e:
+                 print(f"❌ フィルターなしの <get> で致命的なエラーが発生しました: {full_e}")
+
     except Exception as e:
         print(f"❌ 致命的なエラーが発生しました: {e}")
     finally:

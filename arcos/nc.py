@@ -1,47 +1,39 @@
 #!/usr/bin/env python
 
 from ncclient import manager
-from ncclient.transport.errors import AuthenticationError
+from ncclient.transport.errors import AuthenticationError, TransportError # 💥 修正: TransportErrorを正しくインポート
 import xml.dom.minidom
 
 # --- 接続情報の設定 ---
 TARGET_HOST = "192.168.254.1"
-TARGET_PORT = 830  # NETCONF over SSH の標準ポートは 830
+TARGET_PORT = 830
 TARGET_USER = "cisco"
 TARGET_PASS = "cisco123"
 
-# ArcOS向けの基本 GET フィルター
-# ArcOSは独自の YANG モジュールを使用している可能性が高いため、
-# 汎用的な YANG データではなく、デバイス固有の情報を取得するフィルターを使用
-NETCONF_GET_FILTER = """
-<filter type="subtree">
-  <system-info xmlns="http://arrcus.com/yang/arcos-system"/>
-</filter>
-"""
+# 💥 修正: 最も汎用的な空の GET フィルターを使用
+NETCONF_GET_FILTER = "<filter/>"
 
 def connect_to_netconf_device():
     conn = None
     try:
         print(f"➡️ NETCONF接続を試行中: {TARGET_HOST}:{TARGET_PORT} (ユーザー: {TARGET_USER})")
 
-        # ncclient.manager.connect() を使用して直接接続
         conn = manager.connect(
             host=TARGET_HOST,
             port=TARGET_PORT,
             username=TARGET_USER,
             password=TARGET_PASS,
-            hostkey_verify=False,  # 鍵交換時のホストキー確認を無効化 (ArcOS環境で必須の可能性あり)
-
-            # Paramiko オプションの設定 (SSHエージェントやキーファイルの使用を無効化)
+            hostkey_verify=False,
             allow_agent=False,
             look_for_keys=False,
-            timeout=30  # タイムアウトを30秒に設定
+            timeout=30
         )
 
         print(f"✅ NETCONFセッションが確立されました。セッションID: {conn.session_id}")
 
         # --- データの取得 ---
         print("\n➡️ <get> RPCを送信中...")
+        # フィルタは ncclient の get メソッドに直接渡す
         result = conn.get(filter=NETCONF_GET_FILTER)
 
         # --- 結果の整形と表示 ---
@@ -54,8 +46,10 @@ def connect_to_netconf_device():
 
     except AuthenticationError:
         print("❌ 認証エラー: ユーザー名またはパスワードが正しくありません。")
-    except manager.TransportError as e:
+    except TransportError as e: # 💥 修正: TransportError の例外処理
         print(f"❌ 接続/トランスポートエラーが発生しました: {e}")
+    except manager.operations.rpc.RPCError as e:
+        print(f"❌ NETCONF RPCエラーが発生しました: {e}")
     except Exception as e:
         print(f"❌ 致命的なエラーが発生しました: {e}")
     finally:

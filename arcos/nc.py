@@ -4,6 +4,7 @@ from ncclient import manager
 from ncclient.transport.errors import AuthenticationError, TransportError
 from ncclient.operations.rpc import RPCError
 import xml.dom.minidom
+import xml.etree.ElementTree as ET
 
 # --- 接続情報の設定 (変更なし) ---
 TARGET_HOST = "192.168.254.1"
@@ -11,14 +12,12 @@ TARGET_PORT = 830
 TARGET_USER = "cisco"
 TARGET_PASS = "cisco123"
 
-# 💥 変更点: OpenConfigインターフェースモデルに基づく、より単純なフィルタ (設定データと状態データの両方を含むパス)
-OPENCONFIG_INTERFACE_NAMESPACE = "http://openconfig.net/yang/interfaces"
+# 実行する操作: <get-config> のみ
+NETCONF_GET_CONFIG_SOURCE = 'running'
 
-NETCONF_GET_FILTER = f"""
-<filter type="subtree">
-    <interfaces xmlns="{OPENCONFIG_INTERFACE_NAMESPACE}"/>
-</filter>
-"""
+# OpenConfigのネームスペース定義
+OC_IF_NS = "http://openconfig.net/yang/interfaces"
+OC_STATE_TAG = f"{{{OC_IF_NS}}}state" # XPathで名前空間を使用するためのタグ
 
 def connect_to_netconf_device():
     conn = None
@@ -38,19 +37,52 @@ def connect_to_netconf_device():
 
         print(f"✅ NETCONFセッションが確立されました。セッションID: {conn.session_id}")
 
-        # --- データの取得 ---
-        print("\n➡️ <get> RPCを送信中 (OpenConfig 汎用インターフェースフィルタ)...")
+        # --- データの取得 (前回成功した <get-config> を実行) ---
+        print(f"\n➡️ <get-config> RPCを送信中 (ソース: <{NETCONF_GET_CONFIG_SOURCE}>)...")
 
-        # 💥 修正: OpenConfigのトップレベルコンテナのみを指定
-        result = conn.get(filter=NETCONF_GET_FILTER)
+        result = conn.get_config(source=NETCONF_GET_CONFIG_SOURCE)
 
-        # --- 結果の整形と表示 ---
+        # --- 結果の解析とインターフェース状態の抽出 ---
         xml_output = result.xml
-        dom = xml.dom.minidom.parseString(xml_output)
 
-        print("\n--- 取得結果 (OpenConfig インターフェース状態 NETCONF XML) ---")
-        print(dom.toprettyxml(indent="  "))
-        print("\n...NETCONF通信が成功しました。")
+        # 1. XMLをElementTreeでパース
+        root = ET.fromstring(xml_output)
+
+        # 2. OpenConfigのネームスペースを登録
+        namespaces = {'oc-if': OC_IF_NS}
+
+        # 3. インターフェースの 'state' データを検索
+        # OpenConfigのパス: /interfaces/interface/state
+        # ncclientの応答は <rpc-reply><data> から始まる
+        interface_states = root.findall('.//oc-if:interface/oc-if:state', namespaces)
+
+        if not interface_states:
+            # state タグが見つからなかった場合、別のパスで検索するか、コンフィグと状態が分離していると結論
+            print("\n⚠️ OpenConfigの '/interface/state' パスから状態データを見つけられませんでした。")
+            print("ArcOSは状態データと設定データを分離しており、<get>操作を意図的にブロックしているようです。")
+            print("しかし、取得したXML全体を整形して表示します。インターフェースの状態（Config部分）が含まれているか確認してください。")
+
+            # 見つからなかった場合、取得したXML全体を整形して表示
+            dom = xml.dom.minidom.parseString(xml_output)
+            print("\n--- 取得結果 (全 running config XML) ---")
+            print(dom.toprettyxml(indent="  "))
+        else:
+            # 状態データが見つかった場合
+            print("\n✅ インターフェース状態データを発見しました。")
+
+            # 各インターフェースの状態を出力
+            for state_elem in interface_states:
+                name_tag = state_elem.find('../oc-if:name', namespaces)
+                name = name_tag.text if name_tag is not None else "Unknown"
+
+                oper_status_tag = state_elem.find('oc-if:oper-status', namespaces)
+                oper_status = oper_status_tag.text if oper_status_tag is not None else "N/A"
+
+                print(f"--- インターフェース: {name} ---")
+                print(f"  オペレーショナルステータス: {oper_status}")
+                # XML要素を文字列に変換して表示 (詳細)
+                print("  詳細データ:")
+                print(ET.tostring(state_elem, encoding='unicode', method='xml'))
 
     except AuthenticationError:
         print("❌ 認証エラー: ユーザー名またはパスワードが正しくありません。")
@@ -58,26 +90,6 @@ def connect_to_netconf_device():
         print(f"❌ 接続/トランスポートエラーが発生しました: {e}")
     except RPCError as e:
         print(f"❌ NETCONF RPCエラーが発生しました: {e}")
-        # 💥 最終手段: フィルターなしの <get> を再試行
-        if "unknown-element" in str(e):
-             print("\n💡 OpenConfigフィルタが拒否されました。フィルターなしの全ステータス取得を再試行します (OpenConfigのルール違反の可能性)。")
-
-             try:
-                 print("\n➡️ <get> RPCを送信中 (フィルターなし、全ステータスデータ)...")
-                 # フィルターを None に設定
-                 full_status_result = conn.get(filter=None)
-
-                 full_xml_output = full_status_result.xml
-                 full_dom = xml.dom.minidom.parseString(full_xml_output)
-                 print("\n--- 取得結果 (フィルターなし全ステータス NETCONF XML) ---")
-                 print(full_dom.toprettyxml(indent="  "))
-                 print("\n...全ステータスデータの取得に成功しました。インターフェース情報を手動で探してください。")
-                 return # 成功したので終了
-             except RPCError as full_e:
-                 print(f"❌ フィルターなしの <get> も失敗しました: {full_e}")
-             except Exception as full_e:
-                 print(f"❌ フィルターなしの <get> で致命的なエラーが発生しました: {full_e}")
-
     except Exception as e:
         print(f"❌ 致命的なエラーが発生しました: {e}")
     finally:

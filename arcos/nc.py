@@ -5,19 +5,24 @@ from ncclient.transport.errors import AuthenticationError, TransportError
 from ncclient.operations.rpc import RPCError
 import xml.dom.minidom
 
-# --- 接続情報の設定 ---
+# --- 接続情報の設定 (変更なし) ---
 TARGET_HOST = "192.168.254.1"
 TARGET_PORT = 830
 TARGET_USER = "cisco"
 TARGET_PASS = "cisco123"
 
-# 💥 変更点: インターフェースの状態を取得するための <get> フィルタ
-# 'interfaces-state' は、標準の ietf-interfaces モデルで状態データが格納される場所です。
-NETCONF_GET_FILTER = """
+# 💥 変更点: OpenConfigインターフェースモデルに基づくフィルタ
+# インターフェース全体の状態データ (state) を取得します。
+OPENCONFIG_INTERFACE_NAMESPACE = "http://openconfig.net/yang/interfaces"
+
+NETCONF_GET_FILTER = f"""
 <filter type="subtree">
-    <interfaces-state xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-        <interface/>
-    </interfaces-state>
+    <interfaces xmlns="{OPENCONFIG_INTERFACE_NAMESPACE}">
+        <interface>
+            <name/>
+            <state/>
+        </interface>
+    </interfaces>
 </filter>
 """
 
@@ -39,17 +44,17 @@ def connect_to_netconf_device():
 
         print(f"✅ NETCONFセッションが確立されました。セッションID: {conn.session_id}")
 
-        # --- データの取得 (get-config から get に戻す) ---
-        print("\n➡️ <get> RPCを送信中 (インターフェース状態フィルタ)...")
+        # --- データの取得 ---
+        print("\n➡️ <get> RPCを送信中 (OpenConfig インターフェース状態フィルタ)...")
 
-        # 💥 変更点: conn.get_config から conn.get に変更
+        # ncclientはフィルタを渡すと自動的に <rpc><get><filter>...</filter></get></rpc> を作成します
         result = conn.get(filter=NETCONF_GET_FILTER)
 
         # --- 結果の整形と表示 ---
         xml_output = result.xml
         dom = xml.dom.minidom.parseString(xml_output)
 
-        print("\n--- 取得結果 (インターフェース状態 NETCONF XML) ---")
+        print("\n--- 取得結果 (OpenConfig インターフェース状態 NETCONF XML) ---")
         print(dom.toprettyxml(indent="  "))
         print("\n...NETCONF通信が成功しました。")
 
@@ -59,7 +64,7 @@ def connect_to_netconf_device():
         print(f"❌ 接続/トランスポートエラーが発生しました: {e}")
     except RPCError as e:
         print(f"❌ NETCONF RPCエラーが発生しました: {e}")
-        print("💡 ヒント: ArcOSが標準のietf-interfacesをサポートしていない可能性があります。")
+        print("💡 ヒント: OpenConfigモデルのパスまたはネームスペースが、このArcOSバージョンと異なる可能性があります。")
     except Exception as e:
         print(f"❌ 致命的なエラーが発生しました: {e}")
     finally:

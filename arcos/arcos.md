@@ -620,8 +620,7 @@ L3VPN over SRv6を検証します。
 
 [P1](/arcos/config/P1.cfg)　　[P2](/arcos/config/P2.cfg)
 
-[PE11](/arcos/config/PE11.cfg)　[PE12](/arcos/config/PE12.cfg)　[PE13](/arcos/config/PE13.cfg)　[PE14](/arcos/config/PE14.cfg)
-
+[PE11](/arcos/config/PE11.cfg)　　[PE12](/arcos/config/PE12.cfg)　　[PE13](/arcos/config/PE13.cfg)　　[PE14](/arcos/config/PE14.cfg)
 
 重要なのはここ。
 
@@ -651,22 +650,6 @@ network-instance default
 CiscoやFRRの実装はデフォルトのままで（設定しなくて）大丈夫なのですが、arcosの場合は明示的に設定しないといけません。
 
 設定しない場合は、状態がESTABLISHEDになっても、L3VPN_IPV4_UNICASTの経路は交換してくれません。
-
-こんな感じで、RECEIVED SENT共にゼロのままです。
-
-```text
-root@R1# show bgp ne
-show network-instance default protocol BGP MAIN all-neighbor  | select state session-state | select state session-elapsed-time | select state peer-as | select state received-peer-as | select afi-safi * state prefixes sent | select afi-safi * state prefixes received | tab  | nomore;
-
-all-neighbor
-                  PEER   SESSION      RECEIVED  SESSION
-NEIGHBOR ADDRESS  AS     STATE        PEER AS   ELAPSED TIME    AFI SAFI NAME       RECEIVED  SENT
-----------------------------------------------------------------------------------------------------
-192.168.255.2     65000  ESTABLISHED  65000        0d 00:11:15  L3VPN_IPV4_UNICAST  2         2
-                                                                L3VPN_IPV6_UNICAST  0         0
-2001:db8:ffff::2  65000  ESTABLISHED  65000        0d 00:11:15  L3VPN_IPV4_UNICAST  0         0
-                                                                L3VPN_IPV6_UNICAST  0         0
-```
 
 <br><br>
 

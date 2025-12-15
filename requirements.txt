@@ -17,6 +17,9 @@ tabulate
 # scrapli
 # scrapli_netconf
 
+# gNMIクライアント
+pygnmi
+
 # pyATS フルインストール、virl2_clientからpyATSを使うために必要
 # バージョン一覧
 # https://pypi.org/project/pyats/#history

@@ -48,26 +48,30 @@ try:
             'encoding': 'proto'
         }
 
-
+        print("\n⏳ Subscribe (mode=STREAM) リクエストを送信中... (Ctrl+Cで終了)")
         telemetry_stream = gc.subscribe(subscribe=subscribe)
 
         update_count = 0
+        try:
+            for telemetry_entry in telemetry_stream:
 
-        for telemetry_entry in telemetry_stream:
+                parsed_data = telemetryParser(telemetry_entry)
 
-            parsed_data = telemetryParser(telemetry_entry)
+                if 'update' in parsed_data:
+                    for update in parsed_data['update']['update']:
+                        timestamp = parsed_data['update']['timestamp']
+                        path = update['path']
+                        value = update['val']
+                        print(f"時刻: {timestamp}, パス: {path}, 値: {value}")
 
-            if 'update' in parsed_data:
-                for update in parsed_data['update']['update']:
-                    timestamp = parsed_data['update']['timestamp']
-                    path = update['path']
-                    value = update['val']
-                    print(f"時刻: {timestamp}, パス: {path}, 値: {value}")
+                update_count += 1
+                if update_count >= MAX_UPDATES:
+                    break
+        except KeyboardInterrupt:
+            print("\n\n🛑 ユーザーによって処理が中断されました (Ctrl+C)。")
+            # ストリームはここで閉じられ、外側の with ブロックが gRPC 接続をクリーンに終了させます。
 
-            update_count += 1
-            if update_count >= MAX_UPDATES:
-                break
-
+        print("✅ プログラムを終了します。")
 
 except Exception as e:
     print(f"🚨 接続またはデータ取得中にエラーが発生しました: {e}")

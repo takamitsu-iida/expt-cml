@@ -35,12 +35,12 @@ try:
                 {
                     'path': 'interfaces/interface[name=swp1]/state/counters/in-octets',
                     'mode': 'sample',
-                    'sample_interval': 1
+                    'sample_interval': 3000  # ミリ秒
                 },
                 {
                     'path': 'interfaces/interface[name=swp1]/state/counters/out-octets',
                     'mode': 'sample',
-                    'sample_interval': 1
+                    'sample_interval': 3000  # ミリ秒
                 },
             ],
             'use_aliases': False,
@@ -53,8 +53,5 @@ try:
         for telemetry_entry in telemetry_stream:
             print(telemetryParser(telemetry_entry))
 
-
-
 except Exception as e:
     print(f"🚨 接続またはデータ取得中にエラーが発生しました: {e}")
-    print("ヒント: ArcOSの仕様と pygnmi の引数形式の両方に適合するように修正しました。")

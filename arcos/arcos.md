@@ -589,10 +589,17 @@ network-instance default
 
 ## gNMI
 
+gNMIで規定されている4種類のRPCのうち、GetとSetは動きませんでした。
 
+動く
 
+- Capabilities
+- Subscribe
 
+動かない
 
+- Get
+- Set
 
 
 有効にする設定。

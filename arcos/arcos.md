@@ -581,11 +581,42 @@ network-instance default
 - jump hostを経由したSSHプロキシを経由したNETCONF利用（netmiko、scrapli、ncclientいずれもダメ）
 - 状態データの取得
 
-これだと使い道は無さそう。
+わからないこと
 
-唯一、設定を丸ごと入れ替える場面で使うかな？
+- 通信の着信インタフェースやnetwork-instanceの制限はできる？？？
+
+<br>
+
+状態データを取得できないので、想定される使い道は、設定を丸ごと入れ替える場面で使う？
 
 状態取得はgNMIの方が充実しています。
+
+
+<br>
+
+有効にする設定。
+
+```text
+system netconf-server enable true
+```
+
+トランスポートにSSHを指定する設定。SSHのポートは830です。設定で変更できます。
+
+```text
+system netconf-server transport ssh enable true
+```
+
+<br><br>
+
+## RESTCONF
+
+HTTPSを使うRESTCONFはデフォルトで有効かも？ TCPポート8009です。
+
+暗号化されないHTTPのRESTCONFはTCPポート8008です。これはデフォルトでは動いてません。
+
+
+
+<br><br>
 
 ## gNMI
 
@@ -601,14 +632,15 @@ gNMIで規定されている4種類のRPCのうち、GetとSetは動きません
 - Get
 - Set
 
-
 有効にする設定。
 
 ```text
 system grpc-server enable true
 ```
 
-有効にすると TCP 9339 で待ち受けを開始します。デフォルトでは、通信は暗号化されません。
+有効にすると TCP 9339 で待ち受けを開始します。
+
+デフォルトでは、通信は暗号化されません。
 
 着信するインタフェースを指定できます。
 
@@ -622,13 +654,13 @@ system grpc-server listen-interface ma1
 system grpc-server network-instance management
 ```
 
-通信を暗号化するには、追加で設定します。
+通信を暗号化するには、追加の設定が必要です。
 
 ```text
 system grpc-server transport-security true
 ```
 
-自己証明書が使われます。デフォルトの証明書はここにあります。
+通信を暗号化するのに自己証明書が使われます。デフォルトの証明書はここにあります。
 
 - /mnt/onl/config/pki/certificate
 - /mnt/onl/config/pki/key.pem
@@ -660,13 +692,13 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 
 ## 装置へのアクセス制御
 
-初期状態でmanagementという名前のvrfが作られていますが、装置へのアクセスはmanagement vrfに制限されているわけではなさそうです。
+初期状態でmanagementという名前のvrfが作られていますが、装置への管理アクセスはmanagement vrfに制限されているわけではなさそうです。
+
+管理用の別ネットワークがあったときに、経路が混ざらない、というだけのようです。
 
 装置への通信はCoPPとコントロールプレーンACLで制御できます。
 
 処理の順序は、CoPP → コントロールプレーンACL、の順になっています。
-
-
 
 <br><br>
 

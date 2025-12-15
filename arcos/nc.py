@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# スクリプトを引数無しで実行したときのヘルプに使うデスクリプション
+SCRIPT_DESCRIPTION = 'netconfで装置から設定を取得・反映するツール'
+
 import argparse
 import os
 import sys
@@ -164,19 +167,9 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
 
 
 def main():
-    """メイン関数：argparseで引数処理"""
-    parser = argparse.ArgumentParser(
-        description='NETCONF設定操作ツール',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog='''
-使用例:
-  python nc.py get                          # デフォルトパスに設定を保存
-  python nc.py get -f ./xml/custom.xml     # カスタムパスに設定を保存
-  python nc.py apply                        # デフォルトパスから設定を反映
-  python nc.py apply -f ./xml/custom.xml   # カスタムパスから設定を反映
-        '''
-    )
 
+
+    parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
     subparsers = parser.add_subparsers(dest='command', help='実行するコマンド')
 
     # get コマンド
@@ -202,15 +195,17 @@ def main():
     # 引数がなければhelpを表示
     if not args.command:
         parser.print_help()
-        sys.exit(0)
+        return
 
-    # コマンドに応じて処理
+    # get
     if args.command == 'get':
         success = get_xml_config(args.file)
-        sys.exit(0 if success else 1)
-    elif args.command == 'apply':
+        return 0 if success else 1
+
+    # apply
+    if args.command == 'apply':
         success = apply_xml_config(args.file)
-        sys.exit(0 if success else 1)
+        return 0 if success else 1
 
 
 if __name__ == "__main__":

@@ -31,7 +31,8 @@ try:
     with gNMIclient(target=(HOST, PORT),
                     username=USER,
                     password=PASSWORD,
-                    secure=False) as gc:
+                    insecure=True,
+                    ) as gc:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 

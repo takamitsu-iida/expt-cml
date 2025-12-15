@@ -11,7 +11,8 @@ except ImportError:
 
 # 接続情報
 HOST = "192.168.0.1"
-PORT = 50051  # gNMIのデフォルトポート（ルータの設定によって異なる場合があります）
+# PORT = 50051  # gNMIのデフォルトポート（ルータの設定によって異なる場合があります）
+PORT = 9339
 USER = "cisco"
 PASSWORD = "cisco123"
 

@@ -31,8 +31,8 @@ try:
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
         # 2. Getリクエストの実行
-        # 🚨 修正点: encoding='JSON_IETF' を明示的に指定
-        response = gc.get(path=INTERFACE_PATH, datatype='state', encoding='JSON_IETF')
+        # 🚨 最終修正点: encoding='PROTO' を指定
+        response = gc.get(path=INTERFACE_PATH, datatype='state', encoding='PROTO')
 
         # 3. 取得結果の処理
         if 'notification' in response and response['notification']:
@@ -43,8 +43,13 @@ try:
                         # パスと値を整形して出力
                         path_str = gc.format_path(update['path'])
 
-                        # JSON_IETFエンコーディングの場合、値は生のJSON/dict形式で返されます
-                        value = update.get('val', {}).get('json_ietf_val', 'N/A (No value)')
+                        # PROTOエンコーディングの場合、値は生のProtobuf形式で返されるため、
+                        # pygnmiが内部でデコードした結果を取り出す必要があります。
+                        # 通常、値は 'val' キーに直接、デコードされたPythonオブジェクト（辞書など）として格納されます。
+                        value = update.get('val', 'N/A (No value)')
+
+                        # より詳細なデバッグが必要な場合は、以下のコメントアウトを外して、レスポンス全体の構造を確認できます。
+                        # import pprint; pprint.pprint(update)
 
                         print(f"  - パス: {path_str}")
                         print(f"    値: {value}")
@@ -54,4 +59,4 @@ try:
 
 except Exception as e:
     print(f"🚨 接続またはデータ取得中にエラーが発生しました: {e}")
-    print("ヒント: ポート番号、TLS/SSLの設定、認証情報、そしてエンコーディング設定を確認してください。")
+    print("ヒント: ルータがサポートする唯一のエンコーディングが 'PROTO' であることを確認しました。この設定で問題が解決するはずです。")

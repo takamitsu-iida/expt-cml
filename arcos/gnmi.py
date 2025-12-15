@@ -26,7 +26,8 @@ try:
     with gNMIclient(target=(HOST, PORT),
                     username=USER,
                     password=PASSWORD,
-                    insecure=True) as gc:
+                    insecure=True
+                    ) as gc:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
@@ -34,7 +35,7 @@ try:
 
         # 2. Getリクエストの実行
         # , encoding='proto'
-        response = gc.get(path=INTERFACE_PATH, datatype='state')
+        response = gc.get(path=INTERFACE_PATH, datatype='state', encoding='proto')
 
         # 3. 取得結果の処理
         if 'notification' in response and response['notification']:

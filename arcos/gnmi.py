@@ -16,7 +16,8 @@ USER = "cisco"
 PASSWORD = "cisco123"
 
 # 例: 3回更新を受け取ったら終了
-MAX_UPDATES = 3
+# 取得するデータが2個あるので、2倍する
+MAX_UPDATES = 3 * 2
 
 try:
     # 1. gNMI クライアントの初期化と接続
@@ -64,12 +65,15 @@ try:
                         value = update['val']
                         print(f"時刻: {timestamp}, パス: {path}, 値: {value}")
 
-                update_count += 1
+                        update_count += 1
+                        if update_count >= MAX_UPDATES:
+                            break
+
                 if update_count >= MAX_UPDATES:
                     break
+
         except KeyboardInterrupt:
             print("\n\n🛑 ユーザーによって処理が中断されました (Ctrl+C)。")
-            # ストリームはここで閉じられ、外側の with ブロックが gRPC 接続をクリーンに終了させます。
 
         print("✅ プログラムを終了します。")
 

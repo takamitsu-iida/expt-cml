@@ -509,7 +509,7 @@ L3VPN over SRv6を検証します。
 このラボはPythonスクリプトで作成しますが、手順を踏むために `make` コマンドを使います。
 
 ```bash
-iida@FCCLS0073460:~/git/expt-cml/arcos$ make
+$ make
 jumphost                       踏み台サーバをCML上に作成する
 upload                         踏み台サーバに設定ファイルをアップロードする（踏み台サーバの起動後に実行すること）
 arcos                          arcosノードをCML上に作成する

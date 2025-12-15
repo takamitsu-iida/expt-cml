@@ -15,8 +15,8 @@ PORT = 9339
 USER = "cisco"
 PASSWORD = "cisco123"
 
-# 収集したいインターフェース情報（OpenConfigパス）
-INTERFACE_PATH = ["/interfaces/interface/..."]
+# 例: 3回更新を受け取ったら終了
+MAX_UPDATES = 3
 
 try:
     # 1. gNMI クライアントの初期化と接続
@@ -48,10 +48,26 @@ try:
             'encoding': 'proto'
         }
 
+
         telemetry_stream = gc.subscribe(subscribe=subscribe)
 
+        update_count = 0
+
         for telemetry_entry in telemetry_stream:
-            print(telemetryParser(telemetry_entry))
+
+            parsed_data = telemetryParser(telemetry_entry)
+
+            if 'update' in parsed_data:
+                for update in parsed_data['update']['update']:
+                    timestamp = parsed_data['update']['timestamp']
+                    path = update['path']
+                    value = update['val']
+                    print(f"時刻: {timestamp}, パス: {path}, 値: {value}")
+
+            update_count += 1
+            if update_count >= MAX_UPDATES:
+                break
+
 
 except Exception as e:
     print(f"🚨 接続またはデータ取得中にエラーが発生しました: {e}")

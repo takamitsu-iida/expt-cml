@@ -30,6 +30,8 @@ try:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
+        print(gc.capabilities())
+
         # 2. Getリクエストの実行
         # , encoding='proto'
         response = gc.get(path=INTERFACE_PATH, datatype='state')

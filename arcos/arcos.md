@@ -619,6 +619,32 @@ CoPP → コントロールプレーンACLの順に適用されるみたい。
 
 ## gNMI
 
+
+- interfaces/interface[name=swp1]/state/counters
+- interfaces/interface[name=*]/state/counters
+- interfaces/interface/state/counters
+
+有効にする設定。
+
+```text
+system grpc-server enable true
+```
+
+有効にすると TCP 9339 で待ち受けを開始します。
+
+着信するインタフェースを指定できます。
+
+```text
+system grpc-server listen-interface ma1
+```
+
+通信するvrfを指定できます。
+
+```text
+system grpc-server network-instance management
+```
+
+
 <br><br>
 
 

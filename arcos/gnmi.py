@@ -27,12 +27,13 @@ try:
                     username=USER,
                     password=PASSWORD,
                     insecure=True,
-                    default_encoding='proto'
+                    default_encoding='proto',
+                    gnmi_version='1.0.0'
                     ) as gc:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
-        print(gc.capabilities())
+        # print(gc.capabilities())
 
         # 2. Getリクエストの実行
         response = gc.get(path=INTERFACE_PATH, datatype='state', encoding='proto')

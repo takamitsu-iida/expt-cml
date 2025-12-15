@@ -688,7 +688,16 @@ def connect_ma_switch(lab: Lab, nodes: list[Node]) -> None:
 
 
 def create_nodes_1(lab: Lab) -> list[Node]:
+    #
+    # この構成のラボを作ります。
+    #
+    # CE111----PE11----P1----PE13----CE113
+    #                \/    \/
+    #                /\    /\
+    # CE112----PE12----P2----PE14----CE114
+    #
 
+    # 同じラベルのノードは作成できないので、作る前に削除する
     def delete_node(label: str) -> None:
         try:
             node = lab.get_node_by_label(label)
@@ -706,8 +715,6 @@ loopback0アドレス割当
 10.0.255.{{ router number }}/32
 2001:db8:ffff::{{ router number }}/128
 """.strip()
-
-
     create_text_annotation(lab, text_content, {'text_bold': True, 'x1': -400, 'y1': 400, 'z_index': 1})
 
     text_content = \
@@ -715,7 +722,6 @@ loopback0アドレス割当
 SRv6ロケータ MAIN
 fd00:0:0:{{ router number}}::/64
 """.strip()
-
     create_text_annotation(lab, text_content, {'text_bold': True, 'x1': -80, 'y1': 400, 'z_index': 1})
 
     # VPNの領域をレクタングルアノテーションを作成する
@@ -730,6 +736,7 @@ fd00:0:0:{{ router number}}::/64
     create_text_annotation(lab, "172.16.13.0/24", {'x1': 320.0, 'y1': 120.0, 'z_index': 2})
     create_text_annotation(lab, "172.16.14.0/24", {'x1': 320.0, 'y1': 280.0, 'z_index': 2})
 
+    # ルータを作成する
     #
     #  PE11----P1----PE13
     #       \/    \/
@@ -809,6 +816,11 @@ fd00:0:0:{{ router number}}::/64
         pe_nodes.append(node)
 
         # CEルータをPEの左側に作る
+        #
+        # CE111----PE11
+        #
+        # CE112----PE12
+        #
         delete_node(f"CE1{rid}")
         ce = lab.create_node(f"CE1{rid}", "iol-xe", node.x - x_grid_width, node.y, wait=True)
         ce.add_tag(tag=f"serial:61{rid}")
@@ -868,6 +880,11 @@ ip route 0.0.0.0 0.0.0.0 172.16.{rid}.1
         pe_nodes.append(node)
 
         # CEルータをPEの右側に作る
+        #
+        # PE13----CE113
+        #
+        # PE14----CE114
+        #
         delete_node(f"CE1{rid}")
         ce = lab.create_node(f"CE1{rid}", "iol-xe", node.x + x_grid_width, node.y, wait=True)
         ce.add_tag(tag=f"serial:61{rid}")

@@ -36,9 +36,6 @@ stop: ## ラボを停止する
 delete: ## ラボを削除する
 	../bin/cml_create_jumphost.py --delete --title "$(LAB_TITLE)"
 
-ztp: ## arcosの初期設定ファイルをjumphostにアップロードし、ZTPを実行する
-	../bin/cml_create_jumphost.py --ztp --title "$(LAB_TITLE)"
-
 terminal: ## ルータのコンソールに接続する
 	../bin/open_terminal.sh 6001 6002
 	../bin/open_terminal.sh 6011 6012

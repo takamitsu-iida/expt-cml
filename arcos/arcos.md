@@ -257,7 +257,7 @@ readonlyは**false**を指定します。
 
 <br><br>
 
-## 起動後の動作
+## 起動後の初期動作
 
 CMLのダッシュボードでarcosをドラッグドロップでインスタンス化します。
 
@@ -268,12 +268,28 @@ CMLのダッシュボードでarcosをドラッグドロップでインスタン
 
 ログインしたらpasswdコマンドでパスワードを変更します。
 
+
+> [!NOTE]
+>
+> admin-userのパスワードがrootのパスワードかも？
+>
+> ZTPでコンフィグをダウンロードするとrootのパスワードがそれに書き換わったような？
+
+<br>
+
 ArcOSのシェルの起動は `cli` コマンドです。
 
 ```text
 Welcome to the ArcOS CLI
 root connected from 127.0.0.1 using console on R1
 root@R1
+```
+
+このシェルは補完がかかるので使いやすいです。
+
+`show version` はこんな感じです。
+
+```text
 root@R1# show version
 Platform:         Virtual
 Software:         Arrcus ArcOS
@@ -296,6 +312,8 @@ System configuration cannot be changed now.
 Please stop ZTP using cli "request system ztp stop" to stop ZTP and change system configuration.
 ```
 
+<br>
+
 上記メッセージにある通り `request system ztp stop` で停止します。
 
 ```text
@@ -305,6 +323,8 @@ Are you sure? This command will disable ZTP and may take several minutes (up to 
 Initiating ZTP stop. Please do not perform any operation on the system until ZTP is stopped...
 2025-11-27 09:00:33 ArcOS ztp INFO: Stopping ZTP...
 ```
+
+<br>
 
 これでコンフィグモードに入れるようになりますが、設定の変更はまだできません。
 
@@ -330,6 +350,8 @@ still not changed from factory default password. Interfaces cannot be enabled!
 root@localhost(config-interface-swp1)#
 ```
 
+<br>
+
 このように、最初にAdminユーザのパスワードを変更しないと、設定の変更は許可してもらえません。
 
 この設定を行います。
@@ -343,6 +365,8 @@ Commit complete.
 root@localhost(config)#
 ```
 
+<br>
+
 これで設定変更できるようになりました。
 
 <br><br>
@@ -355,91 +379,15 @@ root@localhost(config)#
 root@localhost# show running-config | save run-conf.txt
 ```
 
-exitでシェルを抜けてbashに戻ると、ファイルを確認できます。中身はこんな感じです。
+exitでシェルを抜けてbashに戻ると、保存したファイルを確認できます。
 
 ```bash
 root@localhost:~# ls
 run-conf.txt
 root@localhost:~#
-root@localhost:~# cat run-conf.txt
-version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
-features feature ARCOS_RIOT
- supported false
-!
-features feature ARCOS_ICMP_SRC_REWRITE
- supported true
-!
-features feature ARCOS_SUBIF
- supported true
-!
-features feature ARCOS_QoS
- supported false
-!
-features feature ARCOS_MPLS
- supported true
-!
-features feature ARCOS_SFLOW
- supported true
-!
-system login-banner "ArcOS (c) Arrcus, Inc."
-system cli commit-message true
-system netconf-server enable false
-system netconf-server transport ssh enable false
-system restconf-server enable false
-system aaa authentication admin-user admin-password $6$DGq6SqagIDmiu3tA$TxSoLLT7XA5F6vg3/D9VuLauylwOFPQon0ZGn/imwaxLb.Y7tJ4ii.RftGsLvpRkLdrptQDaRyT5Ah8D.ihXZ1
-system rib IPV6
-!
-system rib IPV4
-!
-interface ma1
- type    ethernetCsmacd
- mtu     1500
- enabled true
- subinterface 0
- exit
-!
-interface swp1
- type    ethernetCsmacd
- enabled true
-!
-network-instance default
-!
-network-instance management
- interface ma1
- !
-!
-lldp interface ma1
-!
-lldp interface swp1
-!
-routing-policy defined-sets prefix-set __IPV4_MARTIAN_PREFIX_SET__
- prefix 0.0.0.0/8 8..32
- !
- prefix 127.0.0.0/8 8..32
- !
- prefix 192.0.0.0/24 24..32
- !
- prefix 224.0.0.0/4 exact
- !
- prefix 224.0.0.0/24 exact
- !
- prefix 240.0.0.0/4 4..32
- !
-!
-routing-policy defined-sets prefix-set __IPV6_MARTIAN_PREFIX_SET__
- prefix ::/128 exact
- !
- prefix ::1/128 exact
- !
- prefix ff00::/8 exact
- !
- prefix ff02::/16 exact
- !
-!
-root@localhost:~#
 ```
 
-このように別ファイルに保存することはできるものの、commitしたときのコンフィグがどこに保存されているかは不明です。
+このように別ファイルに保存することはできるものの、ルータが起動時に読み込むコンフィグがどこに保存されているかは不明です。
 
 <br><br>
 
@@ -459,14 +407,13 @@ MTU長は3000程度に抑えるのが良さそうです。
 
 ## ip unnumberedでルーティングできない
 
-IPV4であればip unnumberedを設定できます。
+IPV4はループバックのアドレスをイーサネットに割り当てる、いわゆるip unnumberedを設定できます。
 
 隣接ルータとの疎通も問題ありません。
 
-ISISを使えばribも作れるのですが、
-Linuxのルーティングテーブルに反映されないので**通信できません**。
+ISISを使えばribも作れるのですが、実際にはLinuxのルーティングテーブルに反映されないので**ルーティングができません**。
 
-こんな感じでribにエントリができていても、
+こんな感じ（↓）でribにエントリができていても、実際にはLinuxに経路が渡っていないので通信できません。
 
 ```text
 root@PE12# show network-instance default rib IPV4 ipv4-entries entry 10.0.255.11/32
@@ -503,7 +450,9 @@ ipv4-entries entry 10.0.255.11/32
    flags            ATTACH
 ```
 
-実際にはLinuxに経路が渡っていないので通信できません。
+<br>
+
+pingを実行しても **RTNETLINK answers: Network is unreachable** となってしまいます。
 
 ```text
 root@PE12# ping 10.0.255.11
@@ -516,7 +465,7 @@ PING 10.0.255.11 (10.0.255.11) from 10.0.255.12 swp1: 56(84) bytes of data.
 
 <br><br>
 
-## cliコマンド
+## cliコマンドメモ
 
 `config` コンフィグモードに遷移します。
 
@@ -545,68 +494,9 @@ ipv4-entries entry 192.168.255.2/32
 
 <br><br><br>
 
-## SRv6
-
-ロケータ長 64ビット
-
-Cisco IOS-XRの場合、
-
-64 = (SIDブロック 40ビット) + (ノード長 24ビット)
-
-という構成。
-
-ここでは、
-
-64 = (SIDブロック 48ビット) + (ノード長 16ビット)
-
-という形にします。
-
-```text
- srv6 locator MAIN
-  locator-node-length 16
-  prefix              fd00:0:0:1::/64
- !
-```
-
-R1のロケータ fd00:0000:00  00:00:01::/64
-
-```text
- !
- srv6 locator MAIN
-  locator-node-length 24
-  prefix              fd00:0:0:1::/64
- !
-```
-
-R2のロケータ fd00:0000:00  00:00:02::/64
-
-```text
- !
- srv6 locator MAIN
-  locator-node-length 24
-  prefix              fd00:0:0:2::/64
- !
-```
-
-ローカルSID
-
-```text
-root@R1# show network-instance default srv6 local-sids
-srv6 local-sids local-sid fd00:0:0:1:1::/80
- behavior     END_PSP_USD
- locator-name MAIN
- client-name  sidmgr
-```
-
-このローカルSIDをloopback0に割り当てたいけど、subinterface 0に複数のIPv6アドレスは割り当てられません。
-
-かといって、subinterface 1を作ろうとすると怒られます。
-
-これは意味がわからないのですが、ソフトインタフェースなのだからloopback 1を作れってことかもしれません。
+# L3VPN over SRv6
 
 <br>
-
-## L3VPN over SRv6
 
 L3VPN over SRv6を検証します。
 
@@ -616,11 +506,39 @@ L3VPN over SRv6を検証します。
 
 <br>
 
-踏み台サーバに置いた設定をZero Touch Provisioningで配信します。
+このラボはPythonスクリプトで作成しますが、手順を踏むために `make` コマンドを使います。
+
+```bash
+iida@FCCLS0073460:~/git/expt-cml/arcos$ make
+jumphost                       踏み台サーバをCML上に作成する
+upload                         踏み台サーバに設定ファイルをアップロードする（踏み台サーバの起動後に実行すること）
+arcos                          arcosノードをCML上に作成する
+start                          ラボを開始する
+stop                           ラボを停止する
+delete                         ラボを削除する
+terminal                       ルータのコンソールに接続する
+```
+
+<br>
+
+以下の順で実行します。
+
+1. make jumphost
+2. make arcos
+3. make upload
+4. make start
+
+<br>
+
+`make upload` すると生成したルータのコンフィグを踏み台サーバに配置して、Zero Touch Provisioningで配信できるようになります。
+
+各ルータはma1インタフェースをma-switchに接続していますので、初回起動時にDHCPでアドレスを取得すると共に、TFTPでファイルをダウンロードして起動します。
 
 [P1.cfg](/arcos/config/P1.cfg)　　[P2.cfg](/arcos/config/P2.cfg)　　[PE11.cfg](/arcos/config/PE11.cfg)　　[PE12.cfg](/arcos/config/PE12.cfg)　　[PE13.cfg](/arcos/config/PE13.cfg)　　[PE14.cfg](/arcos/config/PE14.cfg)
 
-<br>
+<br><br>
+
+## SRv6注意事項
 
 重要なのはここ。
 
@@ -631,7 +549,7 @@ network-instance vrf-1
   global sid-allocation-mode INSTANCE_SID
 ```
 
-**global sid-allocation-mode** は INSTANCE_SID 以外、動きません。
+PEルータで作成するVRFの中でBGPを動かしますが、その中で設定する **global sid-allocation-mode** は INSTANCE_SID 以外、動きません。
 
 もうひとつ重要なのは、IPv6アドレスのBGPネイバーには **extended-nexthop enable true** の設定が必要なこと。
 
@@ -647,32 +565,75 @@ network-instance default
     exit
 ```
 
-CiscoやFRRの実装はデフォルトのままで（設定しなくて）大丈夫なのですが、arcosの場合は明示的に設定しないといけません。
-
-設定しない場合は、状態がESTABLISHEDになっても、L3VPN_IPV4_UNICASTの経路は交換してくれません。
-
-<br><br>
-
-## 次に試すこと
-
-- NETCONF
-- SR-MPLS
-- ISIS FlexAlgo
-
+これを設定しない場合は、状態がESTABLISHEDになっても、L3VPN_IPV4_UNICASTの経路は交換してくれません。
 
 <br><br>
 
 ## NETCONF
 
-できること
+できたこと
 
 - SSHプロキシを経由せず、直接SSHで接続
 - コンフィグの全文取得
 
-できないこと
+できなかったこと
 
 - jump hostを経由したProxy SSHでのNETCONF利用（netmiko、scrapli、ncclientいずれもダメ）
 - 状態データの取得
+
+
+これだと使い道は無さそう。
+
+唯一、設定を丸ごと入れ替える場面で使うかな？
+
+
+<br><br>
+
+## 装置へのアクセス制御
+
+初期状態でmanagementという名前のvrfが作られていますが、装置へのアクセスはmanagement vrfに制限されているわけではなさそうです。
+
+たとえば、SSHを有効にする設定はこれですが、どこからのアクセスを許可する、という設定はありません。他のプロトコルも同様です。
+
+```text
+system ssh-server enable true
+```
+
+<br>
+
+CoPP → コントロールプレーンACLの順に適用されるみたい。
+
+<br><br>
+
+## logging設定
+
+<br><br>
+
+## NTP設定
+
+<br><br>
+
+## SNMP設定
+
+<br><br>
+
+## gNMI
+
+<br><br>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 <!--
 

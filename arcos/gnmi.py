@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 import sys
-import pprint
-
 
 try:
     from pygnmi.client import gNMIclient
+
 except ImportError:
     print(f"pygnmiをインストールしてください")
     sys.exit(1)
@@ -26,7 +25,7 @@ try:
     with gNMIclient(target=(HOST, PORT),
                     username=USER,
                     password=PASSWORD,
-                    insecure=True
+                    insecure=True,
                     ) as gc:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
@@ -37,8 +36,7 @@ try:
 
         # Subscribeリクエストはジェネレータ（イテレータ）を返します
         subscribe_response = gc.subscribe(
-            subscribe=[('state', path) for path in INTERFACE_PATH],
-            mode='ONCE'
+            subscribe=[('state', path) for path in INTERFACE_PATH]
         )
 
         # 3. 取得結果の処理

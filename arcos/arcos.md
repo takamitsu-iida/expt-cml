@@ -574,17 +574,61 @@ network-instance default
 できたこと
 
 - SSHプロキシを経由せず、直接SSHで接続
-- コンフィグの全文取得
+- XML形式のコンフィグの全文取得
 
 できなかったこと
 
-- jump hostを経由したProxy SSHでのNETCONF利用（netmiko、scrapli、ncclientいずれもダメ）
+- jump hostを経由したSSHプロキシを経由したNETCONF利用（netmiko、scrapli、ncclientいずれもダメ）
 - 状態データの取得
-
 
 これだと使い道は無さそう。
 
 唯一、設定を丸ごと入れ替える場面で使うかな？
+
+状態取得はgNMIの方が充実しています。
+
+## gNMI
+
+
+有効にする設定。
+
+```text
+system grpc-server enable true
+```
+
+有効にすると TCP 9339 で待ち受けを開始します。デフォルトでは暗号化されてません。
+
+着信するインタフェースを指定できます。
+
+```text
+system grpc-server listen-interface ma1
+```
+
+通信するvrfを指定できます。インタフェースと両方指定したらインタフェースが優先です。
+
+```text
+system grpc-server network-instance management
+```
+
+通信を暗号化するには、追加で設定します。
+
+```text
+system grpc-server transport-security true
+```
+
+自己証明書が使われます。デフォルトの証明書はここにあります。
+
+- /mnt/onl/config/pki/certificate
+- /mnt/onl/config/pki/key.pem
+
+商用環境で使う場合、このファイルを差し替えるのではなく、別の証明書を指定します。
+
+- interfaces/interface[name=swp1]/state/counters
+- interfaces/interface[name=*]/state/counters
+- interfaces/interface/state/counters
+
+
+
 
 
 <br><br>
@@ -617,32 +661,10 @@ CoPP → コントロールプレーンACLの順に適用されるみたい。
 
 <br><br>
 
-## gNMI
 
 
-- interfaces/interface[name=swp1]/state/counters
-- interfaces/interface[name=*]/state/counters
-- interfaces/interface/state/counters
 
-有効にする設定。
 
-```text
-system grpc-server enable true
-```
-
-有効にすると TCP 9339 で待ち受けを開始します。
-
-着信するインタフェースを指定できます。
-
-```text
-system grpc-server listen-interface ma1
-```
-
-通信するvrfを指定できます。
-
-```text
-system grpc-server network-instance management
-```
 
 
 <br><br>

@@ -623,6 +623,14 @@ system grpc-server transport-security true
 
 商用環境で使う場合、このファイルを差し替えるのではなく、別の証明書を指定します。
 
+エンコーディングに ProtoBuf は使えないようです。JSONなら大丈夫です。
+
+
+
+
+
+
+
 - interfaces/interface[name=swp1]/state/counters
 - interfaces/interface[name=*]/state/counters
 - interfaces/interface/state/counters

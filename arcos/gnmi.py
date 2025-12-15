@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import sys
+import pprint
+
 
 try:
     from pygnmi.client import gNMIclient
@@ -11,20 +13,16 @@ except ImportError:
 
 # 接続情報
 HOST = "192.168.254.1"
-# PORT = 50051  # gNMIのデフォルトポート（ルータの設定によって異なる場合があります）
 PORT = 9339
 USER = "cisco"
 PASSWORD = "cisco123"
 
 # 収集したいインターフェース情報（OpenConfigパス）
-# すべてのインターフェースの設定と状態を取得するためのパス
-# /interfaces/interface[name=*]/state/... を指定することで、すべてのインターフェースの状態情報を取得できます。
-INTERFACE_PATH = ["/interfaces/interface[name=*]/state/..."]
-
-paths = ['openconfig-interfaces:interfaces', 'openconfig-network-instance:network-instances']
+INTERFACE_PATH = ["/interfaces/interface/..."]
 
 try:
     # 1. gNMI クライアントの初期化と接続
+    # ルータの報告に基づき、PROTO エンコーディングと gNMI 0.7.0 バージョンを指定
     with gNMIclient(target=(HOST, PORT),
                     username=USER,
                     password=PASSWORD,
@@ -33,33 +31,43 @@ try:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
-        # print(gc.capabilities())
+        # 2. Subscribeリクエストの実行 (ONCEモード)
+        # mode='ONCE': 一度データを取得したら接続を閉じます。Get()に最も近い挙動です。
+        print("\n⏳ Subscribe (mode=ONCE) リクエストを送信中...")
 
-        # 2. Getリクエストの実行
-        response = gc.get(path=paths, encoding='proto')
+        # Subscribeリクエストはジェネレータ（イテレータ）を返します
+        subscribe_response = gc.subscribe(
+            subscribe=[('state', path) for path in INTERFACE_PATH],
+            mode='ONCE'
+        )
 
         # 3. 取得結果の処理
-        if 'notification' in response and response['notification']:
-            print("\n📜 取得したインターフェース情報:")
-            for notification in response['notification']:
-                if 'update' in notification:
-                    for update in notification['update']:
-                        # パスと値を整形して出力
-                        path_str = gc.format_path(update['path'])
+        for response in subscribe_response:
+            if 'update' in response:
+                print("\n📜 取得したインターフェース情報 (Subscribe Update):")
+                # 複数の更新が含まれる可能性があるため、反復処理
+                for update in response['update']:
+                    path_str = gc.format_path(update['path'])
+                    # PROTOエンコーディングの場合、値は val に直接格納されるはず
+                    value = update.get('val', 'N/A (No value)')
 
-                        # PROTOエンコーディングの場合、値は生のProtobuf形式で返されるため、
-                        # pygnmiが内部でデコードした結果を取り出す必要があります。
-                        # 通常、値は 'val' キーに直接、デコードされたPythonオブジェクト（辞書など）として格納されます。
-                        value = update.get('val', 'N/A (No value)')
+                    print(f"  - パス: {path_str}")
+                    print(f"    値: {value}")
 
-                        # より詳細なデバッグが必要な場合は、以下のコメントアウトを外して、レスポンス全体の構造を確認できます。
-                        # import pprint; pprint.pprint(update)
+            elif 'sync_response' in response:
+                # ONCEモードの場合、sync_response はデータの終端を示します
+                print("--- データの終端に到達しました (Sync Response) ---")
 
-                        print(f"  - パス: {path_str}")
-                        print(f"    値: {value}")
+            # Subscribeの場合、エラーが発生するとストリーム全体が閉じます
+            elif 'error' in response:
+                print(f"❌ Subscribe中にエラーが発生しました: {response['error']}")
+                break
 
-        else:
-            print("❌ ルータから情報が取得できませんでした。（'notification'フィールドが空です）")
+            # 通知以外のメッセージ（例: heartbeat, sync_response）も受け取る
+            # pprint.pprint(response) # デバッグ用
+
+        print("✅ Subscribe リクエストの処理が完了しました。")
 
 except Exception as e:
     print(f"🚨 接続またはデータ取得中にエラーが発生しました: {e}")
+    print("ヒント: ArcOSは Get() をサポートしておらず、Subscribe() のみサポートしているようです。")

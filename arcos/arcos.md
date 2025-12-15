@@ -590,6 +590,11 @@ network-instance default
 ## gNMI
 
 
+
+
+
+
+
 有効にする設定。
 
 ```text

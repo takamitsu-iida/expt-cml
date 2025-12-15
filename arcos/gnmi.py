@@ -35,12 +35,12 @@ try:
                 {
                     'path': 'interfaces/interface[name=swp1]/state/counters/in-octets',
                     'mode': 'sample',
-                    'sample_interval': 10000000000
+                    'sample_interval': 1
                 },
                 {
                     'path': 'interfaces/interface[name=swp1]/state/counters/out-octets',
                     'mode': 'sample',
-                    'sample_interval': 10000000000
+                    'sample_interval': 1
                 },
             ],
             'use_aliases': False,

@@ -21,14 +21,14 @@ PASSWORD = "cisco123"
 # /interfaces/interface[name=*]/state/... を指定することで、すべてのインターフェースの状態情報を取得できます。
 INTERFACE_PATH = ["/interfaces/interface[name=*]/state/..."]
 
+paths = ['openconfig-interfaces:interfaces', 'openconfig-network-instance:network-instances']
+
 try:
     # 1. gNMI クライアントの初期化と接続
     with gNMIclient(target=(HOST, PORT),
                     username=USER,
                     password=PASSWORD,
-                    insecure=True,
-                    default_encoding='proto',
-                    gnmi_version='1.0.0'
+                    insecure=True
                     ) as gc:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
@@ -36,7 +36,7 @@ try:
         # print(gc.capabilities())
 
         # 2. Getリクエストの実行
-        response = gc.get(path=INTERFACE_PATH, encoding='proto')
+        response = gc.get(path=paths, encoding='proto')
 
         # 3. 取得結果の処理
         if 'notification' in response and response['notification']:

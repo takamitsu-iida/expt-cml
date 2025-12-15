@@ -635,14 +635,24 @@ system grpc-server transport-security true
 
 商用環境で使う場合、このファイルを差し替えるのではなく、別の証明書を指定します。
 
-
-
-
-
 SAMPLEの間隔は最小30秒。それ以下を指定しても30秒間隔になります。
 
+実行例。
 
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
+✅ ルータ 192.168.254.1:9339 への接続に成功しました。
 
+⏳ Subscribe (mode=STREAM) リクエストを送信中... (Ctrl+Cで終了)
+時刻: 1765774295520372665, パス: interfaces/interface[name=swp1]/state/counters/in-octets, 値: 4684177
+時刻: 1765774295520837391, パス: interfaces/interface[name=swp1]/state/counters/out-octets, 値: 4678344
+時刻: 1765774325533688884, パス: interfaces/interface[name=swp1]/state/counters/out-octets, 値: 4690443
+時刻: 1765774325533816253, パス: interfaces/interface[name=swp1]/state/counters/in-octets, 値: 4693290
+^C
+
+🛑 ユーザーによって処理が中断されました (Ctrl+C)。
+✅ プログラムを終了します。
+```
 
 <br><br>
 

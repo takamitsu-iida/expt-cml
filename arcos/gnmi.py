@@ -31,8 +31,8 @@ try:
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
         # 2. Getリクエストの実行
-        # 🚨 最終修正点: encoding='PROTO' を指定
-        response = gc.get(path=INTERFACE_PATH, datatype='state', encoding='proto')
+        # , encoding='proto'
+        response = gc.get(path=INTERFACE_PATH, datatype='state')
 
         # 3. 取得結果の処理
         if 'notification' in response and response['notification']:
@@ -59,4 +59,3 @@ try:
 
 except Exception as e:
     print(f"🚨 接続またはデータ取得中にエラーが発生しました: {e}")
-    print("ヒント: ルータがサポートする唯一のエンコーディングが 'PROTO' であることを確認しました。この設定で問題が解決するはずです。")

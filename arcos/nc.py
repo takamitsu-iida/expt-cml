@@ -1,30 +1,47 @@
 #!/usr/bin/env python
 
-from ncclient import manager
-from ncclient.transport.errors import AuthenticationError, TransportError
-from ncclient.operations.rpc import RPCError
-import xml.dom.minidom
+import argparse
+import os
+import sys
 import xml.etree.ElementTree as ET
 
-# --- 接続情報の設定 (変更なし) ---
+
+try:
+    from ncclient import manager
+    from ncclient.transport.errors import AuthenticationError, TransportError
+    from ncclient.operations.rpc import RPCError
+except ImportError:
+    print("ncclientをインストールしてください")
+    sys.exit(1)
+
+# --- 接続情報の設定 ---
 TARGET_HOST = "192.168.254.1"
 TARGET_PORT = 830
 TARGET_USER = "cisco"
 TARGET_PASS = "cisco123"
 
-# 実行する操作: <get-config> のみ
+# running, candidate, startup
 NETCONF_GET_CONFIG_SOURCE = 'running'
 
-# OpenConfigのネームスペース定義
-OC_IF_NS = "http://openconfig.net/yang/interfaces"
-OC_STATE_TAG = f"{{{OC_IF_NS}}}state" # XPathで名前空間を使用するためのタグ
+# 保存先ファイルパス
+OUTPUT_DIR = "./xml"
+OUTPUT_FILE = f"{OUTPUT_DIR}/{TARGET_HOST}.xml"
 
-def connect_to_netconf_device():
-    conn = None
+def get_xml_config(config_file: str = OUTPUT_FILE):
+    """
+    NETCONFで装置から設定を取得し、ファイルに保存する
+
+    Args:
+        config_file: 保存先のXML設定ファイルパス
+
+    Returns:
+        bool: 成功時True、失敗時False
+    """
     try:
+
         print(f"➡️ NETCONF接続を試行中: {TARGET_HOST}:{TARGET_PORT} (ユーザー: {TARGET_USER})")
 
-        conn = manager.connect(
+        with manager.connect(
             host=TARGET_HOST,
             port=TARGET_PORT,
             username=TARGET_USER,
@@ -33,69 +50,167 @@ def connect_to_netconf_device():
             allow_agent=False,
             look_for_keys=False,
             timeout=30
-        )
+        ) as conn:
 
-        print(f"✅ NETCONFセッションが確立されました。セッションID: {conn.session_id}")
+            print(f"✅ NETCONFセッションが確立されました。セッションID: {conn.session_id}")
 
-        # --- データの取得 (前回成功した <get-config> を実行) ---
-        print(f"\n➡️ <get-config> RPCを送信中 (ソース: <{NETCONF_GET_CONFIG_SOURCE}>)...")
+            # --- データの取得 (<get-config> を実行) ---
+            print(f"\n➡️ <get-config> RPCを送信中 (ソース: <{NETCONF_GET_CONFIG_SOURCE}>)...")
 
-        result = conn.get_config(source=NETCONF_GET_CONFIG_SOURCE)
+            result = conn.get_config(source=NETCONF_GET_CONFIG_SOURCE)
 
-        # --- 結果の解析とインターフェース状態の抽出 ---
-        xml_output = result.xml
+            xml_output = result.xml
 
-        # 1. XMLをElementTreeでパース
-        root = ET.fromstring(xml_output)
+            # XMLをElementTreeでパース
+            root = ET.fromstring(xml_output)
+            print(f"✅ XMLパースが完了しました。ルート要素: {root.tag}")
 
-        # 2. OpenConfigのネームスペースを登録
-        namespaces = {'oc-if': OC_IF_NS}
+            # XMLをファイルに保存
+            os.makedirs(os.path.dirname(config_file) or '.', exist_ok=True)
 
-        # 3. インターフェースの 'state' データを検索
-        # OpenConfigのパス: /interfaces/interface/state
-        # ncclientの応答は <rpc-reply><data> から始まる
-        interface_states = root.findall('.//oc-if:interface/oc-if:state', namespaces)
+            with open(config_file, 'w', encoding='utf-8') as f:
+                f.write(xml_output)
 
-        if not interface_states:
-            # state タグが見つからなかった場合、別のパスで検索するか、コンフィグと状態が分離していると結論
-            print("\n⚠️ OpenConfigの '/interface/state' パスから状態データを見つけられませんでした。")
-            print("ArcOSは状態データと設定データを分離しており、<get>操作を意図的にブロックしているようです。")
-            print("しかし、取得したXML全体を整形して表示します。インターフェースの状態（Config部分）が含まれているか確認してください。")
+            print(f"✅ XML設定を保存しました: {config_file}")
+            return True
 
-            # 見つからなかった場合、取得したXML全体を整形して表示
-            dom = xml.dom.minidom.parseString(xml_output)
-            print("\n--- 取得結果 (全 running config XML) ---")
-            print(dom.toprettyxml(indent="  "))
-        else:
-            # 状態データが見つかった場合
-            print("\n✅ インターフェース状態データを発見しました。")
-
-            # 各インターフェースの状態を出力
-            for state_elem in interface_states:
-                name_tag = state_elem.find('../oc-if:name', namespaces)
-                name = name_tag.text if name_tag is not None else "Unknown"
-
-                oper_status_tag = state_elem.find('oc-if:oper-status', namespaces)
-                oper_status = oper_status_tag.text if oper_status_tag is not None else "N/A"
-
-                print(f"--- インターフェース: {name} ---")
-                print(f"  オペレーショナルステータス: {oper_status}")
-                # XML要素を文字列に変換して表示 (詳細)
-                print("  詳細データ:")
-                print(ET.tostring(state_elem, encoding='unicode', method='xml'))
+        print("\n接続を閉じました。")
 
     except AuthenticationError:
         print("❌ 認証エラー: ユーザー名またはパスワードが正しくありません。")
+        return False
     except TransportError as e:
         print(f"❌ 接続/トランスポートエラーが発生しました: {e}")
+        return False
     except RPCError as e:
         print(f"❌ NETCONF RPCエラーが発生しました: {e}")
+        return False
     except Exception as e:
         print(f"❌ 致命的なエラーが発生しました: {e}")
-    finally:
-        if conn:
-            conn.close_session()
-            print("\n接続を閉じました。")
+        return False
+
+
+def apply_xml_config(config_file: str = OUTPUT_FILE):
+    """
+    保存したXML設定ファイルをNETCONFで装置に反映させる
+
+    Args:
+        config_file: 反映させるXML設定ファイルのパス
+
+    Returns:
+        bool: 成功時True、失敗時False
+    """
+    try:
+        # ファイルの存在確認
+        if not os.path.exists(config_file):
+            print(f"❌ 設定ファイルが見つかりません: {config_file}")
+            return False
+
+        # XMLファイルを読み込む
+        with open(config_file, 'r', encoding='utf-8') as f:
+            xml_config = f.read()
+
+        print(f"➡️ NETCONF接続を試行中: {TARGET_HOST}:{TARGET_PORT} (ユーザー: {TARGET_USER})")
+
+        with manager.connect(
+            host=TARGET_HOST,
+            port=TARGET_PORT,
+            username=TARGET_USER,
+            password=TARGET_PASS,
+            hostkey_verify=False,
+            allow_agent=False,
+            look_for_keys=False,
+            timeout=30
+        ) as conn:
+
+            print(f"✅ NETCONFセッションが確立されました。セッションID: {conn.session_id}")
+
+            # --- 設定を装置に反映 (<edit-config> を実行) ---
+            print(f"\n➡️ <edit-config> RPCを送信中...")
+            print(f"   設定ファイル: {config_file}")
+
+            result = conn.edit_config(
+                target='candidate',
+                config=xml_config,
+                default_operation='merge'
+            )
+
+            print(f"✅ <edit-config>が成功しました")
+
+            # --- 変更内容をコミット ---
+            print(f"\n➡️ <commit> RPCを送信中...")
+
+            result = conn.commit()
+
+            print(f"✅ <commit>が成功しました。設定が装置に反映されました")
+            return True
+
+        print("\n接続を閉じました。")
+
+    except AuthenticationError:
+        print("❌ 認証エラー: ユーザー名またはパスワードが正しくありません。")
+        return False
+    except TransportError as e:
+        print(f"❌ 接続/トランスポートエラーが発生しました: {e}")
+        return False
+    except RPCError as e:
+        print(f"❌ NETCONF RPCエラーが発生しました: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ 致命的なエラーが発生しました: {e}")
+        return False
+
+
+
+def main():
+    """メイン関数：argparseで引数処理"""
+    parser = argparse.ArgumentParser(
+        description='NETCONF設定操作ツール',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+使用例:
+  python nc.py get                          # デフォルトパスに設定を保存
+  python nc.py get -f ./xml/custom.xml     # カスタムパスに設定を保存
+  python nc.py apply                        # デフォルトパスから設定を反映
+  python nc.py apply -f ./xml/custom.xml   # カスタムパスから設定を反映
+        '''
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='実行するコマンド')
+
+    # get コマンド
+    get_parser = subparsers.add_parser('get', help='装置から設定を取得してファイルに保存')
+    get_parser.add_argument(
+        '-f', '--file',
+        type=str,
+        default=OUTPUT_FILE,
+        help=f'保存先ファイルパス (デフォルト: {OUTPUT_FILE})'
+    )
+
+    # apply コマンド
+    apply_parser = subparsers.add_parser('apply', help='ファイルから設定を読み込んで装置に反映')
+    apply_parser.add_argument(
+        '-f', '--file',
+        type=str,
+        default=OUTPUT_FILE,
+        help=f'設定ファイルパス (デフォルト: {OUTPUT_FILE})'
+    )
+
+    args = parser.parse_args()
+
+    # 引数がなければhelpを表示
+    if not args.command:
+        parser.print_help()
+        sys.exit(0)
+
+    # コマンドに応じて処理
+    if args.command == 'get':
+        success = get_xml_config(args.file)
+        sys.exit(0 if success else 1)
+    elif args.command == 'apply':
+        success = apply_xml_config(args.file)
+        sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
-    connect_to_netconf_device()
+    main()

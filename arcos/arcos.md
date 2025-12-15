@@ -608,7 +608,7 @@ gNMIで規定されている4種類のRPCのうち、GetとSetは動きません
 system grpc-server enable true
 ```
 
-有効にすると TCP 9339 で待ち受けを開始します。デフォルトでは暗号化されてません。
+有効にすると TCP 9339 で待ち受けを開始します。デフォルトでは、通信は暗号化されません。
 
 着信するインタフェースを指定できます。
 
@@ -637,6 +637,8 @@ system grpc-server transport-security true
 
 SAMPLEの間隔は最小30秒。それ以下を指定しても30秒間隔になります。
 
+サンプルスクリプト　[gnmi.py](/arcos/gnmi.py)
+
 実行例。
 
 ```bash
@@ -660,46 +662,29 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 
 初期状態でmanagementという名前のvrfが作られていますが、装置へのアクセスはmanagement vrfに制限されているわけではなさそうです。
 
-たとえば、SSHを有効にする設定はこれですが、どこからのアクセスを許可する、という設定はありません。他のプロトコルも同様です。
+装置への通信はCoPPとコントロールプレーンACLで制御できます。
 
-```text
-system ssh-server enable true
-```
+処理の順序は、CoPP → コントロールプレーンACL、の順になっています。
 
-<br>
 
-CoPP → コントロールプレーンACLの順に適用されるみたい。
 
 <br><br>
 
 ## logging設定
 
+
+
 <br><br>
 
 ## NTP設定
+
+
 
 <br><br>
 
 ## SNMP設定
 
 <br><br>
-
-
-
-
-
-
-
-<br><br>
-
-
-
-
-
-
-
-
-
 
 
 

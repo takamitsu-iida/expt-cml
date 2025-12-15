@@ -31,17 +31,20 @@ try:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
+        path1 = 'interfaces/interface[name=swp1]/state/counters/in-octets'
+        path2 = 'interfaces/interface[name=swp1]/state/counters/out-octets'
+
         subscribe = {
             'subscription': [
                 {
-                    'path': 'interfaces/interface[name=swp1]/state/counters/in-octets',
+                    'path': path1,
                     'mode': 'sample',
-                    'sample_interval': 3000  # ミリ秒
+                    'sample_interval': 30000  # ミリ秒 = 30秒 ArcOSの最小値
                 },
                 {
-                    'path': 'interfaces/interface[name=swp1]/state/counters/out-octets',
+                    'path': path2,
                     'mode': 'sample',
-                    'sample_interval': 3000  # ミリ秒
+                    'sample_interval': 30000
                 },
             ],
             'use_aliases': False,
@@ -59,13 +62,16 @@ try:
                 parsed_data = telemetryParser(telemetry_entry)
 
                 if 'update' in parsed_data:
+
                     for update in parsed_data['update']['update']:
                         timestamp = parsed_data['update']['timestamp']
                         path = update['path']
                         value = update['val']
+
                         print(f"時刻: {timestamp}, パス: {path}, 値: {value}")
 
                         update_count += 1
+
                         if update_count >= MAX_UPDATES:
                             break
 

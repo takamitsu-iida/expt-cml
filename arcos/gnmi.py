@@ -3,8 +3,7 @@
 import sys
 
 try:
-    from pygnmi.client import gNMIclient
-
+    from pygnmi.client import gNMIclient, telemetryParser
 except ImportError:
     print(f"pygnmiをインストールしてください")
     sys.exit(1)
@@ -31,55 +30,30 @@ try:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
-        # 2. Subscribeリクエストの実行 (ONCEモード)
-        print("\n⏳ Subscribe (mode=ONCE) リクエストを送信中...")
+        subscribe = {
+            'subscription': [
+                {
+                    'path': 'interfaces/interface[name=swp1]/state/counters/in-octets',
+                    'mode': 'sample',
+                    'sample_interval': 10000000000
+                },
+                {
+                    'path': 'interfaces/interface[name=swp1]/state/counters/out-octets',
+                    'mode': 'sample',
+                    'sample_interval': 10000000000
+                },
+            ],
+            'use_aliases': False,
+            'mode': 'stream',
+            'encoding': 'proto'
+        }
 
-        # 🚨 修正点: subscribe 引数を dict のリスト形式で定義し、
-        #           mode と encoding も合わせて指定する
+        telemetry_stream = gc.subscribe(subscribe=subscribe)
 
-        # OpenConfigのstateデータ（センサー値）を取得
-        SUBSCRIPTIONS = [
-            {
-                'path': path,
-                'mode': 'once',         # ArcOSの Get() 非サポートに対応
-                'encoding': 'proto',    # ArcOSがサポートする唯一のエンコーディング
-                'sample_interval': 0,   # ONCEモードでは無視されますが、念のため設定
-                'suppress_redundant': False, # ONCEモードでは無視されます
-                'heartbeat_interval': 0,
-            }
-            for path in INTERFACE_PATH
-        ]
+        for telemetry_entry in telemetry_stream:
+            print(telemetryParser(telemetry_entry))
 
-        # Subscribeリクエストはジェネレータ（イテレータ）を返します
-        # subscribe 引数には、上記で定義した SUBSCRIPTIONS リストを渡します。
-        subscribe_response = gc.subscribe(
-            subscribe=SUBSCRIPTIONS
-        )
 
-        # 3. 取得結果の処理
-        for response in subscribe_response:
-            if 'update' in response:
-                print("\n📜 取得したインターフェース情報 (Subscribe Update):")
-                # 複数の更新が含まれる可能性があるため、反復処理
-                for update in response['update']:
-                    path_str = gc.format_path(update['path'])
-                    # PROTOエンコーディングの場合、値は val に直接格納されるはず
-                    value = update.get('val', 'N/A (No value)')
-
-                    print(f"  - パス: {path_str}")
-                    print(f"    値: {value}")
-
-            elif 'sync_response' in response:
-                # ONCEモードの場合、sync_response はデータの終端を示します
-                print("--- データの終端に到達しました (Sync Response) ---")
-                break # ONCEモードなので sync_response が来たら終了
-
-            # Subscribeの場合、エラーが発生するとストリーム全体が閉じます
-            elif 'error' in response:
-                print(f"❌ Subscribe中にエラーが発生しました: {response['error']}")
-                break
-
-        print("✅ Subscribe リクエストの処理が完了しました。")
 
 except Exception as e:
     print(f"🚨 接続またはデータ取得中にエラーが発生しました: {e}")

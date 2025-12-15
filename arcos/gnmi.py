@@ -32,7 +32,7 @@ try:
 
         # 2. Getリクエストの実行
         # 🚨 最終修正点: encoding='PROTO' を指定
-        response = gc.get(path=INTERFACE_PATH, datatype='state', encoding='PROTO')
+        response = gc.get(path=INTERFACE_PATH, datatype='state', encoding='proto')
 
         # 3. 取得結果の処理
         if 'notification' in response and response['notification']:

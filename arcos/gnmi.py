@@ -36,7 +36,7 @@ try:
         # print(gc.capabilities())
 
         # 2. Getリクエストの実行
-        response = gc.get(path=INTERFACE_PATH, datatype='state', encoding='proto')
+        response = gc.get(path=INTERFACE_PATH, encoding='proto')
 
         # 3. 取得結果の処理
         if 'notification' in response and response['notification']:

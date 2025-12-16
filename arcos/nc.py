@@ -72,7 +72,24 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
                 if xml_formatted.startswith('<?xml'):
                     xml_formatted = '\n'.join(xml_formatted.split('\n')[1:]).lstrip()
 
-                # <data xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+                # <data> 要素を削除し、その中身のみを抽出
+                root = ET.fromstring(xml_output)
+
+                # <data> 要素の子要素のみを抽出
+                config_elements = []
+                for child in root:
+                    config_elements.append(ET.tostring(child, encoding='unicode'))
+
+                if config_elements:
+                    # 複数の要素を整形して保存
+                    xml_formatted = '\n'.join(config_elements)
+                    # 整形処理
+                    dom_formatted = xml.dom.minidom.parseString(f'<root>{"".join(config_elements)}</root>')
+                    xml_formatted = dom_formatted.toprettyxml(indent="  ", encoding="utf-8").decode("utf-8")
+                    # XML宣言と <root> タグを削除
+                    lines = xml_formatted.split('\n')[1:]  # XML宣言削除
+                    lines = [line for line in lines if not line.strip().startswith('<root') and not line.strip().startswith('</root')]
+                    xml_formatted = '\n'.join(lines).strip()
 
             except Exception as e:
                 print(f"⚠️ XMLフォーマット失敗、元の形式で保存します: {e}")

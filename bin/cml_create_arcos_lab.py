@@ -181,8 +181,8 @@ system clock timezone-name Asia/Tokyo
 system ssh-server enable true
 system ssh-server permit-root-login true
 system cli commit-message true
-system netconf-server enable false
-system netconf-server transport ssh enable false
+system netconf-server enable true
+system netconf-server transport ssh enable true
 system restconf-server enable false
 system aaa authentication admin-user admin-password $6$cY9EPmy0Nms9aP1k$Z2HzLTQGLpu5mlYx/dw0rWlsXM.Y3D56m7OBSkNWdpEuJC/Htnk36jPDGZ8yqNgsOzWbo3qQDEcxz8LJ3rnim0
 system aaa authentication user admin
@@ -416,8 +416,8 @@ system clock timezone-name Asia/Tokyo
 system ssh-server enable true
 system ssh-server permit-root-login true
 system cli commit-message true
-system netconf-server enable false
-system netconf-server transport ssh enable false
+system netconf-server enable true
+system netconf-server transport ssh enable true
 system restconf-server enable false
 system aaa authentication admin-user admin-password $6$q.g4YxQzck5YdWdt$7ePZ1heUAqjJ9g2u07LQTxtA8D4K.B11I8jRmeLLHFLhJYRTkoHfPx/E.Fun/U2adMLRPEiWSdoR5L.lncKZ/.
 system aaa authentication user cisco

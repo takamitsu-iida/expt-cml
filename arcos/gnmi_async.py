@@ -1,12 +1,52 @@
 #!/usr/bin/env python
 
+"""
+【事前準備】
+
+＊適当な作業ディレクトリを作成
+
+mkdir proto
+cd proto
+
+＊gNMI protoファイルを取得
+
+wget https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi/gnmi.proto
+wget https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi_ext/gnmi_ext.proto
+
+＊必要なライブラリをインストール
+
+pip install grpcio grpcio-tools asyncio-grpc
+
+＊プロトコルバッファをコンパイル
+
+python -m grpc_tools.protoc -I. \
+    --python_out=. \
+    --grpc_python_out=. \
+    --pyi_out=. \
+    gnmi.proto gnmi_ext.proto
+
+
+
+
+"""
+
 import asyncio
 import logging
 import random
 import time
 from typing import Dict, Any
 
-from pygnmi.client import gNMIclient
+
+import ssl
+from typing import AsyncIterator
+
+import grpc
+from asyncio_grpc import Channel
+
+# ローカルにある、生成したprotobufモジュールをインポート
+import gnmi_pb2
+import gnmi_pb2_grpc # gnmi_pb2_grpc.py が生成されている場合
+
 
 
 
@@ -18,7 +58,6 @@ logger = logging.getLogger('gNMI_Telemetry')
 INITIAL_DELAY = 1      # 最初の再接続までの待機時間（秒）
 MAX_RETRY_DELAY = 120  # 最大待機時間（秒）
 MAX_RETRY_ATTEMPTS = 5 # 接続を諦めるまでの最大試行回数 (無限ループのため、省略可だが、実用上は必要)
-
 
 # 収集するテレメトリパスの定義
 TELEMETRY_PATH = [
@@ -90,68 +129,128 @@ async def data_processor(data_queue: asyncio.Queue):
     logger.info("Data Processor task stopped.")
 
 
-# =================================================================
-# 2. 接続・収集タスク (TelemetryCollector)
-# =================================================================
+TARGET_ADDRESS = "192.168.254.1:9339"
 
-async def collect_telemetry(host: str, port: int, user: str, password: str, data_queue: asyncio.Queue):
-    """
-    指定されたルータに接続し、データを受信したらキューに投入する。
-    切断時には指数バックオフで再接続を試みる。
-    """
+
+async def collector(host: str, port: int, user: str, password: str, data_queue: asyncio.Queue):
+
     retry_delay = INITIAL_DELAY
 
     while True:
-        client = None # ループごとにクライアント変数をリセット
+        channel = None # ループごとにクライアント変数をリセット
 
         try:
-            logger.info(f"[{host}] Attempting connection. Delay: {retry_delay:.2f}s")
 
+            # SSL/TLS 接続の場合
+            # 必要に応じて、信頼されたルート証明書 (root_certificates) や
+            # クライアント証明書とキー (private_key, certificate_chain) を設定
+            # production環境では必ずSSL/TLSを使用してください
+            # insecure_channelを使用すると警告が出されます。
+            # credentials = grpc.ssl_channel_credentials()
+            # channel = Channel(TARGET_ADDRESS, credentials=credentials)
 
-            client = gNMIclient(
-                target=(host, port),
-                username=user,
-                password=password,
-                insecure=True,
-                # Keepalive設定は、インスタンス化の引数で渡します (前述の通り)
+            # 開発/テスト目的で、SSL/TLSなしの接続（非推奨）
+            # 実際にはTLSを使用すべきです
+            channel = Channel(f"{host}:{port}", plaintext=True)
+
+            # gNMI Stub を作成
+            # gnmi_pb2_grpc に AsyncgNMIStub が含まれていると期待します
+            # grpcio-tools のバージョンによっては、AsyncStub のクラス名が異なる場合があります
+            # もし AsyncgNMIStub が見つからない場合:
+            # 1. gnmi_pb2_grpc.py の中身を確認し、正しい Stub オブジェクト名を探す
+            # 2. 最新のgrpcio-toolsでは、非同期Stubは grpc.aio.ClientInterceptor か、
+            #    より高レベルなインターフェースで提供されることが多いです。
+            #    asyncio-grpc 自体が非同期バージョンとして機能するので、
+            #    gnmi_pb2_grpc.gNMIStub(channel) でも Async を扱える可能性があります。
+            # ここでは asyncio-grpc の推奨される方法で Stub を取得します。
+            # gnmi_pb2_grpc.gNMIStub は同期 Stub なので、asyncio-grpc の Channel を通して使う方式です。
+            stub = gnmi_pb2_grpc.gNMIStub(channel)
+
+            # SubscribeRequest の設定
+            subscribe_request = gnmi_pb2.SubscribeRequest(
+                subscribe=gnmi_pb2.SubscriptionList(
+                    mode=gnmi_pb2.SubscriptionList.Mode.STREAM,
+                    subscription=[
+                        gnmi_pb2.Subscription(
+                            path=gnmi_pb2.Path(
+                                elem=[
+                                    gnmi_pb2.PathElem(name="interfaces"),
+                                    gnmi_pb2.PathElem(name="interface", key={"name": "*"}),
+                                    gnmi_pb2.PathElem(name="state"),
+                                    gnmi_pb2.PathElem(name="counters"),
+                                    gnmi_pb2.PathElem(name="in-octets"),
+                                ]
+                            ),
+                            mode=gnmi_pb2.SubscriptionMode.SAMPLE,
+                            sample_interval=10_000_000_000,  # 10秒（ナノ秒）
+                        ),
+                        gnmi_pb2.Subscription(
+                            path=gnmi_pb2.Path(
+                                elem=[
+                                    gnmi_pb2.PathElem(name="interfaces"),
+                                    gnmi_pb2.PathElem(name="interface", key={"name": "*"}),
+                                    gnmi_pb2.PathElem(name="state"),
+                                    gnmi_pb2.PathElem(name="counters"),
+                                    gnmi_pb2.PathElem(name="out-octets"),
+                                ]
+                            ),
+                            mode=gnmi_pb2.SubscriptionMode.SAMPLE,
+                            sample_interval=10_000_000_000,  # 10秒（ナノ秒）
+                        ),
+                    ],
+                )
             )
 
-            await client.connect()
-
-            logger.info(f"[{host}] Successfully connected. Starting subscribe stream...")
-
-            # 接続成功 => 遅延時間をリセット
-            retry_delay = INITIAL_DELAY
-
-
-            async for stream_data in client.subscribe(subscribe=SUBSCRIBE_REQUEST):
-
-                if stream_data.HasField('update'):
-                    updates = stream_data.update.update
+            print("Sending SubscribeRequest...")
+            # Subscribe RPC を呼び出し、レスポンスを非同期でイテレート
+            async for response in stub.Subscribe(subscribe_request):
+                print("\n--- Received gNMI Notification ---")
+                if response.sync_response:
+                    print("Sync response received.")
+                elif response.error:
+                    print(f"Error: {response.error}")
+                elif response.update:
+                    update = response.update
                     # タイムスタンプはナノ秒単位で来るので、秒単位に変換
-                    timestamp_s = stream_data.update.timestamp / 1e9
+                    timestamp_s = update.timestamp / 1e9
+                    print(f"Timestamp: {timestamp_s}")
 
-                    # --- キューへの投入処理 ---
-                    for update in updates:
-                        path = client.path_to_string(update.path)
-                        value = client.gnmi_to_value(update)
+                    if update.prefix:
+                        # prefixはPathオブジェクトなので、文字列に変換して表示
+                        prefix_path = "/".join([elem.name for elem in update.prefix.elem])
+                        print(f"Prefix: /{prefix_path}")
+
+                    for delete_path in update.delete:
+                        delete_path_str = "/".join([elem.name for elem in delete_path.elem])
+                        print(f"  Deleted: /{delete_path_str}")
+
+                    for update_val in update.update:
+                        path_str = "/".join([elem.name for elem in update_val.path.elem])
+                        # 値のタイプによって表示を調整
+                        if update_val.val.HasField("json_ietf_val"):
+                            # json_ietf_valはbytesなのでデコード
+                            print(f"  Updated: /{path_str} = {update_val.val.json_ietf_val.decode('utf-8')}")
+                        elif update_val.val.HasField("string_val"):
+                            print(f"  Updated: /{path_str} = {update_val.val.string_val}")
+                        elif update_val.val.HasField("int_val"):
+                            print(f"  Updated: /{path_str} = {update_val.val.int_val}")
+                        # 他のvalタイプも必要に応じて追加
+                        else:
+                            print(f"  Updated: /{path_str} = (Value Type Not Handled) {update_val.val}")
 
                         telemetry_record = {
                             'host': host,
-                            'path': path,
-                            'value': value,
+                            'path': path_str,
+                            'value': update_val.val,
                             'timestamp': timestamp_s,
                             'received_at': time.time()
                         }
 
                         # キューにデータを投入
                         await data_queue.put(telemetry_record)
-                    # -------------------------
-
-                elif stream_data.HasField('error'):
-                    logger.error(f"[{host}] Stream Error received: {stream_data.error}")
 
             logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
+
 
         except asyncio.CancelledError:
             logger.warning(f"[{host}] Telemetry collection task was cancelled. Exiting.")
@@ -162,15 +261,13 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
 
         finally:
 
-            if client:
-                # 切断も非同期操作なので await が必要
+            if channel:
                 try:
-                    await client.close()
+                    await channel.close()
                 except Exception as close_e:
                     # close自体が失敗する場合もあるが、無視して再接続へ
-                    logger.debug(f"[{host}] Error during client close: {close_e}")
+                    logger.debug(f"[{host}] Error during channel close: {close_e}")
 
-            # 3. 再接続のための待機と指数バックオフ計算
             await asyncio.sleep(retry_delay)
             new_delay = retry_delay * 2
 
@@ -202,7 +299,7 @@ async def main():
     collection_tasks = []
     for router in router_inventory:
         task = asyncio.create_task(
-            collect_telemetry(router['host'], router['port'], router['user'], router['password'], data_queue)
+            collector(router['host'], router['port'], router['user'], router['password'], data_queue)
         )
         collection_tasks.append(task)
 

@@ -6,7 +6,7 @@ import random
 import time
 from typing import Dict, Any
 
-from pygnmi.client import gNMIClient
+from pygnmi.client import gNMIclient
 
 
 
@@ -109,7 +109,7 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
 
             # 1. 非同期クライアントの初期化と接続
 
-            client = gNMIClient(
+            client = gNMIclient(
                 target=(host, port),
                 username=user,
                 password=password,

@@ -15,7 +15,7 @@ wget https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi_ext/gnm
 
 ＊必要なライブラリをインストール
 
-pip install grpcio grpcio-tools asyncio-grpc
+pip install grpcio grpcio-tools
 
 ＊プロトコルバッファをコンパイル
 
@@ -25,23 +25,16 @@ python -m grpc_tools.protoc -I. \
     --pyi_out=. \
     gnmi.proto gnmi_ext.proto
 
-
-
-
 """
 
 import asyncio
 import logging
 import random
 import time
-from typing import Dict, Any
-
+from typing import Dict, Any, AsyncIterator
 
 import ssl
-from typing import AsyncIterator
-
-import grpc
-from asyncio_grpc import Channel
+import grpc.aio # ここが変更点1
 
 # ローカルにある、生成したprotobufモジュールをインポート
 import gnmi_pb2

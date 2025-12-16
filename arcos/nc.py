@@ -67,7 +67,6 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
 
             # XMLをファイルに保存
             os.makedirs(os.path.dirname(config_file) or '.', exist_ok=True)
-
             with open(config_file, 'w', encoding='utf-8') as f:
                 # XML宣言を追加
                 # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -75,6 +74,7 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
                 f.write(xml_output)
 
             print(f"✅ XML設定を保存しました: {config_file}")
+
             return True
 
         print("\n接続を閉じました。")

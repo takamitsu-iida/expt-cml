@@ -179,6 +179,7 @@ system hostname P{{ rid }}
 system login-banner "ArcOS (c) Arrcus, Inc."
 system clock timezone-name Asia/Tokyo
 system ssh-server enable true
+system ssh-server permit-root-login true
 system cli commit-message true
 system netconf-server enable false
 system netconf-server transport ssh enable false

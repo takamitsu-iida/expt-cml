@@ -522,15 +522,68 @@ ipv4-entries entry 192.168.255.2/32
 
 所属しているのがadminsグループか、operatorsグループかで振る舞いが変わります。
 
+CML上の仮想インスタンスの場合はこのような動きでした。
+実際のハードウェアアプライアンスでは異なる動きになるかもしれません。
+
 - rootでSSH接続　→　"default" vrfのbashが開きます。
 - rootでコンソール接続　→　"default" vrfのbashが開きます。
-- adminsグループのユーザでコンソール接続　→　できません。
-- operatorsグループのユーザでコンソール接続　→　できません。
+- adminsグループのユーザでコンソール接続　→　CLIが開きます。
+- operatorsグループのユーザでコンソール接続　→　CLIが開きます。
 - adminsグループのユーザがSSH接続　→　CLIに入ります（bashコマンドでシェルも使えます）。
 - operatorsグループのユーザがSSH接続　→　CLIに入ります。設定変更はできません。
 
+<br>
 
+ユーザrootでSSHした場合の例。bashに入ります。
 
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ssh 192.168.254.1 -l root
+Warning: Permanently added '192.168.254.1' (ED25519) to the list of known hosts.
+ArcOS (c) Arrcus, Inc.
+root@192.168.254.1's password:
+root@P1:~#
+root@P1:~# ls
+root@P1:~# pwd
+/root
+```
+
+ユーザciscoでSSHした場合の例。CLIが走ります。
+
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ssh 192.168.254.1 -l cisco
+Warning: Permanently added '192.168.254.1' (ED25519) to the list of known hosts.
+ArcOS (c) Arrcus, Inc.
+cisco@192.168.254.1's password:
+Welcome to the ArcOS CLI
+cisco connected from 192.168.254.100 using ssh on P1
+
+cisco@P1# ?
+Possible completions:
+  bash                     Launch a bash shell
+  cd                       Change working directory
+  clear                    Clear domain specific information
+```
+
+ユーザoperatorでSSH接続した場合。CLIが走りますが、設定変更はできません。
+
+```bash
+isco@jumphost:~/expt-cml/arcos$ ssh 192.168.254.1 -l operator
+Warning: Permanently added '192.168.254.1' (ED25519) to the list of known hosts.
+ArcOS (c) Arrcus, Inc.
+operator@192.168.254.1's password:
+Welcome to the ArcOS CLI
+User operator last logged in 2025-12-15T05:13:49.703133+00:00, to P1, from 127.0.0.1 using cli-console
+operator connected from 192.168.254.100 using ssh on P1
+operator@P1#
+
+operator@P1# bash
+-------------^
+syntax error: expecting
+
+operator@P1# config
+-------------^
+syntax error: expecting
+```
 
 <br><br><br>
 

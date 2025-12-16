@@ -28,7 +28,7 @@ TARGET_PASS = "cisco123"
 NETCONF_GET_CONFIG_SOURCE = 'running'
 
 # 保存先ファイルパス
-OUTPUT_DIR = "./xml"
+OUTPUT_DIR = "/tmp"
 OUTPUT_FILE = f"{OUTPUT_DIR}/{TARGET_HOST}.xml"
 
 def get_xml_config(config_file: str = OUTPUT_FILE):
@@ -67,6 +67,20 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
 
             # XMLをElementTreeでパース
             root = ET.fromstring(xml_output)
+
+            # <?xml version="1.0" encoding="UTF-8"?>
+            # <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="urn:uuid:b5d7a334-7381-4b15-8e54-c2d7c198b318" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            # <data>
+            #   <features xmlns="http://yang.arrcus.com/arcos/features">
+            #     <feature>
+            #       <name>ARCOS_RIOT</name>
+            #       <supported>false</supported>
+            #     </feature>
+            #    <feature>
+            #     <name>ARCOS_ICMP_SRC_REWRITE</name>
+            #     <supported>true</supported>
+            #    </feature>
+
             print(f"✅ XMLパースが完了しました。ルート要素: {root.tag}")
 
             # XMLをファイルに保存

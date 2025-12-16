@@ -149,8 +149,9 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
                 print("❌ 設定データが見つかりません")
                 return False
 
-            # 設定要素を結合
-            xml_config = ''.join(config_elements)
+            # 設定要素を結合して <config> ラッパーで囲む
+            xml_config_content = ''.join(config_elements)
+            xml_config = f'<config>{xml_config_content}</config>'
         except ET.ParseError:
             # XMLパース失敗時は元のテキストをそのまま使用
             xml_config = xml_config_raw

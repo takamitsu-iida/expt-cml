@@ -145,6 +145,7 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
 
         # <config xmlns="http://tail-f.com/ns/config/1.0"> ルート要素で囲む
         xml_config = f'<config xmlns="http://tail-f.com/ns/config/1.0">{xml_config_content}</config>'
+        xml_config = f'<nc:config xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">{xml_config}</nc:config>'
 
         print(f"➡️ NETCONF接続を試行中: {TARGET_HOST}:{TARGET_PORT} (ユーザー: {TARGET_USER})")
 

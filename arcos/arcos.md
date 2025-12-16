@@ -716,14 +716,12 @@ XML形式のファイルを適用する例。
 
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply -f /tmp/192.168.254.1.xml
 ➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
-✅ NETCONFセッションが確立されました。セッションID: 63
+✅ NETCONFセッションが確立されました。セッションID: 65
 
 ➡️ <edit-config> RPCを送信中...
    設定ファイル: /tmp/192.168.254.1.xml
-❌ 致命的なエラーが発生しました: Extra content at the end of the document, line 1, column 653 (<string>, line 1)
+❌ NETCONF RPCエラーが発生しました: {'type': 'protocol', 'tag': 'unknown-element', 'app_tag': None, 'severity': 'error', 'info': '<?xml version="1.0" encoding="UTF-8"?><error-info xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"><bad-element>config</bad-element>\n</error-info>\n', 'path': '\n    /rpc/edit-config\n  ', 'message': None}
 cisco@jumphost:~/expt-cml/arcos$
-
-
 
 
 

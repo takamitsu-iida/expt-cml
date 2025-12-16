@@ -8,7 +8,7 @@ import argparse
 import os
 import sys
 import xml.etree.ElementTree as ET
-
+import xml.dom.minidom
 
 try:
     from ncclient import manager
@@ -65,6 +65,16 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
 
             xml_output = result.data_xml
 
+            try:
+                dom = xml.dom.minidom.parseString(xml_output)
+                xml_formatted = dom.toprettyxml(indent="  ", encoding="utf-8").decode("utf-8")
+                # XML宣言を削除（不要な場合）
+                if xml_formatted.startswith('<?xml'):
+                    xml_formatted = '\n'.join(xml_formatted.split('\n')[1:]).lstrip()
+            except Exception as e:
+                print(f"⚠️ XMLフォーマット失敗、元の形式で保存します: {e}")
+                xml_formatted = xml_output
+
             # XMLをファイルに保存
             os.makedirs(os.path.dirname(config_file) or '.', exist_ok=True)
 
@@ -72,7 +82,7 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
                 # XML宣言を追加
                 # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
 
-                f.write(xml_output)
+                f.write(xml_formatted)
 
             print(f"✅ XML設定を保存しました: {config_file}")
             return True

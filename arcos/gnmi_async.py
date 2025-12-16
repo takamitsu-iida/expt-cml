@@ -102,57 +102,55 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
     retry_delay = INITIAL_DELAY
 
     while True:
-        client = None
 
         try:
             logger.info(f"[{host}] Attempting connection. Delay: {retry_delay:.2f}s")
 
             # 1. 非同期クライアントの初期化と接続
 
-            client = gNMIclient(
+            async with gNMIclient(
                 target=(host, port),
                 username=user,
                 password=password,
                 insecure=True,  # 本番環境ではFalseにする
-            )
+            ) as client:
 
-            # 接続を待機
-            await client.connect()
+                # 'client' は接続が確立された状態のインスタンスです
+                logger.info(f"[{host}] Successfully connected. Starting subscribe stream...")
 
-            logger.info(f"[{host}] Successfully connected. Starting subscribe stream...")
+                # 接続成功 => 遅延時間をリセット
+                retry_delay = INITIAL_DELAY
 
-            # 接続成功 => 遅延時間をリセット
-            retry_delay = INITIAL_DELAY
+                # 2. Subscribeストリームの開始とデータ受信ループ
 
-            # 2. Subscribeストリームの開始とデータ受信ループ
-            async for stream_data in client.subscribe(subscribe=SUBSCRIBE_REQUEST):
+                async for stream_data in client.subscribe(subscribe=SUBSCRIBE_REQUEST):
 
-                if stream_data.HasField('update'):
-                    updates = stream_data.update.update
-                    # タイムスタンプはナノ秒単位で来るので、秒単位に変換
-                    timestamp_s = stream_data.update.timestamp / 1e9
+                    if stream_data.HasField('update'):
+                        updates = stream_data.update.update
+                        # タイムスタンプはナノ秒単位で来るので、秒単位に変換
+                        timestamp_s = stream_data.update.timestamp / 1e9
 
-                    # --- キューへの投入処理 ---
-                    for update in updates:
-                        path = client.path_to_string(update.path)
-                        value = client.gnmi_to_value(update)
+                        # --- キューへの投入処理 ---
+                        for update in updates:
+                            path = client.path_to_string(update.path)
+                            value = client.gnmi_to_value(update)
 
-                        telemetry_record = {
-                            'host': host,
-                            'path': path,
-                            'value': value,
-                            'timestamp': timestamp_s,
-                            'received_at': time.time()
-                        }
+                            telemetry_record = {
+                                'host': host,
+                                'path': path,
+                                'value': value,
+                                'timestamp': timestamp_s,
+                                'received_at': time.time()
+                            }
 
-                        # キューにデータを投入
-                        await data_queue.put(telemetry_record)
-                    # -------------------------
+                            # キューにデータを投入
+                            await data_queue.put(telemetry_record)
+                        # -------------------------
 
-                elif stream_data.HasField('error'):
-                    logger.error(f"[{host}] Stream Error received: {stream_data.error}")
+                    elif stream_data.HasField('error'):
+                        logger.error(f"[{host}] Stream Error received: {stream_data.error}")
 
-            logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
+                logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
 
         except asyncio.CancelledError:
             logger.warning(f"[{host}] Telemetry collection task was cancelled. Exiting.")
@@ -162,9 +160,6 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
             logger.error(f"[{host}] Connection failed: {e.__class__.__name__}: {e}. Retrying.")
 
         finally:
-            if client:
-                await client.close()
-
             # 3. 再接続のための待機と指数バックオフ計算
             await asyncio.sleep(retry_delay)
             new_delay = retry_delay * 2

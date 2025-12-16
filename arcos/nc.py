@@ -168,7 +168,7 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
             print(f"   設定ファイル: {config_file}")
 
             result = conn.edit_config(
-                target='running',
+                target='candidate',
                 config=xml_config
             )
 

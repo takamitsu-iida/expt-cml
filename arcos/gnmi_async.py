@@ -19,11 +19,14 @@ pip install grpcio grpcio-tools
 
 ＊プロトコルバッファをコンパイル
 
-python -m grpc_tools.protoc -I. \
+python -m grpc_tools.protoc \
+    -I. \
     --python_out=. \
     --grpc_python_out=. \
-    --pyi_out=. \
     gnmi.proto gnmi_ext.proto
+
+これで、gnmi_pb2.py と gnmi_pb2_grpc.py が生成される
+
 
 """
 
@@ -34,13 +37,11 @@ import time
 from typing import Dict, Any, AsyncIterator
 
 import ssl
-import grpc.aio # ここが変更点1
+import grpc.aio
 
 # ローカルにある、生成したprotobufモジュールをインポート
 import gnmi_pb2
 import gnmi_pb2_grpc # gnmi_pb2_grpc.py が生成されている場合
-
-
 
 
 # ロギング設定 (変更なし)

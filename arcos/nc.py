@@ -167,9 +167,8 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
             print(f"   設定ファイル: {config_file}")
 
             result = conn.edit_config(
-                target='candidate',
-                config=xml_config,
-                default_operation='merge'
+                target='running',
+                config=xml_config
             )
 
             print(f"✅ <edit-config>が成功しました")

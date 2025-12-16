@@ -4,8 +4,10 @@ import asyncio
 import logging
 import random
 import time
-from pygnmi.client import gNMIAsyncClient
 from typing import Dict, Any
+
+from pygnmi.client import gNMIClient
+
 
 
 # ロギング設定 (変更なし)
@@ -106,11 +108,12 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
             logger.info(f"[{host}] Attempting connection. Delay: {retry_delay:.2f}s")
 
             # 1. 非同期クライアントの初期化と接続
-            client = gNMIAsyncClient(
+
+            client = gNMIClient(
                 target=(host, port),
                 username=user,
                 password=password,
-                insecure=True, # 本番環境ではFalseにする
+                insecure=True,  # 本番環境ではFalseにする
             )
 
             # 接続を待機

@@ -68,18 +68,23 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
             # XMLをElementTreeでパース
             root = ET.fromstring(xml_output)
 
-            # <?xml version="1.0" encoding="UTF-8"?>
-            # <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="urn:uuid:b5d7a334-7381-4b15-8e54-c2d7c198b318" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-            # <data>
-            #   <features xmlns="http://yang.arrcus.com/arcos/features">
-            #     <feature>
-            #       <name>ARCOS_RIOT</name>
-            #       <supported>false</supported>
-            #     </feature>
-            #    <feature>
-            #     <name>ARCOS_ICMP_SRC_REWRITE</name>
-            #     <supported>true</supported>
-            #    </feature>
+            # <rpc-reply> から <data> 要素を抽出
+            # NETCONF のデフォルト namespace を定義
+            ns = {'nc': 'urn:ietf:params:xml:ns:netconf:base:1.0'}
+            data_element = root.find('.//nc:data', ns)
+
+            if data_element is None:
+                # namespace がない場合を試す
+                data_element = root.find('.//data')
+
+            if data_element is None:
+                print("❌ <data> 要素が見つかりません")
+                return False
+
+            print(f"✅ XMLパースが完了しました。ルート要素: {root.tag}")
+
+            # <data> 要素のみを XML 文字列に変換
+            xml_output_data = ET.tostring(data_element, encoding='unicode')
 
             print(f"✅ XMLパースが完了しました。ルート要素: {root.tag}")
 
@@ -87,7 +92,9 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
             os.makedirs(os.path.dirname(config_file) or '.', exist_ok=True)
 
             with open(config_file, 'w', encoding='utf-8') as f:
-                f.write(xml_output)
+                # XML宣言を追加
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+                f.write(xml_output_data)
 
             print(f"✅ XML設定を保存しました: {config_file}")
             return True

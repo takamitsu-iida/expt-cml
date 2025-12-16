@@ -1,0 +1,226 @@
+#!/usr/bin/env python
+
+import asyncio
+import logging
+import random
+import time
+from pygnmi.client import gNMIAsyncClient
+from typing import Dict, Any
+
+
+# ロギング設定 (変更なし)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('gNMI_Telemetry')
+
+# --- 接続情報の定義 (テスト用) ---
+TARGET_HOST = "192.168.254.1"
+TARGET_PORT = 9339
+USERNAME = "cisco"
+PASSWORD = "cisco123"
+
+TELEMETRY_PATH = [
+    "/interfaces/interface[name=*]/state/counters/in-octets",
+    "/interfaces/interface[name=*]/state/counters/out-octets",
+]
+
+# --- gNMI Subscribe リクエストの作成 ---
+SUBSCRIBE_REQUEST = {
+    "subscription": [
+        {
+            "path": path,
+            "mode": "sample",
+            "sample_interval": 10_000_000_000,  # 10秒
+        } for path in TELEMETRY_PATH
+    ]
+}
+
+
+
+# --- 再接続設定 ---
+INITIAL_DELAY = 1      # 最初の再接続までの待機時間（秒）
+MAX_RETRY_DELAY = 120  # 最大待機時間（秒）
+MAX_RETRY_ATTEMPTS = 5 # 接続を諦めるまでの最大試行回数 (今回は無限ループのため、省略可だが、実用上は必要)
+
+
+# --- gNMI Subscribe リクエストの作成 (変更なし) ---
+SUBSCRIBE_REQUEST = {
+    "subscription": [
+        {
+            "path": path,
+            "mode": "sample",
+            "sample_interval": 10_000_000_000,  # 10秒
+        } for path in TELEMETRY_PATH
+    ]
+}
+
+
+# =================================================================
+# 1. データ処理タスク (DataProcessor)
+# =================================================================
+
+async def data_processor(data_queue: asyncio.Queue):
+    """
+    キューからテレメトリデータを取り出し、永続化/処理を行うタスク。
+    """
+    logger.info("Data Processor task started.")
+
+    # リアルタイム処理用のバッファ
+    data_buffer = []
+
+    try:
+        while True:
+            # キューからデータを取り出す (キューが空の場合は待機)
+            data: Dict[str, Any] = await data_queue.get()
+
+            # データの処理・バッファリング
+            data_buffer.append(data)
+
+            # キューにデータがある場合は、できるだけ早く取り出す (まとめて処理するため)
+            while not data_queue.empty():
+                data_buffer.append(data_queue.get_nowait())
+
+            # 一定サイズに達したら、データベースにまとめて書き込む (効率的)
+            if len(data_buffer) >= 10: # 例: 10個溜まったらDBに書き込む
+                # --- ここにデータベース書き込み処理を実装 ---
+                # 例: InfluxDBへの書き込み、KafkaへのPublishなど
+
+                # 実際のDB I/Oは時間がかかるため、
+                # DBクライアントがasyncに対応していない場合は、`await asyncio.to_thread(sync_db_write, data_buffer)`
+                # のように別スレッドで実行することを推奨します。
+
+                logger.info(f"Processing {len(data_buffer)} records. (Host: {data['host']}, Path: {data['path']})")
+                data_buffer = [] # バッファをクリア
+                # ----------------------------------------------
+
+            # キューのタスク完了を通知
+            data_queue.task_done()
+
+    except asyncio.CancelledError:
+        logger.warning("Data Processor task cancelled.")
+    except Exception as e:
+        logger.error(f"Data Processor failed: {e}")
+
+    logger.info("Data Processor task stopped.")
+
+
+# =================================================================
+# 2. 接続・収集タスク (TelemetryCollector)
+# =================================================================
+
+async def collect_telemetry(host: str, port: int, user: str, password: str, data_queue: asyncio.Queue):
+    """
+    指定されたルータに接続し、データを受信したらキューに投入する。
+    切断時には指数バックオフで再接続を試みる。
+    """
+    retry_delay = INITIAL_DELAY
+
+    while True:
+        client = None
+
+        try:
+            logger.info(f"[{host}] Attempting connection. Delay: {retry_delay:.2f}s")
+
+            # 1. 非同期クライアントの初期化と接続
+            client = gNMIAsyncClient(
+                target=(host, port),
+                username=user,
+                password=password,
+                insecure=True, # 本番環境では必ずFalseにしてください
+            )
+            await client.connect()
+
+            logger.info(f"[{host}] Successfully connected. Starting subscribe stream...")
+
+            # 接続成功 => 遅延時間をリセット
+            retry_delay = INITIAL_DELAY
+
+            # 2. Subscribeストリームの開始とデータ受信ループ
+            async for stream_data in client.subscribe(subscribe=SUBSCRIBE_REQUEST):
+
+                if stream_data.HasField('update'):
+                    updates = stream_data.update.update
+                    # タイムスタンプはナノ秒単位で来るので、秒単位に変換
+                    timestamp_s = stream_data.update.timestamp / 1e9
+
+                    # --- キューへの投入処理 ---
+                    for update in updates:
+                        path = client.path_to_string(update.path)
+                        value = client.gnmi_to_value(update)
+
+                        telemetry_record = {
+                            'host': host,
+                            'path': path,
+                            'value': value,
+                            'timestamp': timestamp_s,
+                            'received_at': time.time()
+                        }
+
+                        # キューにデータを投入
+                        await data_queue.put(telemetry_record)
+                    # -------------------------
+
+                elif stream_data.HasField('error'):
+                    logger.error(f"[{host}] Stream Error received: {stream_data.error}")
+
+            logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
+
+        except asyncio.CancelledError:
+            logger.warning(f"[{host}] Telemetry collection task was cancelled. Exiting.")
+            break
+
+        except Exception as e:
+            logger.error(f"[{host}] Connection failed: {e.__class__.__name__}: {e}. Retrying.")
+
+        finally:
+            if client:
+                await client.close()
+
+            # 3. 再接続のための待機と指数バックオフ計算
+            await asyncio.sleep(retry_delay)
+            new_delay = retry_delay * 2
+
+            # ジッター (ランダムなノイズ) の追加
+            jitter = random.uniform(0.8, 1.2)
+            retry_delay = min(new_delay * jitter, MAX_RETRY_DELAY)
+
+
+# =================================================================
+# 3. メイン実行部
+# =================================================================
+
+async def main():
+    router_inventory = [
+        {"host": TARGET_HOST, "port": TARGET_PORT, "user": USERNAME, "password": PASSWORD},
+        # 実際にはここに500台分の情報が入ります
+        # ... (残り499台のデータ)
+    ]
+
+    # データ共有のためのasyncio.Queueを初期化
+    data_queue = asyncio.Queue(maxsize=1000) # キューサイズを設定 (一時的なバッファリング)
+
+    # データ処理タスクを開始 (単一または複数)
+    processor_task = asyncio.create_task(data_processor(data_queue))
+
+    # 全ルータの収集Taskを作成
+    collection_tasks = []
+    for router in router_inventory:
+        task = asyncio.create_task(
+            collect_telemetry(router['host'], router['port'], router['user'], router['password'], data_queue)
+        )
+        collection_tasks.append(task)
+
+    logger.info(f"Total {len(collection_tasks)} collection tasks and 1 processor task started.")
+
+    # 全ての収集タスクが継続的に実行されるように待機
+    # 実際には、プログラムが終了するまで実行し続けます
+    await asyncio.gather(*collection_tasks, return_exceptions=True)
+
+    # 収集タスクが全て終了した場合 (通常は起こらない)、プロセッサタスクもキャンセル
+    processor_task.cancel()
+    await processor_task
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Program stopped by user via KeyboardInterrupt.")

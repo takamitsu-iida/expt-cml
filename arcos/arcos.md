@@ -469,17 +469,41 @@ PING 10.0.255.11 (10.0.255.11) from 10.0.255.12 swp1: 56(84) bytes of data.
 
 `config` コンフィグモードに遷移します。
 
+`config exclusive` 排他でコンフィグモードに遷移します。
+
 `top` コンフィグモードの中で最上位の階層に移動します。
 
 `commit` コンフィグを確定します。
 
-`show configuration` コミット前の編集されている設定を表示します。
+`commit confirmed <分>` 指定した時間（分）で元に戻します。config exclusiveが必須です。
+
+`(config)# show configuration` コミット前の編集されている設定を表示します。
 
 `show configuration running` ランニングコンフィグを表示します（コンフィグモードでも使えます）
+
+`show configuration rollback changes` ロールバックできる過去の変更を表示します。
+
+`(config)# rollback configuration <番号>` ロールバックします。
+
+`(config)# load override merge <XMLファイル>` 指定したファイルの内容をマージします。
+
+`(config)# load override override <XMLファイル>` いまの設定を全部消してから、新しいコンフィグとしてファイルの内容を読み込みます。
+
+`(config)# load override replace <XMLファイル>` ファイルで指定した部分だけを差し替えて、残りの部分は現状を維持します。
+
+`restart` プロセスを再起動します。
+
+`request system reboot` 装置を再起動します。
+
+`enter-network-instance default` defaultのインスタンスに入ります。
+
+`exit-network-instance` インスタンスから抜けます。
 
 `show network-instance default protocol ISIS MAIN interface * state`
 
 `show network-instance default rib IPV4 ipv4-entries entry displaylevel 1` ルーティングテーブルをシンプルに表示します。
+
+`show network-instance management rib IPV4 ipv4-entries entry` ma1に付いてるIPアドレスを確認します
 
 例
 
@@ -490,6 +514,22 @@ ipv4-entries entry 192.168.255.2/32
 ```
 
 `show interface swp1 counters | repeat 1` 1秒に一度、インタフェースのカウンター値を表示します。
+
+
+<br><br>
+
+## 装置へのログイン
+
+所属しているのがadminsグループか、operatorsグループかで振る舞いが変わります。
+
+- rootでSSH接続　→　"default" vrfのbashが開きます。
+- rootでコンソール接続　→　"default" vrfのbashが開きます。
+- adminsグループのユーザでコンソール接続　→　できません。
+- operatorsグループのユーザでコンソール接続　→　できません。
+- adminsグループのユーザがSSH接続　→　CLIに入ります（bashコマンドでシェルも使えます）。
+- operatorsグループのユーザがSSH接続　→　CLIに入ります。設定変更はできません。
+
+
 
 
 <br><br><br>
@@ -704,19 +744,78 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 
 ## logging設定
 
+まだ調べてないのでよくわからないのですが、装置の/var/log/に吐き出されてるのかな？
+
+これから調べます。
+
+`show log`　/var/log配下にあるファイルを表示
+
+arcosディレクトリにログがある
+
+`monitor start`　リアルタイムにログを表示、tail -fと同等
+
+
+
+
+
+## debug
+
+特定のプロトコルはデバッグをきめ細かく指定できる。
+
+`tech-support bgp-debug neighbor address 2001:db8:ffff::2 op on`
+
+それ以外は汎用のdebugコマンドを使う。
+
+`debug acl enable all`
+
+何がデバッグ対象になっているかは、`show debug`で確認する。
+
+有効にすると /var/log/arcos/<protocol>.bin_logfile.txt に記録される。
+
+`monitor start` でそのファイルを指定すればリアルタイムに表示。
+
+ログファイルは10MBを超えるとローテートする。
+
+debugは必ず止めること。
 
 
 <br><br>
 
 ## NTP設定
 
+まだ調べてません。
 
+タイムゾーンはAsia/Tokyoに変更できましたが、NTPの設定は分かりません。
+
+もしかして、Linux本体で時刻同期するのかな？
 
 <br><br>
 
 ## SNMP設定
 
+制限のかけ方を中心に調べる予定。
+
+
 <br><br>
+
+## 調べること
+
+キャプチャして流れてる通信を確認する
+
+maインタフェースをキャプチャするとDHCPv6パケットが送信され続けるので、これを停止したい。
+
+LLDPも停止したい。
+
+他にないかな？
+
+
+
+
+
+ポートスキャンをかけてみて、どのポートが開いているのか確認した。
+
+rootじゃないユーザがSSHした場合のシェルって、managementに紐づいてる？
+
 
 
 

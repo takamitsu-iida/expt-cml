@@ -712,19 +712,36 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py get
 ✅ XML設定を保存しました: /tmp/192.168.254.1.xml
 ```
 
-XML形式のファイルを適用する例。
+/tmp/192.168.254.1.xmlを手動で編集して、ホスト名を変更します。
 
+手動で変更したXML形式のファイルを適用する例。
+
+```bash
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply -f /tmp/192.168.254.1.xml
 ➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
-✅ NETCONFセッションが確立されました。セッションID: 65
+✅ NETCONFセッションが確立されました。セッションID: 106
 
 ➡️ <edit-config> RPCを送信中...
    設定ファイル: /tmp/192.168.254.1.xml
-❌ NETCONF RPCエラーが発生しました: {'type': 'protocol', 'tag': 'unknown-element', 'app_tag': None, 'severity': 'error', 'info': '<?xml version="1.0" encoding="UTF-8"?><error-info xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"><bad-element>config</bad-element>\n</error-info>\n', 'path': '\n    /rpc/edit-config\n  ', 'message': None}
-cisco@jumphost:~/expt-cml/arcos$
+✅ <edit-config>が成功しました
 
+➡️ <commit> RPCを送信中...
+✅ <commit>が成功しました。設定が装置に反映されました
+```
 
+ルータのコンソールには次のように表示されます。
 
+```text
+root@P1#
+System message at 2025-12-15 16:08:40...
+Commit performed by cisco via ssh using netconf.
+root@P1#
+root@PP1#
+```
+
+自動でコミットされました。
+
+ホスト名が変更されたことでプロンプトも変化しています。
 
 <br><br>
 

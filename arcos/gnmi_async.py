@@ -102,55 +102,56 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
     retry_delay = INITIAL_DELAY
 
     while True:
+        client = None # ループごとにクライアント変数をリセット
 
         try:
             logger.info(f"[{host}] Attempting connection. Delay: {retry_delay:.2f}s")
 
-            # 1. 非同期クライアントの初期化と接続
 
-            async with gNMIclient(
+            client = gNMIclient(
                 target=(host, port),
                 username=user,
                 password=password,
-                insecure=True,  # 本番環境ではFalseにする
-            ) as client:
+                insecure=True,
+                # Keepalive設定は、インスタンス化の引数で渡します (前述の通り)
+            )
 
-                # 'client' は接続が確立された状態のインスタンスです
-                logger.info(f"[{host}] Successfully connected. Starting subscribe stream...")
+            await client.connect()
 
-                # 接続成功 => 遅延時間をリセット
-                retry_delay = INITIAL_DELAY
+            logger.info(f"[{host}] Successfully connected. Starting subscribe stream...")
 
-                # 2. Subscribeストリームの開始とデータ受信ループ
+            # 接続成功 => 遅延時間をリセット
+            retry_delay = INITIAL_DELAY
 
-                async for stream_data in client.subscribe(subscribe=SUBSCRIBE_REQUEST):
 
-                    if stream_data.HasField('update'):
-                        updates = stream_data.update.update
-                        # タイムスタンプはナノ秒単位で来るので、秒単位に変換
-                        timestamp_s = stream_data.update.timestamp / 1e9
+            async for stream_data in client.subscribe(subscribe=SUBSCRIBE_REQUEST):
 
-                        # --- キューへの投入処理 ---
-                        for update in updates:
-                            path = client.path_to_string(update.path)
-                            value = client.gnmi_to_value(update)
+                if stream_data.HasField('update'):
+                    updates = stream_data.update.update
+                    # タイムスタンプはナノ秒単位で来るので、秒単位に変換
+                    timestamp_s = stream_data.update.timestamp / 1e9
 
-                            telemetry_record = {
-                                'host': host,
-                                'path': path,
-                                'value': value,
-                                'timestamp': timestamp_s,
-                                'received_at': time.time()
-                            }
+                    # --- キューへの投入処理 ---
+                    for update in updates:
+                        path = client.path_to_string(update.path)
+                        value = client.gnmi_to_value(update)
 
-                            # キューにデータを投入
-                            await data_queue.put(telemetry_record)
-                        # -------------------------
+                        telemetry_record = {
+                            'host': host,
+                            'path': path,
+                            'value': value,
+                            'timestamp': timestamp_s,
+                            'received_at': time.time()
+                        }
 
-                    elif stream_data.HasField('error'):
-                        logger.error(f"[{host}] Stream Error received: {stream_data.error}")
+                        # キューにデータを投入
+                        await data_queue.put(telemetry_record)
+                    # -------------------------
 
-                logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
+                elif stream_data.HasField('error'):
+                    logger.error(f"[{host}] Stream Error received: {stream_data.error}")
+
+            logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
 
         except asyncio.CancelledError:
             logger.warning(f"[{host}] Telemetry collection task was cancelled. Exiting.")
@@ -160,6 +161,15 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
             logger.error(f"[{host}] Connection failed: {e.__class__.__name__}: {e}. Retrying.")
 
         finally:
+
+            if client:
+                # 切断も非同期操作なので await が必要
+                try:
+                    await client.close()
+                except Exception as close_e:
+                    # close自体が失敗する場合もあるが、無視して再接続へ
+                    logger.debug(f"[{host}] Error during client close: {close_e}")
+
             # 3. 再接続のための待機と指数バックオフ計算
             await asyncio.sleep(retry_delay)
             new_delay = retry_delay * 2

@@ -136,7 +136,7 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
             result = conn.edit_config(
                 target='candidate',
                 config=xml_config,
-                default_operation='merge'
+                default_operation='replace'
             )
 
             print(f"✅ <edit-config>が成功しました")
@@ -167,7 +167,6 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
 
 
 def main():
-
 
     parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
     subparsers = parser.add_subparsers(dest='command', help='実行するコマンド')
@@ -210,15 +209,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-"""
-cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply -f /tmp/192.168.254.1.xml
-➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
-✅ NETCONFセッションが確立されました。セッションID: 57
-
-➡️ <edit-config> RPCを送信中...
-   設定ファイル: /tmp/192.168.254.1.xml
-❌ 致命的なエラーが発生しました: Element [{urn:ietf:params:xml:ns:netconf:base:1.0}data] does not meet requirement
-
-"""

@@ -63,38 +63,16 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
 
             result = conn.get_config(source=NETCONF_GET_CONFIG_SOURCE)
 
-            xml_output = result.xml
-
-            # XMLをElementTreeでパース
-            root = ET.fromstring(xml_output)
-
-            # <rpc-reply> から <data> 要素を抽出
-            # NETCONF のデフォルト namespace を定義
-            ns = {'nc': 'urn:ietf:params:xml:ns:netconf:base:1.0'}
-            data_element = root.find('.//nc:data', ns)
-
-            if data_element is None:
-                # namespace がない場合を試す
-                data_element = root.find('.//data')
-
-            if data_element is None:
-                print("❌ <data> 要素が見つかりません")
-                return False
-
-            print(f"✅ XMLパースが完了しました。ルート要素: {root.tag}")
-
-            # <data> 要素のみを XML 文字列に変換
-            xml_output_data = ET.tostring(data_element, encoding='unicode')
-
-            print(f"✅ XMLパースが完了しました。ルート要素: {root.tag}")
+            xml_output = result.data_xml
 
             # XMLをファイルに保存
             os.makedirs(os.path.dirname(config_file) or '.', exist_ok=True)
 
             with open(config_file, 'w', encoding='utf-8') as f:
                 # XML宣言を追加
-                f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-                f.write(xml_output_data)
+                # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+
+                f.write(xml_output)
 
             print(f"✅ XML設定を保存しました: {config_file}")
             return True
@@ -133,28 +111,7 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
 
         # XMLファイルを読み込む
         with open(config_file, 'r', encoding='utf-8') as f:
-            xml_config_raw = f.read()
-
-        # XMLをパースして <data> 要素を抽出（namespaceを削除）
-        try:
-            root = ET.fromstring(xml_config_raw)
-            # <data> 要素の子要素のみを抽出
-            config_elements = []
-            for child in root:
-                # namespace を除去したタグ名を取得
-                tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
-                config_elements.append(ET.tostring(child, encoding='unicode'))
-
-            if not config_elements:
-                print("❌ 設定データが見つかりません")
-                return False
-
-            # 設定要素を結合して <config> ラッパーで囲む
-            xml_config_content = ''.join(config_elements)
-            xml_config = f'<config>{xml_config_content}</config>'
-        except ET.ParseError:
-            # XMLパース失敗時は元のテキストをそのまま使用
-            xml_config = xml_config_raw
+            xml_config = f.read()
 
         print(f"➡️ NETCONF接続を試行中: {TARGET_HOST}:{TARGET_PORT} (ユーザー: {TARGET_USER})")
 
@@ -173,6 +130,7 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
 
             # --- 設定を装置に反映 (<edit-config> を実行) ---
             print(f"\n➡️ <edit-config> RPCを送信中...")
+
             print(f"   設定ファイル: {config_file}")
 
             result = conn.edit_config(

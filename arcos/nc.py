@@ -133,7 +133,27 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
 
         # XMLファイルを読み込む
         with open(config_file, 'r', encoding='utf-8') as f:
-            xml_config = f.read()
+            xml_config_raw = f.read()
+
+        # XMLをパースして <data> 要素を抽出（namespaceを削除）
+        try:
+            root = ET.fromstring(xml_config_raw)
+            # <data> 要素の子要素のみを抽出
+            config_elements = []
+            for child in root:
+                # namespace を除去したタグ名を取得
+                tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+                config_elements.append(ET.tostring(child, encoding='unicode'))
+
+            if not config_elements:
+                print("❌ 設定データが見つかりません")
+                return False
+
+            # 設定要素を結合
+            xml_config = ''.join(config_elements)
+        except ET.ParseError:
+            # XMLパース失敗時は元のテキストをそのまま使用
+            xml_config = xml_config_raw
 
         print(f"➡️ NETCONF接続を試行中: {TARGET_HOST}:{TARGET_PORT} (ユーザー: {TARGET_USER})")
 

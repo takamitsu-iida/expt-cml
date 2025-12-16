@@ -68,9 +68,12 @@ def get_xml_config(config_file: str = OUTPUT_FILE):
             try:
                 dom = xml.dom.minidom.parseString(xml_output)
                 xml_formatted = dom.toprettyxml(indent="  ", encoding="utf-8").decode("utf-8")
-                # XML宣言を削除（不要な場合）
+                # XML宣言を削除
                 if xml_formatted.startswith('<?xml'):
                     xml_formatted = '\n'.join(xml_formatted.split('\n')[1:]).lstrip()
+
+                # <data xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+
             except Exception as e:
                 print(f"⚠️ XMLフォーマット失敗、元の形式で保存します: {e}")
                 xml_formatted = xml_output
@@ -122,6 +125,9 @@ def apply_xml_config(config_file: str = OUTPUT_FILE):
         # XMLファイルを読み込む
         with open(config_file, 'r', encoding='utf-8') as f:
             xml_config = f.read()
+
+
+        # <config xmlns="http://tail-f.com/ns/config/1.0">
 
         print(f"➡️ NETCONF接続を試行中: {TARGET_HOST}:{TARGET_PORT} (ユーザー: {TARGET_USER})")
 

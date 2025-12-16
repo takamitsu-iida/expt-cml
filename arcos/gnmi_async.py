@@ -12,43 +12,25 @@ from typing import Dict, Any
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('gNMI_Telemetry')
 
-# --- 接続情報の定義 (テスト用) ---
-TARGET_HOST = "192.168.254.1"
-TARGET_PORT = 9339
-USERNAME = "cisco"
-PASSWORD = "cisco123"
+# 再接続設定
+INITIAL_DELAY = 1      # 最初の再接続までの待機時間（秒）
+MAX_RETRY_DELAY = 120  # 最大待機時間（秒）
+MAX_RETRY_ATTEMPTS = 5 # 接続を諦めるまでの最大試行回数 (無限ループのため、省略可だが、実用上は必要)
 
+
+# 収集するテレメトリパスの定義
 TELEMETRY_PATH = [
     "/interfaces/interface[name=*]/state/counters/in-octets",
     "/interfaces/interface[name=*]/state/counters/out-octets",
 ]
 
-# --- gNMI Subscribe リクエストの作成 ---
+# gNMI Subscribeリクエスト
 SUBSCRIBE_REQUEST = {
     "subscription": [
         {
             "path": path,
             "mode": "sample",
-            "sample_interval": 10_000_000_000,  # 10秒
-        } for path in TELEMETRY_PATH
-    ]
-}
-
-
-
-# --- 再接続設定 ---
-INITIAL_DELAY = 1      # 最初の再接続までの待機時間（秒）
-MAX_RETRY_DELAY = 120  # 最大待機時間（秒）
-MAX_RETRY_ATTEMPTS = 5 # 接続を諦めるまでの最大試行回数 (今回は無限ループのため、省略可だが、実用上は必要)
-
-
-# --- gNMI Subscribe リクエストの作成 (変更なし) ---
-SUBSCRIBE_REQUEST = {
-    "subscription": [
-        {
-            "path": path,
-            "mode": "sample",
-            "sample_interval": 10_000_000_000,  # 10秒
+            "sample_interval": 30_000_000_000,  # ナノ秒 = 30秒
         } for path in TELEMETRY_PATH
     ]
 }
@@ -60,7 +42,7 @@ SUBSCRIBE_REQUEST = {
 
 async def data_processor(data_queue: asyncio.Queue):
     """
-    キューからテレメトリデータを取り出し、永続化/処理を行うタスク。
+    キューからテレメトリデータを取り出して処理を行うタスク
     """
     logger.info("Data Processor task started.")
 
@@ -79,16 +61,19 @@ async def data_processor(data_queue: asyncio.Queue):
             while not data_queue.empty():
                 data_buffer.append(data_queue.get_nowait())
 
-            # 一定サイズに達したら、データベースにまとめて書き込む (効率的)
+            # 一定サイズに達したら、データベースにまとめて書き込む
             if len(data_buffer) >= 10: # 例: 10個溜まったらDBに書き込む
+
                 # --- ここにデータベース書き込み処理を実装 ---
                 # 例: InfluxDBへの書き込み、KafkaへのPublishなど
-
+                #
                 # 実際のDB I/Oは時間がかかるため、
-                # DBクライアントがasyncに対応していない場合は、`await asyncio.to_thread(sync_db_write, data_buffer)`
+                # DBクライアントがasyncに対応していない場合は、
+                # `await asyncio.to_thread(sync_db_write, data_buffer)`
                 # のように別スレッドで実行することを推奨します。
 
                 logger.info(f"Processing {len(data_buffer)} records. (Host: {data['host']}, Path: {data['path']})")
+
                 data_buffer = [] # バッファをクリア
                 # ----------------------------------------------
 
@@ -125,8 +110,10 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
                 target=(host, port),
                 username=user,
                 password=password,
-                insecure=True, # 本番環境では必ずFalseにしてください
+                insecure=True, # 本番環境ではFalseにする
             )
+
+            # 接続を待機
             await client.connect()
 
             logger.info(f"[{host}] Successfully connected. Starting subscribe stream...")
@@ -189,10 +176,12 @@ async def collect_telemetry(host: str, port: int, user: str, password: str, data
 # =================================================================
 
 async def main():
+
+    # テスト用
+    # ルータのインベントリ情報 (実際には外部ファイルやDBから読み込む)
     router_inventory = [
-        {"host": TARGET_HOST, "port": TARGET_PORT, "user": USERNAME, "password": PASSWORD},
-        # 実際にはここに500台分の情報が入ります
-        # ... (残り499台のデータ)
+        { "host": "192.168.254.1", "port": 9339, "user": "cisco", "password": "cisco123"},
+        { "host": "192.168.254.2", "port": 9339, "user": "cisco", "password": "cisco123"},
     ]
 
     # データ共有のためのasyncio.Queueを初期化
@@ -215,11 +204,12 @@ async def main():
     # 実際には、プログラムが終了するまで実行し続けます
     await asyncio.gather(*collection_tasks, return_exceptions=True)
 
-    # 収集タスクが全て終了した場合 (通常は起こらない)、プロセッサタスクもキャンセル
+    # 収集タスクが全て終了した場合、プロセッサタスクもキャンセル
     processor_task.cancel()
     await processor_task
 
 if __name__ == "__main__":
+
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

@@ -699,6 +699,35 @@ system netconf-server enable true
 system netconf-server transport ssh enable true
 ```
 
+XML形式で保存する例。
+
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ./nc.py get
+➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
+✅ NETCONFセッションが確立されました。セッションID: 61
+
+➡️ <get-config> RPCを送信中 (ソース: <running>)...
+✅ XMLパースが完了しました。ルート要素: {urn:ietf:params:xml:ns:netconf:base:1.0}rpc-reply
+✅ XMLパースが完了しました。ルート要素: {urn:ietf:params:xml:ns:netconf:base:1.0}rpc-reply
+✅ XML設定を保存しました: /tmp/192.168.254.1.xml
+```
+
+XML形式のファイルを適用する例。
+
+cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply -f /tmp/192.168.254.1.xml
+➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
+✅ NETCONFセッションが確立されました。セッションID: 63
+
+➡️ <edit-config> RPCを送信中...
+   設定ファイル: /tmp/192.168.254.1.xml
+❌ 致命的なエラーが発生しました: Extra content at the end of the document, line 1, column 653 (<string>, line 1)
+cisco@jumphost:~/expt-cml/arcos$
+
+
+
+
+
+
 <br><br>
 
 ## RESTCONF

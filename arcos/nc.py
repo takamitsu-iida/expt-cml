@@ -231,3 +231,15 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+"""
+cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply -f /tmp/192.168.254.1.xml
+➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
+✅ NETCONFセッションが確立されました。セッションID: 57
+
+➡️ <edit-config> RPCを送信中...
+   設定ファイル: /tmp/192.168.254.1.xml
+❌ 致命的なエラーが発生しました: Element [{urn:ietf:params:xml:ns:netconf:base:1.0}data] does not meet requirement
+
+"""

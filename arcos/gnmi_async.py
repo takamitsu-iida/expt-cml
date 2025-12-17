@@ -521,25 +521,25 @@ def format_event_details(
     timestamp_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
 
     details_lines = []
-    details_lines.append(f"[EVENT] ON_CHANGE")
-    details_lines.append(f"Timestamp: {timestamp_str}")
-    details_lines.append(f"Host: {host}")
+    details_lines.append(f"  [EVENT] ON_CHANGE")
+    details_lines.append(f"  Timestamp: {timestamp_str}")
+    details_lines.append(f"  Host: {host}")
 
     # インターフェース情報
     if interface_info['interface']:
-        details_lines.append(f"Interface: {interface_info['interface']}")
+        details_lines.append(f"  Interface: {interface_info['interface']}")
     if interface_info['subinterface_index']:
-        details_lines.append(f"Subinterface Index: {interface_info['subinterface_index']}")
+        details_lines.append(f"  Subinterface Index: {interface_info['subinterface_index']}")
 
     # 属性情報
     if interface_info['leaf']:
-        details_lines.append(f"Attribute: {interface_info['leaf']}")
+        details_lines.append(f"  Attribute: {interface_info['leaf']}")
 
     # パス情報
-    details_lines.append(f"Full Path: /{prefix_path}/{path_str}")
+    details_lines.append(f"  Full Path: {prefix_path}/{path_str}")
 
     # 値
-    details_lines.append(f"Value: {current_value}")
+    details_lines.append(f"  Value: {current_value}")
 
     # 空行を入れて見やすく
     details_lines.append("")

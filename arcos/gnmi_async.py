@@ -69,6 +69,22 @@ cd ~/git/expt-cml/arcos
 # 念のため確認
 grep "import gnmi_ext_pb2" gnmi_pb2.py
 
+
+
+cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
+/home/cisco/expt-cml/arcos/./gnmi_async.py:3: SyntaxWarning: invalid escape sequence '\.'
+  """
+2025-12-17 11:31:51,289 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
+2025-12-17 11:31:51,289 - gNMI_Telemetry - INFO - Data Processor task started.
+2025-12-17 11:31:51,290 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 11:31:51,291 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 11:31:51,294 - gNMI_Telemetry - WARNING - [192.168.254.1] Collection task cancelled.
+2025-12-17 11:31:51,295 - gNMI_Telemetry - WARNING - [192.168.254.2] Collection task cancelled.
+2025-12-17 11:31:52,297 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
+2025-12-17 11:31:52,298 - gNMI_Telemetry - INFO - Data Processor task stopped.
+cisco@jumphost:~/expt-cml/arcos$
+
+
 """
 
 import asyncio

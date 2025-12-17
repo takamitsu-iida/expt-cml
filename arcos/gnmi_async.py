@@ -69,22 +69,9 @@ cd ~/git/expt-cml/arcos
 # 念のため確認
 grep "import gnmi_ext_pb2" gnmi_pb2.py
 
-
-
-
-
-
-
-
-
-
-
-
-
 """
 
 import asyncio
-import base64
 import logging
 import random
 import time
@@ -186,21 +173,6 @@ def build_auth_metadata(user: str, password: str) -> list:
     ]
 
 
-async def request_generator(subscribe_request: gnmi_pb2.SubscribeRequest):
-    """
-    gNMI Subscribe のリクエストストリームを生成
-    最初に SubscribeRequest を送信し、その後は無限に待機
-    """
-    yield subscribe_request
-
-    # 接続を保ち続けるため、無限に待機
-    try:
-        while True:
-            await asyncio.sleep(1)
-    except asyncio.CancelledError:
-        # キャンセル時は静かに終了
-        pass
-
 
 async def collector(host: str, port: int, user: str, password: str, data_queue: asyncio.Queue):
     """
@@ -260,11 +232,10 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
 
             logger.info(f"[{host}] Sending SubscribeRequest...")
 
-            # リクエストジェネレータを作成
-            request_iter = request_generator(subscribe_request)
 
             # Subscribe RPC を呼び出し、レスポンスを非同期でイテレート
-            async for response in stub.Subscribe(request_iter, metadata=metadata):
+            async for response in stub.Subscribe(subscribe_request, metadata=metadata):
+
                 logger.debug(f"[{host}] Received gNMI response.")
 
                 # レスポンスの種類を判定
@@ -402,8 +373,6 @@ async def main():
         # 全ての収集タスクが継続的に実行されるように待機
         # return_exceptions=True により、個別タスクエラーで全体が止まらない
         await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
-    except KeyboardInterrupt:
-        logger.info("Program interrupted by user.")
     finally:
         # 全収集タスクをキャンセル
         for task in collection_tasks + [data_processor_task]:
@@ -414,13 +383,8 @@ async def main():
         await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
 
 
-
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Program interrupted by user.")
-
-
-"""
-"""

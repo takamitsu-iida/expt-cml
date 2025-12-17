@@ -493,8 +493,7 @@ def format_event_details(
     details_lines = [
         "=" * 80,
         f"[EVENT] ON_CHANGE Detection on {host}",
-        f"Timestamp: {timestamp_str}",
-        "-" * 80,
+        f"Timestamp: {timestamp_str}"
     ]
 
     # インターフェース情報

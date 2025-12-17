@@ -448,17 +448,30 @@ def is_on_change_update(path_str: str) -> bool:
     """
     パス文字列が ON_CHANGE 対象パスかを判定
 
+    ON_CHANGE_PATHS で定義されたパターンと照合する。
+    ワイルドカード [name=*] などは正規表現に変換して比較。
+
     Args:
         path_str: パス文字列（"elem1/elem2/..." 形式）
 
     Returns:
         True: ON_CHANGE パス / False: 通常のパス
     """
+    import re
+
     for on_change_path in ON_CHANGE_PATHS:
-        # ON_CHANGE_PATHS の " ON_CHANGE" 部分を除去して比較
-        clean_on_change_path = on_change_path.replace(" ON_CHANGE", "").strip()
-        # 簡易的なマッチング（実運用ではより厳密なパターンマッチング推奨）
-        if "subinterface" in path_str and "ifindex" in path_str:
+        # " ON_CHANGE" 部分を除去
+        clean_path = on_change_path.replace(" ON_CHANGE", "").strip()
+
+        # ワイルドカード [name=*] や [index=*] を正規表現に変換
+        # 例: "interfaces/interface[name=*]/state/oper-status"
+        #  -> "interfaces/interface\[name=[^\]]*\]/state/oper-status"
+        regex_pattern = re.escape(clean_path)
+        regex_pattern = regex_pattern.replace(r"\[name=\*\]", r"[name=[^\]]*]")
+        regex_pattern = regex_pattern.replace(r"\[index=\*\]", r"[index=[^\]]*]")
+        regex_pattern = f"^{regex_pattern}$"
+
+        if re.match(regex_pattern, path_str):
             return True
 
     return False

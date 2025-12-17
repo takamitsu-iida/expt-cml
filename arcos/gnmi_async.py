@@ -155,6 +155,7 @@ class CollectorMetrics:
     - last_error: 最後に発生したエラー内容
     - reconnects: 再接続回数
     - last_update_time: 最後にデータを受信した時刻
+    - on_change_events: ON_CHANGE イベント数
     """
 
     def __init__(self):
@@ -164,8 +165,11 @@ class CollectorMetrics:
             'errors': 0,
             'last_error': None,
             'reconnects': 0,
-            'last_update_time': None
+            'last_update_time': None,
+            'on_change_events': 0
         })
+        # ON_CHANGE イベントの前の値を保持（変更検知用）
+        self.previous_values = {}
 
     def record_data(self, host: str) -> None:
         """
@@ -196,6 +200,37 @@ class CollectorMetrics:
             host: ホストアドレス
         """
         self.metrics[host]['reconnects'] += 1
+
+    def record_on_change_event(self, host: str) -> None:
+        """
+        ON_CHANGE イベント検知を記録
+
+        Args:
+            host: ホストアドレス
+        """
+        self.metrics[host]['on_change_events'] += 1
+
+    def store_previous_value(self, key: str, value: str) -> None:
+        """
+        前の値を保存（変更検知用）
+
+        Args:
+            key: ホスト+パスの複合キー
+            value: 値
+        """
+        self.previous_values[key] = value
+
+    def get_previous_value(self, key: str) -> Optional[str]:
+        """
+        前の値を取得
+
+        Args:
+            key: ホスト+パスの複合キー
+
+        Returns:
+            前の値（ない場合は None）
+        """
+        return self.previous_values.get(key)
 
     def get_summary(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -396,6 +431,107 @@ def is_on_change_update(path_str: str) -> bool:
     return False
 
 
+def extract_interface_info(path_elements) -> Dict[str, str]:
+    """
+    gNMI パス要素からインターフェース情報を抽出
+
+    例: interfaces/interface[name=eth0]/subinterfaces/subinterface[index=0]/state/ifindex
+    -> {'interface': 'eth0', 'subinterface_index': '0', 'leaf': 'ifindex'}
+
+    Args:
+        path_elements: PathElem のリスト
+
+    Returns:
+        抽出されたインターフェース情報の辞書
+    """
+    info = {
+        'interface': None,
+        'subinterface_index': None,
+        'leaf': None,
+        'full_path': '/'.join([elem.name for elem in path_elements])
+    }
+
+    for elem in path_elements:
+        if elem.name == "interface" and elem.key:
+            info['interface'] = elem.key.get('name', 'unknown')
+        elif elem.name == "subinterface" and elem.key:
+            info['subinterface_index'] = elem.key.get('index', 'unknown')
+
+    # 最後の要素がリーフ（値）の属性名
+    if path_elements:
+        info['leaf'] = path_elements[-1].name
+
+    return info
+
+
+def format_event_details(
+    host: str,
+    prefix_path: str,
+    path_str: str,
+    current_value: str,
+    previous_value: Optional[str],
+    interface_info: Dict[str, str],
+    timestamp: float
+) -> str:
+    """
+    ON_CHANGE イベントの詳細情報をフォーマット
+
+    Args:
+        host: ホストアドレス
+        prefix_path: プレフィックスパス
+        path_str: 更新されたパス
+        current_value: 現在の値
+        previous_value: 前の値
+        interface_info: インターフェース情報
+        timestamp: タイムスタンプ
+
+    Returns:
+        フォーマット済みの詳細ログ文字列
+    """
+    timestamp_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
+
+    details_lines = [
+        "=" * 80,
+        f"[EVENT] ON_CHANGE Detection on {host}",
+        f"Timestamp: {timestamp_str}",
+        "-" * 80,
+    ]
+
+    # インターフェース情報
+    if interface_info['interface']:
+        details_lines.append(f"Interface: {interface_info['interface']}")
+    if interface_info['subinterface_index']:
+        details_lines.append(f"Subinterface Index: {interface_info['subinterface_index']}")
+
+    # 属性情報
+    if interface_info['leaf']:
+        details_lines.append(f"Attribute: {interface_info['leaf']}")
+
+    # パス情報
+    details_lines.append(f"Full Path: /{prefix_path}/{path_str}")
+
+    # 値の変更
+    details_lines.append("-" * 80)
+    if previous_value is not None:
+        details_lines.append(f"Previous Value: {previous_value}")
+        details_lines.append(f"Current Value:  {current_value}")
+        # 値が数値の場合、変更量を計算
+        try:
+            prev_num = int(previous_value)
+            curr_num = int(current_value)
+            delta = curr_num - prev_num
+            delta_str = f"+{delta}" if delta >= 0 else str(delta)
+            details_lines.append(f"Delta:          {delta_str} ({delta/prev_num*100:.2f}% change)")
+        except (ValueError, ZeroDivisionError):
+            pass
+    else:
+        details_lines.append(f"Initial Value: {current_value}")
+
+    details_lines.append("=" * 80)
+
+    return "\n".join(details_lines)
+
+
 # ============================================================================
 # メインロジック
 # ============================================================================
@@ -456,7 +592,6 @@ async def data_processor(
                 #     db.insert(record)  # 疑似コード
                 # ---
 
-                # メトリクス記録
                 for record in data_buffer:
                     metrics.record_data(record['host'])
 
@@ -592,13 +727,34 @@ async def collector(
                         value_str = extract_telemetry_value(update_value.val)
 
                         # ================================================
-                        # ON_CHANGE イベント検知：目立つログで表示
+                        # ON_CHANGE イベント検知：詳細情報を表示
                         # ================================================
                         if is_on_change_update(path_str):
-                            logger.warning(
-                                f"[{host}] *** EVENT DETECTED (ON_CHANGE) ***: "
-                                f"/{prefix_path}/{path_str} = {value_str}"
+                            metrics.record_on_change_event(host)
+
+                            # インターフェース情報抽出
+                            interface_info = extract_interface_info(
+                                update_value.path.elem
                             )
+
+                            # 前の値を取得
+                            value_key = f"{host}:{prefix_path}/{path_str}"
+                            previous_value = metrics.get_previous_value(value_key)
+
+                            # 詳細ログ出力
+                            event_details = format_event_details(
+                                host=host,
+                                prefix_path=prefix_path,
+                                path_str=path_str,
+                                current_value=value_str,
+                                previous_value=previous_value,
+                                interface_info=interface_info,
+                                timestamp=timestamp_sec
+                            )
+                            logger.warning(event_details)
+
+                            # 現在の値を保存
+                            metrics.store_previous_value(value_key, value_str)
                         else:
                             logger.info(
                                 f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}"
@@ -611,7 +767,7 @@ async def collector(
                             'value': value_str,
                             'timestamp': timestamp_sec,
                             'received_at': time.time(),
-                            'is_event': is_on_change_update(path_str)  # イベントフラグを追加
+                            'is_event': is_on_change_update(path_str)
                         }
 
                         # キューに投入（バックプレッシャー対応）
@@ -633,7 +789,7 @@ async def collector(
 
         except grpc.aio.AioRpcError as error:
             is_retryable = is_retryable_error(error)
-            logger.error(f"[{host}] gRPC error: {error.code()} - {error.details()} " f"(retryable={is_retryable})")
+            logger.error(f"[{host}] gRPC error: {error.code()} - {error.details()} (retryable={is_retryable})")
             metrics.record_error(host, str(error.code()))
 
             if not is_retryable:

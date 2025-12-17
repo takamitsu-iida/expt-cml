@@ -75,7 +75,7 @@ import asyncio
 import logging
 import random
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from enum import Enum
 from collections import defaultdict
 
@@ -120,12 +120,12 @@ GNMI_SAMPLE_INTERVAL_NANOSEC = 30_000_000_000  # サンプル間隔（30秒、�
 
 # テレメトリ収集パス
 SAMPLE_PATHS = [
-    # "/interfaces/interface[name=*]/state/counters/in-octets",
-    # "/interfaces/interface[name=*]/state/counters/out-octets",
+    "/interfaces/interface[name=*]/state/counters/in-octets",
+    "/interfaces/interface[name=*]/state/counters/out-octets",
 ]
 
 ON_CHANGE_PATHS = [
-    "interfaces/interface[name=*]/state/oper-status"
+    # "interfaces/interface[name=*]/state/oper-status"
 ]
 
 # バックプレッシャー判定の際のジッター範囲

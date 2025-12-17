@@ -267,17 +267,23 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
             async for response in stub.Subscribe(request_iter, metadata=metadata):
                 logger.debug(f"[{host}] Received gNMI response.")
 
-                if response.sync_response:
+                # レスポンスの種類を判定
+                if response.HasField("sync_response"):
                     logger.info(f"[{host}] Sync response received.")
 
-                elif response.error:
+                elif response.HasField("error"):
                     # エラーオブジェクトの詳細を表示
                     error_code = response.error.code
                     error_message = response.error.message
                     logger.error(f"[{host}] Error in response: Code={error_code}, Message={error_message}")
+                    # Code=0 は OK、つまりエラーではないので処理を続行
+                    if error_code != 0:
+                        break
 
-                elif response.update:
+                elif response.HasField("update"):
                     update = response.update
+                    logger.debug(f"[{host}] Update response received.")
+
                     # タイムスタンプはナノ秒単位で来るので、秒単位に変換
                     timestamp_s = update.timestamp / 1e9
 
@@ -302,10 +308,14 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
                             value_str = update_val.val.string_val
                         elif update_val.val.HasField("int_val"):
                             value_str = str(update_val.val.int_val)
+                        elif update_val.val.HasField("uint_val"):
+                            value_str = str(update_val.val.uint_val)
+                        elif update_val.val.HasField("bytes_val"):
+                            value_str = update_val.val.bytes_val.hex()
                         else:
                             value_str = str(update_val.val)
 
-                        logger.debug(f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}")
+                        logger.info(f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}")
 
                         telemetry_record = {
                             'host': host,
@@ -317,6 +327,9 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
 
                         # キューにデータを投入
                         await data_queue.put(telemetry_record)
+
+                else:
+                    logger.debug(f"[{host}] Unknown response type received.")
 
             logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
 
@@ -410,31 +423,4 @@ if __name__ == "__main__":
 
 
 """
-cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
-2025-12-17 12:07:50,111 - asyncio - DEBUG - Using selector: EpollSelector
-2025-12-17 12:07:50,111 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
-2025-12-17 12:07:50,111 - gNMI_Telemetry - INFO - Data Processor task started.
-2025-12-17 12:07:50,112 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
-2025-12-17 12:07:50,112 - grpc._cython.cygrpc - DEBUG - Using AsyncIOEngine.POLLER as I/O engine
-2025-12-17 12:07:50,112 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
-2025-12-17 12:07:50,113 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
-2025-12-17 12:07:50,114 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
-2025-12-17 12:07:50,114 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
-2025-12-17 12:07:50,114 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
-2025-12-17 12:07:50,114 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
-2025-12-17 12:07:50,114 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
-2025-12-17 12:07:50,128 - gNMI_Telemetry - DEBUG - [192.168.254.1] Received gNMI response.
-2025-12-17 12:07:50,128 - gNMI_Telemetry - ERROR - [192.168.254.1] Error in response: Code=0, Message=
-2025-12-17 12:07:50,128 - gNMI_Telemetry - DEBUG - [192.168.254.1] Received gNMI response.
-2025-12-17 12:07:50,129 - gNMI_Telemetry - ERROR - [192.168.254.1] Error in response: Code=0, Message=
-2025-12-17 12:07:50,129 - gNMI_Telemetry - DEBUG - [192.168.254.2] Received gNMI response.
-2025-12-17 12:07:50,129 - gNMI_Telemetry - ERROR - [192.168.254.2] Error in response: Code=0, Message=
-2025-12-17 12:07:50,130 - gNMI_Telemetry - DEBUG - [192.168.254.2] Received gNMI response.
-2025-12-17 12:07:50,130 - gNMI_Telemetry - ERROR - [192.168.254.2] Error in response: Code=0, Message=
-^C2025-12-17 12:07:54,891 - gNMI_Telemetry - WARNING - [192.168.254.1] Collection task cancelled.
-2025-12-17 12:07:54,891 - gNMI_Telemetry - WARNING - [192.168.254.2] Collection task cancelled.
-2025-12-17 12:07:54,891 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
-2025-12-17 12:07:54,891 - gNMI_Telemetry - INFO - Data Processor task stopped.
-2025-12-17 12:07:55,894 - gNMI_Telemetry - INFO - Program interrupted by user.
-cisco@jumphost:~/expt-cml/arcos$
 """

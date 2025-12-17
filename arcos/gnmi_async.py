@@ -580,14 +580,11 @@ def format_data_table(records: list) -> str:
     rows = []
     for record in records:
         event_type = "EVENT" if record.get('is_event', False) else "DATA"
-        timestamp_str = time.strftime(
-            '%H:%M:%S',
-            time.localtime(record['timestamp'])
-        )
+        timestamp_str = time.strftime('%H:%M:%S',time.localtime(record['timestamp']))
 
         rows.append([
             record['host'],
-            record['path'][:30],  # パスを30文字に制限
+            record['path'][:60],  # パスを60文字に制限
             str(record['value'])[:20],  # 値を20文字に制限
             event_type,
             timestamp_str

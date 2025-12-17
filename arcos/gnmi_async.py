@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""
+r"""
 【事前準備】
 
 1. 適当な作業ディレクトリ(tmp)を作成して移動
@@ -68,22 +68,6 @@ cd ~/git/expt-cml/arcos
 
 # 念のため確認
 grep "import gnmi_ext_pb2" gnmi_pb2.py
-
-
-
-cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
-/home/cisco/expt-cml/arcos/./gnmi_async.py:3: SyntaxWarning: invalid escape sequence '\.'
-  """
-2025-12-17 11:31:51,289 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
-2025-12-17 11:31:51,289 - gNMI_Telemetry - INFO - Data Processor task started.
-2025-12-17 11:31:51,290 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
-2025-12-17 11:31:51,291 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
-2025-12-17 11:31:51,294 - gNMI_Telemetry - WARNING - [192.168.254.1] Collection task cancelled.
-2025-12-17 11:31:51,295 - gNMI_Telemetry - WARNING - [192.168.254.2] Collection task cancelled.
-2025-12-17 11:31:52,297 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
-2025-12-17 11:31:52,298 - gNMI_Telemetry - INFO - Data Processor task stopped.
-cisco@jumphost:~/expt-cml/arcos$
-
 
 """
 
@@ -342,7 +326,7 @@ async def main():
     data_queue = asyncio.Queue(maxsize=1000)
 
     # データ処理タスクを開始
-    processor_task = asyncio.create_task(data_processor(data_queue))
+    data_processor_task = asyncio.create_task(data_processor(data_queue))
 
     # 全ルータの収集Taskを作成
     collection_tasks = []
@@ -360,19 +344,22 @@ async def main():
 
     logger.info(f"Started {len(collection_tasks)} collection task(s) and 1 processor task.")
 
-    # 全ての収集タスクが継続的に実行されるように待機
-    await asyncio.gather(*collection_tasks, return_exceptions=True)
-
-    # 収集タスクが全て終了した場合、プロセッサタスクもキャンセル
-    processor_task.cancel()
     try:
-        await processor_task
-    except asyncio.CancelledError:
-        pass
+        # 全ての収集タスクが継続的に実行されるように待機
+        # return_exceptions=True により、個別タスクエラーで全体が止まらない
+        await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
+    except KeyboardInterrupt:
+        logger.info("Program interrupted by user.")
+    finally:
+        # 全収集タスクをキャンセル
+        for task in collection_tasks + [data_processor_task]:
+            if not task.done():
+                task.cancel()
+
+        # 収集タスクのキャンセルを待機
+        await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
+
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Program stopped by user via KeyboardInterrupt.")
+    asyncio.run(main())

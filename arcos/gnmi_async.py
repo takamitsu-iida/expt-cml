@@ -406,7 +406,7 @@ def extract_telemetry_value(typed_value) -> str:
         return str(typed_value)
 
 
-def path_to_string(path_elements) -> str:
+def _path_to_string(path_elements) -> str:
     """
     gNMI PathElem のリストをパス文字列に変換
 
@@ -419,6 +419,33 @@ def path_to_string(path_elements) -> str:
         スラッシュ区切りのパス文字列
     """
     return "/".join([elem.name for elem in path_elements])
+
+
+def path_to_string(path_elements) -> str:
+    """
+    gNMI PathElem のリストをパス文字列に変換（キー情報も含める）
+
+    例:
+    - PathElem(name="interface", key={"name": "eth0"}) -> "interface[name=eth0]"
+    - PathElem(name="state") -> "state"
+
+    Args:
+        path_elements: PathElem のイテラブル
+
+    Returns:
+        スラッシュ区切りのパス文字列（キー情報付き）
+    """
+    parts = []
+    for elem in path_elements:
+        if elem.key:
+            # キーがある場合: "interface[name=eth0]" 形式
+            key_str = ",".join(f"{k}={v}" for k, v in elem.key.items())
+            parts.append(f"{elem.name}[{key_str}]")
+        else:
+            # キーがない場合: 要素名のみ
+            parts.append(elem.name)
+    return "/".join(parts)
+
 
 
 def is_on_change_update(path_str: str) -> bool:
@@ -1052,28 +1079,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Program interrupted by user.")
-
-
-[BATCH #14] Data Processing Report
-Timestamp: 2025-12-17 19:00:20
-
-Host          | Path                                           | Value    | Type | Timestamp
---------------------------------------------------------------------------------------------
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 1661486  | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 23145479 | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 0        | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 1170555  | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 23486013 | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 24410480 | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 0        | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 0        | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/out-octets | 0        | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 881294   | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 23220953 | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 0        | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 1164993  | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 23376350 | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 24727014 | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 0        | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 0        | DATA | 04:19:53
-192.168.254.1 | interfaces/interface/state/counters/in-octets  | 0        | DATA | 04:19:53

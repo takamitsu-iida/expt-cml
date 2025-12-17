@@ -119,8 +119,8 @@ GNMI_SAMPLE_INTERVAL_NANOSEC = 30_000_000_000  # サンプル間隔（30秒、�
 
 # テレメトリ収集パス
 SAMPLE_PATHS = [
-    "/interfaces/interface[name=*]/state/counters/in-octets",
-    "/interfaces/interface[name=*]/state/counters/out-octets",
+    # "/interfaces/interface[name=*]/state/counters/in-octets",
+    # "/interfaces/interface[name=*]/state/counters/out-octets",
 ]
 
 ON_CHANGE_PATHS = [
@@ -426,8 +426,9 @@ def is_on_change_update(path_str: str) -> bool:
         # ON_CHANGE_PATHS の " ON_CHANGE" 部分を除去して比較
         clean_on_change_path = on_change_path.replace(" ON_CHANGE", "").strip()
         # 簡易的なマッチング（実運用ではより厳密なパターンマッチング推奨）
-        if "ifindex" in clean_on_change_path and "ifindex" in path_str:
+        if "subinterface" in path_str and "ifindex" in path_str:
             return True
+
     return False
 
 
@@ -846,14 +847,16 @@ async def collector(
                         if is_on_change_update(path_str):
                             metrics.record_on_change_event(host)
 
+                            value_key = f"{host}:{prefix_path}/{path_str}"
+                            previous_value = metrics.get_previous_value(value_key)
+
                             # インターフェース情報抽出
                             interface_info = extract_interface_info(
                                 update_value.path.elem
                             )
 
-                            # 前の値を取得
-                            value_key = f"{host}:{prefix_path}/{path_str}"
-                            previous_value = metrics.get_previous_value(value_key)
+                            # デバッグログ：current_value と previous_value を確認
+                            logger.debug(f"[DEBUG] value_key={value_key}, prev={previous_value}, curr={value_str}")
 
                             # 詳細ログ出力
                             event_details = format_event_details(

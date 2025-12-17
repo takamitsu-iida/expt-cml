@@ -725,6 +725,7 @@ async def data_processor(
                         metrics.record_data(next_data['host'])
                         data_queue.task_done()
                     else:
+                        # 通常データはバッファに追加（task_done()は後で一括処理）
                         data_buffer.append(next_data)
                 except asyncio.QueueEmpty:
                     break
@@ -737,11 +738,8 @@ async def data_processor(
                 # ========================================================
                 # 1. データ処理（メトリクス記録など）
                 # ========================================================
-                event_count = 0
                 for record in data_buffer:
                     metrics.record_data(record['host'])
-                    if record.get('is_event', False):
-                        event_count += 1
 
                 # ========================================================
                 # 2. 画面表示
@@ -763,6 +761,12 @@ async def data_processor(
 
                 # 画面出力
                 print("\n".join(display_lines))
+
+                # ========================================================
+                # 3. task_done() を呼び出し（バッファ内の全データ分）
+                # ========================================================
+                for _ in data_buffer:
+                    data_queue.task_done()
 
                 # バッファクリア
                 data_buffer = []

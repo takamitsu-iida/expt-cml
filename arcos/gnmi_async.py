@@ -1038,3 +1038,6 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Program interrupted by user.")
+
+
+# 2025-12-17 18:06:06,514 - gNMI_Telemetry - ERROR - Data Processor failed: task_done() called too many times

@@ -615,6 +615,40 @@ def format_data_table(records: list) -> str:
 # メインロジック
 # ============================================================================
 
+
+def process_data_buffer(data_buffer, batch_number, metrics, data_queue, pending_ack, title: str):
+    """
+    data_buffer を処理・表示し、pending_ack 分だけ task_done() を呼ぶユーティリティ。
+    戻り値: (新しい batch_number, 新しい pending_ack(=0))
+    """
+    batch_number += 1
+
+    # 1) メトリクス処理
+    for record in data_buffer:
+        metrics.record_data(record['host'])
+
+    # 2) 表示
+    display_lines = [
+        "",
+        f"[BATCH #{batch_number}] {title}",
+        f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+        ""
+    ]
+    data_table = format_data_table(data_buffer)
+    if data_table:
+        display_lines.append(data_table)
+    print("\n".join(display_lines))
+
+    # 3) ACK：未ACK件数ぶんだけ正確に task_done()
+    for _ in range(pending_ack):
+        data_queue.task_done()
+
+    # バッファ/ACKをリセット（バッファはin-placeで空にする）
+    data_buffer.clear()
+    return batch_number, 0
+
+
+
 async def data_processor(
     data_queue: asyncio.Queue,
     metrics: CollectorMetrics,
@@ -647,30 +681,14 @@ async def data_processor(
             except asyncio.TimeoutError:
                 # タイムアウト時：溜まっていれば処理・表示・ACK
                 if data_buffer:
-                    batch_number += 1
-
-                    # 1) メトリクス処理
-                    for record in data_buffer:
-                        metrics.record_data(record['host'])
-
-                    # 2) 表示
-                    display_lines = [
-                        "",
-                        f"[BATCH #{batch_number}] Data Processing Report (timeout flush)",
-                        f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-                        ""
-                    ]
-                    data_table = format_data_table(data_buffer)
-                    if data_table:
-                        display_lines.append(data_table)
-                    print("\n".join(display_lines))
-
-                    # 3) ACK：未ACK件数ぶんだけ正確に task_done()
-                    for _ in range(pending_ack):
-                        data_queue.task_done()
-                    pending_ack = 0
-                    data_buffer = []
-
+                    batch_number, pending_ack = process_data_buffer(
+                        data_buffer,
+                        batch_number,
+                        metrics,
+                        data_queue,
+                        pending_ack,
+                        title="Data Processing Report (timeout flush)"
+                    )
                 continue
 
 
@@ -692,42 +710,14 @@ async def data_processor(
 
             # 通常データがバッチサイズに達したら処理・表示
             if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
-                batch_number += 1
-
-                # ========================================================
-                # 1. データ処理（メトリクス記録など）
-                # ========================================================
-                for record in data_buffer:
-                    metrics.record_data(record['host'])
-
-                # ========================================================
-                # 2. 画面表示
-                # ========================================================
-
-                # バッチ情報ヘッダー
-                display_lines = [
-                    "",
-                    f"[BATCH #{batch_number}] Data Processing Report",
-                    f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-                    ""
-                ]
-
-                # テーブル表示
-                data_table = format_data_table(data_buffer)
-                if data_table:
-                    display_lines.append(data_table)
-
-                # 画面出力
-                print("\n".join(display_lines))
-
-                # ========================================================
-                # 3. task_done() を呼び出し
-                # ========================================================
-                for _ in range(pending_ack):
-                    data_queue.task_done()
-
-                pending_ack = 0
-                data_buffer = []
+                batch_number, pending_ack = process_data_buffer(
+                    data_buffer,
+                    batch_number,
+                    metrics,
+                    data_queue,
+                    pending_ack,
+                    title="Data Processing Report"
+                )
 
     except asyncio.CancelledError:
         logger.warning("Data Processor task cancelled.")

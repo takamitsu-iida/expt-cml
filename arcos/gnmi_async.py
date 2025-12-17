@@ -297,6 +297,7 @@ def build_gnmi_subscription_request() -> gnmi_pb2.SubscribeRequest:
     gNMI購読リクエストを構築
 
     SAMPLE モード（定期的なサンプリング）と ON_CHANGE モード（イベント検知）の両方のパスを含める
+    パス文字列から動的に PathElem を構築
 
     Returns:
         構築されたSubscribeRequest
@@ -307,20 +308,37 @@ def build_gnmi_subscription_request() -> gnmi_pb2.SubscribeRequest:
     # SAMPLE モード: 定期的なサンプリング
     # ========================================================
     for path_str in SAMPLE_PATHS:
-        subscription = gnmi_pb2.Subscription(
-            path=gnmi_pb2.Path(
-                elem=[
-                    gnmi_pb2.PathElem(name="interfaces"),
-                    gnmi_pb2.PathElem(name="interface", key={"name": "*"}),
-                    gnmi_pb2.PathElem(name="state"),
-                    gnmi_pb2.PathElem(name="counters"),
-                    gnmi_pb2.PathElem(name=path_str.split("/")[-1]),
-                ]
-            ),
-            mode=gnmi_pb2.SubscriptionMode.SAMPLE,
-            sample_interval=GNMI_SAMPLE_INTERVAL_NANOSEC,
-        )
-        subscriptions.append(subscription)
+        # パス文字列をスラッシュで分割して PathElem を生成
+        path_elements = []
+        for elem_name in path_str.split("/"):
+            elem_name = elem_name.strip()
+            if not elem_name:
+                continue
+
+            # キー付きパス要素の解析 (例: "interface[name=eth0]")
+            if "[" in elem_name and "]" in elem_name:
+                name = elem_name[:elem_name.index("[")]
+                key_part = elem_name[elem_name.index("[") + 1:elem_name.index("]")]
+
+                # キーペアを解析 (例: "name=eth0" または "name=*")
+                key_dict = {}
+                for key_pair in key_part.split(","):
+                    key_pair = key_pair.strip()
+                    if "=" in key_pair:
+                        k, v = key_pair.split("=", 1)
+                        key_dict[k.strip()] = v.strip()
+
+                path_elements.append(gnmi_pb2.PathElem(name=name, key=key_dict))
+            else:
+                path_elements.append(gnmi_pb2.PathElem(name=elem_name))
+
+        if path_elements:
+            subscription = gnmi_pb2.Subscription(
+                path=gnmi_pb2.Path(elem=path_elements),
+                mode=gnmi_pb2.SubscriptionMode.SAMPLE,
+                sample_interval=GNMI_SAMPLE_INTERVAL_NANOSEC,
+            )
+            subscriptions.append(subscription)
 
     # ========================================================
     # ON_CHANGE モード: 値変更を検知して通知
@@ -329,20 +347,36 @@ def build_gnmi_subscription_request() -> gnmi_pb2.SubscribeRequest:
         # パス文字列から " ON_CHANGE" 部分を除去
         clean_path = path_str.replace(" ON_CHANGE", "").strip()
 
-        subscription = gnmi_pb2.Subscription(
-            path=gnmi_pb2.Path(
-                elem=[
-                    gnmi_pb2.PathElem(name="interfaces"),
-                    gnmi_pb2.PathElem(name="interface", key={"name": "*"}),
-                    gnmi_pb2.PathElem(name="subinterfaces"),
-                    gnmi_pb2.PathElem(name="subinterface"),
-                    gnmi_pb2.PathElem(name="state"),
-                    gnmi_pb2.PathElem(name="ifindex"),
-                ]
-            ),
-            mode=gnmi_pb2.SubscriptionMode.ON_CHANGE,
-        )
-        subscriptions.append(subscription)
+        # パス文字列をスラッシュで分割して PathElem を生成
+        path_elements = []
+        for elem_name in clean_path.split("/"):
+            elem_name = elem_name.strip()
+            if not elem_name:
+                continue
+
+            # キー付きパス要素の解析 (例: "interface[name=*]")
+            if "[" in elem_name and "]" in elem_name:
+                name = elem_name[:elem_name.index("[")]
+                key_part = elem_name[elem_name.index("[") + 1:elem_name.index("]")]
+
+                # キーペアを解析
+                key_dict = {}
+                for key_pair in key_part.split(","):
+                    key_pair = key_pair.strip()
+                    if "=" in key_pair:
+                        k, v = key_pair.split("=", 1)
+                        key_dict[k.strip()] = v.strip()
+
+                path_elements.append(gnmi_pb2.PathElem(name=name, key=key_dict))
+            else:
+                path_elements.append(gnmi_pb2.PathElem(name=elem_name))
+
+        if path_elements:
+            subscription = gnmi_pb2.Subscription(
+                path=gnmi_pb2.Path(elem=path_elements),
+                mode=gnmi_pb2.SubscriptionMode.ON_CHANGE,
+            )
+            subscriptions.append(subscription)
 
     return gnmi_pb2.SubscribeRequest(
         subscribe=gnmi_pb2.SubscriptionList(
@@ -351,7 +385,6 @@ def build_gnmi_subscription_request() -> gnmi_pb2.SubscribeRequest:
             subscription=subscriptions,
         )
     )
-
 
 async def request_generator(subscribe_request: gnmi_pb2.SubscribeRequest):
     """

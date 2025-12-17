@@ -532,6 +532,101 @@ def format_event_details(
     return "\n".join(details_lines)
 
 
+def format_data_table(records: list) -> str:
+    """
+    テレメトリレコードのリストをテーブル形式にフォーマット
+
+    Args:
+        records: テレメトリレコード（辞書）のリスト
+
+    Returns:
+        テーブル形式のフォーマット済み文字列
+    """
+    if not records:
+        return ""
+
+    # カラムヘッダー
+    header = [
+        "Host",
+        "Path",
+        "Value",
+        "Type",
+        "Timestamp"
+    ]
+
+    # データ行を準備
+    rows = []
+    for record in records:
+        event_type = "EVENT" if record.get('is_event', False) else "DATA"
+        timestamp_str = time.strftime(
+            '%H:%M:%S',
+            time.localtime(record['timestamp'])
+        )
+
+        rows.append([
+            record['host'],
+            record['path'][:30],  # パスを30文字に制限
+            str(record['value'])[:20],  # 値を20文字に制限
+            event_type,
+            timestamp_str
+        ])
+
+    # テーブル幅を計算
+    col_widths = [
+        max(len(header[i]), max(len(row[i]) for row in rows))
+        for i in range(len(header))
+    ]
+
+    # テーブル行を構築
+    table_lines = []
+
+    # ヘッダー行
+    header_line = " | ".join(
+        header[i].ljust(col_widths[i]) for i in range(len(header))
+    )
+    table_lines.append(header_line)
+    table_lines.append("-" * len(header_line))
+
+    # データ行
+    for row in rows:
+        data_line = " | ".join(
+            row[i].ljust(col_widths[i]) for i in range(len(row))
+        )
+        table_lines.append(data_line)
+
+    return "\n".join(table_lines)
+
+
+def format_processing_summary(
+    total_records: int,
+    event_count: int,
+    processing_time_sec: float
+) -> str:
+    """
+    データ処理のサマリーをフォーマット
+
+    Args:
+        total_records: 処理したレコード数
+        event_count: ON_CHANGE イベント数
+        processing_time_sec: 処理にかかった時間（秒）
+
+    Returns:
+        フォーマット済みのサマリー文字列
+    """
+    summary_lines = [
+        "=" * 80,
+        f"Data Processing Summary",
+        f"  Total Records:  {total_records}",
+        f"  Events (ON_CHANGE): {event_count}",
+        f"  Normal Data:    {total_records - event_count}",
+        f"  Processing Time: {processing_time_sec:.3f}s",
+        f"  Throughput:     {total_records / processing_time_sec:.1f} records/sec",
+        "=" * 80,
+    ]
+
+    return "\n".join(summary_lines)
+
+
 # ============================================================================
 # メインロジック
 # ============================================================================
@@ -542,12 +637,12 @@ async def data_processor(
     shutdown_event: asyncio.Event
 ) -> None:
     """
-    テレメトリデータをキューから取り出してバッチ処理する非同期タスク
+    テレメトリデータをキューから取り出してバッチ処理し、画面に表示する非同期タスク
 
     動作:
     1. キューからデータを取り出す
     2. バッファにため込む
-    3. 一定サイズ (DATA_BATCH_SIZE_FOR_WRITE) に達したら処理（DB書き込み等）
+    3. 一定サイズ (DATA_BATCH_SIZE_FOR_WRITE) に達したら処理・表示
     4. shutdown_event が set されたら終了
 
     Args:
@@ -557,6 +652,7 @@ async def data_processor(
     """
     logger.info("Data Processor task started.")
     data_buffer = []
+    batch_number = 0
 
     try:
         while not shutdown_event.is_set():
@@ -583,18 +679,52 @@ async def data_processor(
                 except asyncio.QueueEmpty:
                     break
 
-            # バッファが一定サイズに達したら処理（実装例）
+            # バッファが一定サイズに達したら処理・表示
             if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
-                logger.info(f"Processing {len(data_buffer)} records.")
+                batch_number += 1
+                start_time = time.time()
 
-                # --- 実装例：データベース書き込みなど ---
-                # for record in data_buffer:
-                #     db.insert(record)  # 疑似コード
-                # ---
-
+                # ========================================================
+                # 1. データ処理（メトリクス記録など）
+                # ========================================================
+                event_count = 0
                 for record in data_buffer:
                     metrics.record_data(record['host'])
+                    if record.get('is_event', False):
+                        event_count += 1
 
+                # ========================================================
+                # 2. 画面表示
+                # ========================================================
+                processing_time = time.time() - start_time
+
+                # バッチ情報ヘッダー
+                display_lines = [
+                    "",
+                    "=" * 80,
+                    f"[BATCH #{batch_number}] Data Processing Report",
+                    f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                    "=" * 80,
+                ]
+
+                # テーブル表示
+                data_table = format_data_table(data_buffer)
+                if data_table:
+                    display_lines.append(data_table)
+
+                # サマリー表示
+                summary = format_processing_summary(
+                    total_records=len(data_buffer),
+                    event_count=event_count,
+                    processing_time_sec=processing_time
+                )
+                display_lines.append("")
+                display_lines.append(summary)
+
+                # 画面出力
+                print("\n".join(display_lines))
+
+                # バッファクリア
                 data_buffer = []
 
             data_queue.task_done()
@@ -667,19 +797,15 @@ async def collector(
             # ============================================================
             subscribe_request = build_gnmi_subscription_request()
 
-            logger.info(
-                f"[{host}] Connecting... (attempt {retry_count + 1})"
-            )
+            logger.info(f"[{host}] Connecting... (attempt {retry_count + 1})")
 
             # ============================================================
             # 3. Subscribe RPC 実行 + レスポンス処理
             # ============================================================
             request_stream = request_generator(subscribe_request)
 
-            async for response in stub.Subscribe(
-                request_stream,
-                metadata=auth_metadata
-            ):
+            async for response in stub.Subscribe(request_stream, metadata=auth_metadata):
+
                 logger.debug(f"[{host}] Received gNMI response.")
 
                 # ========================================================
@@ -696,9 +822,8 @@ async def collector(
                 elif response.HasField("error"):
                     error_code = response.error.code
                     error_message = response.error.message
-                    logger.error(
-                        f"[{host}] gNMI Error: Code={error_code}, Message={error_message}"
-                    )
+                    logger.error(f"[{host}] gNMI Error: Code={error_code}, Message={error_message}")
+
                     if error_code != 0:
                         break
 
@@ -751,7 +876,7 @@ async def collector(
                                 interface_info=interface_info,
                                 timestamp=timestamp_sec
                             )
-                            logger.warning(event_details)
+                            logger.warning("\n" + event_details)
 
                             # 現在の値を保存
                             metrics.store_previous_value(value_key, value_str)
@@ -779,9 +904,7 @@ async def collector(
                 else:
                     logger.debug(f"[{host}] Unknown response type received.")
 
-            logger.warning(
-                f"[{host}] Stream ended normally. Attempting to reconnect."
-            )
+            logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
 
         # ============================================================
         # 例外処理
@@ -790,7 +913,7 @@ async def collector(
         except grpc.aio.AioRpcError as error:
             is_retryable = is_retryable_error(error)
             logger.error(f"[{host}] gRPC error: {error.code()} - {error.details()} (retryable={is_retryable})")
-            metrics.record_error(host, str(error.code()))
+            metrics.record_error(host, str(error))
 
             if not is_retryable:
                 logger.error(f"[{host}] Non-retryable gRPC error. Stopping collector.")

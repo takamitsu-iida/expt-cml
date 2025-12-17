@@ -31,27 +31,25 @@ python -m grpc_tools.protoc \
 """
 
 import asyncio
+import base64
 import logging
 import random
 import time
-from typing import Dict, Any, AsyncIterator
+from typing import Dict, Any
 
-import ssl
 import grpc.aio
 
 # ローカルにある、生成したprotobufモジュールをインポート
 import gnmi_pb2
-import gnmi_pb2_grpc # gnmi_pb2_grpc.py が生成されている場合
+import gnmi_pb2_grpc
 
-
-# ロギング設定 (変更なし)
+# ロギング設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('gNMI_Telemetry')
 
 # 再接続設定
 INITIAL_DELAY = 1      # 最初の再接続までの待機時間（秒）
 MAX_RETRY_DELAY = 120  # 最大待機時間（秒）
-MAX_RETRY_ATTEMPTS = 5 # 接続を諦めるまでの最大試行回数 (無限ループのため、省略可だが、実用上は必要)
 
 # 収集するテレメトリパスの定義
 TELEMETRY_PATH = [
@@ -123,42 +121,34 @@ async def data_processor(data_queue: asyncio.Queue):
     logger.info("Data Processor task stopped.")
 
 
-TARGET_ADDRESS = "192.168.254.1:9339"
+def build_auth_metadata(user: str, password: str) -> list:
+    """
+    基本認証用メタデータを作成
+    """
+    credentials = f"{user}:{password}"
+    encoded = base64.b64encode(credentials.encode()).decode()
+    return [("authorization", f"Basic {encoded}")]
 
 
 async def collector(host: str, port: int, user: str, password: str, data_queue: asyncio.Queue):
-
+    """
+    gNMI テレメトリ収集タスク (非同期)
+    """
     retry_delay = INITIAL_DELAY
 
     while True:
-        channel = None # ループごとにクライアント変数をリセット
+        channel = None
 
         try:
+            # grpc.aio.secure_channel() または grpc.aio.insecure_channel() を使用
+            # 本番環境ではセキュアチャンネル推奨、開発環境では insecure でテスト可能
+            channel = grpc.aio.insecure_channel(f"{host}:{port}")
 
-            # SSL/TLS 接続の場合
-            # 必要に応じて、信頼されたルート証明書 (root_certificates) や
-            # クライアント証明書とキー (private_key, certificate_chain) を設定
-            # production環境では必ずSSL/TLSを使用してください
-            # insecure_channelを使用すると警告が出されます。
-            # credentials = grpc.ssl_channel_credentials()
-            # channel = Channel(TARGET_ADDRESS, credentials=credentials)
-
-            # 開発/テスト目的で、SSL/TLSなしの接続（非推奨）
-            # 実際にはTLSを使用すべきです
-            channel = Channel(f"{host}:{port}", plaintext=True)
-
-            # gNMI Stub を作成
-            # gnmi_pb2_grpc に AsyncgNMIStub が含まれていると期待します
-            # grpcio-tools のバージョンによっては、AsyncStub のクラス名が異なる場合があります
-            # もし AsyncgNMIStub が見つからない場合:
-            # 1. gnmi_pb2_grpc.py の中身を確認し、正しい Stub オブジェクト名を探す
-            # 2. 最新のgrpcio-toolsでは、非同期Stubは grpc.aio.ClientInterceptor か、
-            #    より高レベルなインターフェースで提供されることが多いです。
-            #    asyncio-grpc 自体が非同期バージョンとして機能するので、
-            #    gnmi_pb2_grpc.gNMIStub(channel) でも Async を扱える可能性があります。
-            # ここでは asyncio-grpc の推奨される方法で Stub を取得します。
-            # gnmi_pb2_grpc.gNMIStub は同期 Stub なので、asyncio-grpc の Channel を通して使う方式です。
+            # 非同期 gNMI Stub を作成
             stub = gnmi_pb2_grpc.gNMIStub(channel)
+
+            # 基本認証メタデータを準備
+            metadata = build_auth_metadata(user, password)
 
             # SubscribeRequest の設定
             subscribe_request = gnmi_pb2.SubscribeRequest(
@@ -195,47 +185,53 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
                 )
             )
 
-            print("Sending SubscribeRequest...")
+            logger.info(f"[{host}] Sending SubscribeRequest...")
+
             # Subscribe RPC を呼び出し、レスポンスを非同期でイテレート
-            async for response in stub.Subscribe(subscribe_request):
-                print("\n--- Received gNMI Notification ---")
+            async for response in stub.Subscribe(subscribe_request, metadata=metadata):
+                logger.debug(f"[{host}] Received gNMI response.")
+
                 if response.sync_response:
-                    print("Sync response received.")
+                    logger.info(f"[{host}] Sync response received.")
+
                 elif response.error:
-                    print(f"Error: {response.error}")
+                    logger.error(f"[{host}] Error in response: {response.error}")
+
                 elif response.update:
                     update = response.update
                     # タイムスタンプはナノ秒単位で来るので、秒単位に変換
                     timestamp_s = update.timestamp / 1e9
-                    print(f"Timestamp: {timestamp_s}")
 
                     if update.prefix:
                         # prefixはPathオブジェクトなので、文字列に変換して表示
                         prefix_path = "/".join([elem.name for elem in update.prefix.elem])
-                        print(f"Prefix: /{prefix_path}")
+                    else:
+                        prefix_path = ""
 
                     for delete_path in update.delete:
                         delete_path_str = "/".join([elem.name for elem in delete_path.elem])
-                        print(f"  Deleted: /{delete_path_str}")
+                        logger.debug(f"[{host}] Deleted: /{prefix_path}/{delete_path_str}")
 
                     for update_val in update.update:
                         path_str = "/".join([elem.name for elem in update_val.path.elem])
+
                         # 値のタイプによって表示を調整
+                        value_str = None
                         if update_val.val.HasField("json_ietf_val"):
-                            # json_ietf_valはbytesなのでデコード
-                            print(f"  Updated: /{path_str} = {update_val.val.json_ietf_val.decode('utf-8')}")
+                            value_str = update_val.val.json_ietf_val.decode('utf-8')
                         elif update_val.val.HasField("string_val"):
-                            print(f"  Updated: /{path_str} = {update_val.val.string_val}")
+                            value_str = update_val.val.string_val
                         elif update_val.val.HasField("int_val"):
-                            print(f"  Updated: /{path_str} = {update_val.val.int_val}")
-                        # 他のvalタイプも必要に応じて追加
+                            value_str = str(update_val.val.int_val)
                         else:
-                            print(f"  Updated: /{path_str} = (Value Type Not Handled) {update_val.val}")
+                            value_str = str(update_val.val)
+
+                        logger.debug(f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}")
 
                         telemetry_record = {
                             'host': host,
                             'path': path_str,
-                            'value': update_val.val,
+                            'value': value_str,
                             'timestamp': timestamp_s,
                             'received_at': time.time()
                         }
@@ -245,70 +241,80 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
 
             logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
 
+        except grpc.aio.AioRpcError as e:
+            logger.error(f"[{host}] gRPC error: {e.code()} - {e.details()}. Retrying in {retry_delay}s.")
 
         except asyncio.CancelledError:
-            logger.warning(f"[{host}] Telemetry collection task was cancelled. Exiting.")
+            logger.warning(f"[{host}] Collection task cancelled.")
             break
 
         except Exception as e:
-            logger.error(f"[{host}] Connection failed: {e.__class__.__name__}: {e}. Retrying.")
+            logger.error(f"[{host}] Connection failed: {e.__class__.__name__}: {e}. Retrying in {retry_delay}s.")
 
         finally:
-
             if channel:
                 try:
                     await channel.close()
                 except Exception as close_e:
-                    # close自体が失敗する場合もあるが、無視して再接続へ
                     logger.debug(f"[{host}] Error during channel close: {close_e}")
 
+            # 再接続までの待機
             await asyncio.sleep(retry_delay)
-            new_delay = retry_delay * 2
+            retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY)
 
             # ジッター (ランダムなノイズ) の追加
             jitter = random.uniform(0.8, 1.2)
-            retry_delay = min(new_delay * jitter, MAX_RETRY_DELAY)
+            retry_delay = retry_delay * jitter
 
 
 # =================================================================
-# 3. メイン実行部
+# 2. メイン実行部
 # =================================================================
 
 async def main():
-
-    # テスト用
+    """
+    メイン関数：全ての非同期タスクを管理
+    """
     # ルータのインベントリ情報 (実際には外部ファイルやDBから読み込む)
     router_inventory = [
-        { "host": "192.168.254.1", "port": 9339, "user": "cisco", "password": "cisco123"},
-        { "host": "192.168.254.2", "port": 9339, "user": "cisco", "password": "cisco123"},
+        {"host": "192.168.254.1", "port": 9339, "user": "cisco", "password": "cisco123"},
+        {"host": "192.168.254.2", "port": 9339, "user": "cisco", "password": "cisco123"},
     ]
 
     # データ共有のためのasyncio.Queueを初期化
-    data_queue = asyncio.Queue(maxsize=1000) # キューサイズを設定 (一時的なバッファリング)
+    data_queue = asyncio.Queue(maxsize=1000)
 
-    # データ処理タスクを開始 (単一または複数)
+    # データ処理タスクを開始
     processor_task = asyncio.create_task(data_processor(data_queue))
 
     # 全ルータの収集Taskを作成
     collection_tasks = []
     for router in router_inventory:
         task = asyncio.create_task(
-            collector(router['host'], router['port'], router['user'], router['password'], data_queue)
+            collector(
+                router['host'],
+                router['port'],
+                router['user'],
+                router['password'],
+                data_queue
+            )
         )
         collection_tasks.append(task)
 
-    logger.info(f"Total {len(collection_tasks)} collection tasks and 1 processor task started.")
+    logger.info(f"Started {len(collection_tasks)} collection task(s) and 1 processor task.")
 
     # 全ての収集タスクが継続的に実行されるように待機
-    # 実際には、プログラムが終了するまで実行し続けます
     await asyncio.gather(*collection_tasks, return_exceptions=True)
 
     # 収集タスクが全て終了した場合、プロセッサタスクもキャンセル
     processor_task.cancel()
-    await processor_task
+    try:
+        await processor_task
+    except asyncio.CancelledError:
+        pass
+
 
 if __name__ == "__main__":
-
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

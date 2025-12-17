@@ -20,6 +20,10 @@ tabulate
 # gNMIクライアント
 pygnmi
 
+# 非同期でのgRPC通信に必要
+grpcio
+grpcio-tools
+
 # pyATS フルインストール、virl2_clientからpyATSを使うために必要
 # バージョン一覧
 # https://pypi.org/project/pyats/#history

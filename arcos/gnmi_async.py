@@ -706,11 +706,31 @@ async def data_processor(
             # ノンブロッキングで追加データを取得（バッチ処理の効率化）
             while not data_queue.empty() and len(data_buffer) < DATA_BUFFER_FETCH_LIMIT:
                 try:
-                    data_buffer.append(data_queue.get_nowait())
+                    next_data = data_queue.get_nowait()
+
+                    # バッファ内でイベントを検出した場合も即座に処理
+                    if next_data.get('is_event', False):
+                        batch_number += 1
+                        display_lines = [
+                            "",
+                            "=" * 80,
+                            f"[BATCH #{batch_number}] ON_CHANGE Event Detected",
+                            f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                            "=" * 80,
+                        ]
+                        data_table = format_data_table([next_data])
+                        if data_table:
+                            display_lines.append(data_table)
+                        print("\n".join(display_lines))
+                        metrics.record_data(next_data['host'])
+                        data_queue.task_done()
+                    else:
+                        data_buffer.append(next_data)
                 except asyncio.QueueEmpty:
                     break
 
-            # 通常データ（SAMPLE）は従来通りバッチ処理
+
+            # 通常データがバッチサイズに達したら処理・表示
             if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
                 batch_number += 1
 

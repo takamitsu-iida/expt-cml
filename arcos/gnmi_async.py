@@ -89,7 +89,8 @@ import gnmi_pb2_grpc
 # ============================================================================
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    # level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('gNMI_Telemetry')
@@ -546,10 +547,9 @@ def format_event_details(
     timestamp_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
 
     details_lines = []
-    details_lines.append("")
-
-    details_lines.append(f"[EVENT] ON_CHANGE Detection on {host}")
+    details_lines.append(f"[EVENT] ON_CHANGE")
     details_lines.append(f"Timestamp: {timestamp_str}")
+    details_lines.append(f"Host: {host}")
 
     # インターフェース情報
     if interface_info['interface']:

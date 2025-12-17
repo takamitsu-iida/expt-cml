@@ -663,10 +663,7 @@ async def data_processor(
             try:
                 # タイムアウト付きでキューからデータ取得
                 # shutdown_event を定期的にチェックするため、タイムアウトを設定
-                data = await asyncio.wait_for(
-                    data_queue.get(),
-                    timeout=DATA_PROCESSOR_TIMEOUT_SEC
-                )
+                data = await asyncio.wait_for(data_queue.get(), timeout=DATA_PROCESSOR_TIMEOUT_SEC)
             except asyncio.TimeoutError:
                 # タイムアウト時：バッファが溜まっていれば処理
                 if data_buffer:
@@ -676,6 +673,29 @@ async def data_processor(
 
             data_buffer.append(data)
 
+            # ON_CHANGE イベントは即座に表示
+            if data.get('is_event', False):
+                batch_number += 1
+
+                display_lines = [
+                    "",
+                    "=" * 80,
+                    f"[BATCH #{batch_number}] ON_CHANGE Event Detected",
+                    f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                    "=" * 80,
+                ]
+
+                data_table = format_data_table([data])
+                if data_table:
+                    display_lines.append(data_table)
+
+                print("\n".join(display_lines))
+
+                # イベント用バッファから削除
+                data_buffer.remove(data)
+                data_queue.task_done()
+                continue
+
             # ノンブロッキングで追加データを取得（バッチ処理の効率化）
             while not data_queue.empty() and len(data_buffer) < DATA_BUFFER_FETCH_LIMIT:
                 try:
@@ -683,7 +703,7 @@ async def data_processor(
                 except asyncio.QueueEmpty:
                     break
 
-            # バッファが一定サイズに達したら処理・表示
+            # 通常データ（SAMPLE）は従来通りバッチ処理
             if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
                 batch_number += 1
                 start_time = time.time()

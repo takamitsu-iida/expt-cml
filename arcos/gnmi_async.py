@@ -671,12 +671,13 @@ async def data_processor(
                     data_buffer = []
                 continue
 
-            data_buffer.append(data)
-
-            # ON_CHANGE イベントは即座に表示
+            # ========================================================
+            # ON_CHANGE イベントは即座に処理・表示
+            # ========================================================
             if data.get('is_event', False):
                 batch_number += 1
 
+                # まずイベント単独で表示
                 display_lines = [
                     "",
                     "=" * 80,
@@ -691,10 +692,16 @@ async def data_processor(
 
                 print("\n".join(display_lines))
 
-                # イベント用バッファから削除
-                data_buffer.remove(data)
+                # メトリクス記録
+                metrics.record_data(data['host'])
+
                 data_queue.task_done()
-                continue
+                continue  # 次のデータ取得へ
+
+            # ========================================================
+            # 通常データ（SAMPLE）はバッチ処理
+            # ========================================================
+            data_buffer.append(data)
 
             # ノンブロッキングで追加データを取得（バッチ処理の効率化）
             while not data_queue.empty() and len(data_buffer) < DATA_BUFFER_FETCH_LIMIT:
@@ -706,7 +713,6 @@ async def data_processor(
             # 通常データ（SAMPLE）は従来通りバッチ処理
             if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
                 batch_number += 1
-                start_time = time.time()
 
                 # ========================================================
                 # 1. データ処理（メトリクス記録など）
@@ -720,7 +726,6 @@ async def data_processor(
                 # ========================================================
                 # 2. 画面表示
                 # ========================================================
-                processing_time = time.time() - start_time
 
                 # バッチ情報ヘッダー
                 display_lines = [

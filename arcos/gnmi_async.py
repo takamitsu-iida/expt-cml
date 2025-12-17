@@ -410,4 +410,31 @@ if __name__ == "__main__":
 
 
 """
+cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
+2025-12-17 12:07:50,111 - asyncio - DEBUG - Using selector: EpollSelector
+2025-12-17 12:07:50,111 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
+2025-12-17 12:07:50,111 - gNMI_Telemetry - INFO - Data Processor task started.
+2025-12-17 12:07:50,112 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
+2025-12-17 12:07:50,112 - grpc._cython.cygrpc - DEBUG - Using AsyncIOEngine.POLLER as I/O engine
+2025-12-17 12:07:50,112 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
+2025-12-17 12:07:50,113 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 12:07:50,114 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
+2025-12-17 12:07:50,114 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
+2025-12-17 12:07:50,114 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
+2025-12-17 12:07:50,114 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 12:07:50,114 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=129274981849264
+2025-12-17 12:07:50,128 - gNMI_Telemetry - DEBUG - [192.168.254.1] Received gNMI response.
+2025-12-17 12:07:50,128 - gNMI_Telemetry - ERROR - [192.168.254.1] Error in response: Code=0, Message=
+2025-12-17 12:07:50,128 - gNMI_Telemetry - DEBUG - [192.168.254.1] Received gNMI response.
+2025-12-17 12:07:50,129 - gNMI_Telemetry - ERROR - [192.168.254.1] Error in response: Code=0, Message=
+2025-12-17 12:07:50,129 - gNMI_Telemetry - DEBUG - [192.168.254.2] Received gNMI response.
+2025-12-17 12:07:50,129 - gNMI_Telemetry - ERROR - [192.168.254.2] Error in response: Code=0, Message=
+2025-12-17 12:07:50,130 - gNMI_Telemetry - DEBUG - [192.168.254.2] Received gNMI response.
+2025-12-17 12:07:50,130 - gNMI_Telemetry - ERROR - [192.168.254.2] Error in response: Code=0, Message=
+^C2025-12-17 12:07:54,891 - gNMI_Telemetry - WARNING - [192.168.254.1] Collection task cancelled.
+2025-12-17 12:07:54,891 - gNMI_Telemetry - WARNING - [192.168.254.2] Collection task cancelled.
+2025-12-17 12:07:54,891 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
+2025-12-17 12:07:54,891 - gNMI_Telemetry - INFO - Data Processor task stopped.
+2025-12-17 12:07:55,894 - gNMI_Telemetry - INFO - Program interrupted by user.
+cisco@jumphost:~/expt-cml/arcos$
 """

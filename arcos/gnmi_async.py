@@ -75,40 +75,65 @@ import asyncio
 import logging
 import random
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from enum import Enum
 from collections import defaultdict
 
 import grpc.aio
 
-# ローカルに保存したprotobufモジュール（gnmi_pb2.pyとgnmi_pb2_grps.py）をインポート
 import gnmi_pb2
 import gnmi_pb2_grpc
 
+# ============================================================================
 # ロギング設定
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# ============================================================================
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger('gNMI_Telemetry')
 
-# 再接続設定（改善版）
-INITIAL_DELAY = 1
-MAX_RETRY_DELAY = 120
-RETRY_RESET_TIME = 600  # 10分間成功したらリセット
+# ============================================================================
+# 定数定義
+# ============================================================================
 
-# チャネル設定
-GRPC_CONNECT_TIMEOUT = 10
-GRPC_KEEPALIVE_TIME = 30
-GRPC_KEEPALIVE_TIMEOUT = 5
+# 再接続戦略の設定
+INITIAL_RECONNECT_DELAY_SEC = 1       # 最初の再接続待機時間（秒）
+MAX_RECONNECT_DELAY_SEC = 120         # 最大再接続待機時間（秒）
+RETRY_SUCCESS_RESET_TIME_SEC = 600    # この時間成功が続いたらリトライ数をリセット（秒）
 
-# 収集するテレメトリパスの定義
-TELEMETRY_PATH = [
+# gRPC接続設定
+GRPC_CONNECT_TIMEOUT_SEC = 10
+GRPC_KEEPALIVE_TIME_SEC = 30
+GRPC_KEEPALIVE_TIMEOUT_SEC = 5
+
+# データ処理設定
+DATA_QUEUE_MAX_SIZE = 500             # データキューの最大サイズ
+DATA_BATCH_SIZE_FOR_WRITE = 10        # この数に達したらデータベースに書き込む
+DATA_BUFFER_FETCH_LIMIT = 50          # 1回で取得する最大データ数
+DATA_PROCESSOR_TIMEOUT_SEC = 1.0      # データ処理のタイムアウト（秒）
+
+# gNMI購読設定
+GNMI_SAMPLE_INTERVAL_NANOSEC = 30_000_000_000  # サンプル間隔（30秒、ナノ秒）
+
+# テレメトリ収集パス
+TELEMETRY_PATHS = [
     "/interfaces/interface[name=*]/state/counters/in-octets",
     "/interfaces/interface[name=*]/state/counters/out-octets",
 ]
 
+# バックプレッシャー判定の際のジッター範囲
+BACKOFF_JITTER_MIN = 0.8
+BACKOFF_JITTER_MAX = 1.2
+
+
+# ============================================================================
+# 列挙型・クラス定義
+# ============================================================================
 
 class RetryableError(Enum):
-    """リトライ可能なエラー判定"""
+    """リトライ可能なgRPCエラーの定義"""
     UNAVAILABLE = "unavailable"
     RESOURCE_EXHAUSTED = "resource_exhausted"
     INTERNAL = "internal"
@@ -116,8 +141,19 @@ class RetryableError(Enum):
 
 
 class CollectorMetrics:
-    """簡易監視メトリクス"""
+    """
+    各ホストのテレメトリ収集状況を記録するメトリクス管理クラス。
+
+    監視項目:
+    - total_records: 収集したレコード数
+    - errors: 発生したエラー数
+    - last_error: 最後に発生したエラー内容
+    - reconnects: 再接続回数
+    - last_update_time: 最後にデータを受信した時刻
+    """
+
     def __init__(self):
+        """メトリクスコンテナを初期化"""
         self.metrics = defaultdict(lambda: {
             'total_records': 0,
             'errors': 0,
@@ -126,23 +162,63 @@ class CollectorMetrics:
             'last_update_time': None
         })
 
-    def record_data(self, host: str):
+    def record_data(self, host: str) -> None:
+        """
+        ホストからデータ受信を記録
+
+        Args:
+            host: ホストアドレス
+        """
         self.metrics[host]['total_records'] += 1
         self.metrics[host]['last_update_time'] = time.time()
 
-    def record_error(self, host: str, error: str):
+    def record_error(self, host: str, error: str) -> None:
+        """
+        ホストでのエラー発生を記録
+
+        Args:
+            host: ホストアドレス
+            error: エラーメッセージまたはエラーコード
+        """
         self.metrics[host]['errors'] += 1
         self.metrics[host]['last_error'] = error
 
-    def record_reconnect(self, host: str):
+    def record_reconnect(self, host: str) -> None:
+        """
+        ホストへの再接続を記録
+
+        Args:
+            host: ホストアドレス
+        """
         self.metrics[host]['reconnects'] += 1
 
-    def get_summary(self):
+    def get_summary(self) -> Dict[str, Dict[str, Any]]:
+        """
+        全ホストのメトリクスサマリを取得
+
+        Returns:
+            ホスト別のメトリクス辞書
+        """
         return dict(self.metrics)
 
 
+# ============================================================================
+# ユーティリティ関数
+# ============================================================================
+
 def is_retryable_error(error: grpc.aio.AioRpcError) -> bool:
-    """gRPCエラーがリトライ可能かを判定"""
+    """
+    gRPCエラーがリトライ可能かを判定
+
+    リトライ可能なエラー: UNAVAILABLE, RESOURCE_EXHAUSTED, INTERNAL, UNKNOWN
+    リトライ不可能なエラー: UNAUTHENTICATED, PERMISSION_DENIED, NOT_FOUND など
+
+    Args:
+        error: gRPCエラーオブジェクト
+
+    Returns:
+        True: リトライすべき / False: リトライすべきでない
+    """
     retryable_codes = {
         grpc.StatusCode.UNAVAILABLE,
         grpc.StatusCode.RESOURCE_EXHAUSTED,
@@ -152,24 +228,150 @@ def is_retryable_error(error: grpc.aio.AioRpcError) -> bool:
     return error.code() in retryable_codes
 
 
-def calculate_backoff(retry_count: int, initial: int = INITIAL_DELAY, max_delay: int = MAX_RETRY_DELAY) -> float:
-    """指数バックオフ + ジッター（改善版）"""
-    delay = min(initial * (2 ** retry_count), max_delay)
-    jitter = random.uniform(0.8, 1.2)
-    return delay * jitter
+def calculate_backoff_delay(
+    retry_count: int,
+    initial_delay: int = INITIAL_RECONNECT_DELAY_SEC,
+    max_delay: int = MAX_RECONNECT_DELAY_SEC
+) -> float:
+    """
+    指数バックオフ + ランダムジッターで再接続待機時間を計算
+
+    式: min(initial_delay * 2^retry_count, max_delay) * random(0.8～1.2)
+
+    例: retry_count=0 -> 1秒, retry_count=1 -> 2秒, retry_count=2 -> 4秒...
+
+    Args:
+        retry_count: 再試行回数（0から始まる）
+        initial_delay: 初期待機時間（秒）
+        max_delay: 最大待機時間（秒）
+
+    Returns:
+        計算された待機時間（秒、float）
+    """
+    exponential_delay = min(initial_delay * (2 ** retry_count), max_delay)
+    jitter = random.uniform(BACKOFF_JITTER_MIN, BACKOFF_JITTER_MAX)
+    return exponential_delay * jitter
+
+
+def build_gnmi_subscription_request() -> gnmi_pb2.SubscribeRequest:
+    """
+    gNMI購読リクエストを構築
+
+    テレメトリパス (TELEMETRY_PATHS) に基づいて、
+    SAMPLE モード + 10秒間隔でのストリーミング購読を設定
+
+    Returns:
+        構築されたSubscribeRequest
+    """
+    subscriptions = []
+
+    for path_str in TELEMETRY_PATHS:
+        # パス文字列をgNMI PathElemに変換（簡略版：名前のみ）
+        # 実運用では XPath -> PathElem 変換ライブラリの使用を推奨
+        subscription = gnmi_pb2.Subscription(
+            path=gnmi_pb2.Path(
+                elem=[
+                    gnmi_pb2.PathElem(name="interfaces"),
+                    gnmi_pb2.PathElem(name="interface", key={"name": "*"}),
+                    gnmi_pb2.PathElem(name="state"),
+                    gnmi_pb2.PathElem(name="counters"),
+                    gnmi_pb2.PathElem(name=path_str.split("/")[-1]),
+                ]
+            ),
+            mode=gnmi_pb2.SubscriptionMode.SAMPLE,
+            sample_interval=GNMI_SAMPLE_INTERVAL_NANOSEC,
+        )
+        subscriptions.append(subscription)
+
+    return gnmi_pb2.SubscribeRequest(
+        subscribe=gnmi_pb2.SubscriptionList(
+            mode=gnmi_pb2.SubscriptionList.Mode.STREAM,
+            encoding=gnmi_pb2.Encoding.PROTO,  # JSON ではなく PROTO を使用
+            subscription=subscriptions,
+        )
+    )
 
 
 async def request_generator(subscribe_request: gnmi_pb2.SubscribeRequest):
     """
     gNMI Subscribe のリクエストストリームを生成
-    最初に SubscribeRequest を送信して終了
+
+    gNMI では最初に SubscribeRequest を送信してからレスポンスをストリーミング受信する。
+    このジェネレータはリクエストを1回だけ yield する。
+
+    Args:
+        subscribe_request: gNMI購読リクエスト
+
+    Yields:
+        SubscribeRequest
     """
     yield subscribe_request
 
 
-async def data_processor(data_queue: asyncio.Queue, metrics: CollectorMetrics, shutdown_event: asyncio.Event):
+def extract_telemetry_value(typed_value) -> str:
     """
-    改善版：バックプレッシャー対応、終了シグナル対応
+    gNMI レスポンスの値フィールドから実際の値を抽出
+
+    gNMI の値は TypedValue 構造体で複数の型をサポートしており、
+    どの型が設定されているかを判定して抽出する
+
+    Args:
+        typed_value: gNMI TypedValue オブジェクト
+
+    Returns:
+        文字列形式の値。対応する型がない場合は str(typed_value)
+    """
+    if typed_value.HasField("json_ietf_val"):
+        return typed_value.json_ietf_val.decode('utf-8')
+    elif typed_value.HasField("string_val"):
+        return typed_value.string_val
+    elif typed_value.HasField("int_val"):
+        return str(typed_value.int_val)
+    elif typed_value.HasField("uint_val"):
+        return str(typed_value.uint_val)
+    elif typed_value.HasField("bytes_val"):
+        return typed_value.bytes_val.hex()
+    else:
+        return str(typed_value)
+
+
+def path_to_string(path_elements) -> str:
+    """
+    gNMI PathElem のリストをパス文字列に変換
+
+    例: [PathElem(name="a"), PathElem(name="b")] -> "a/b"
+
+    Args:
+        path_elements: PathElem のイテラブル
+
+    Returns:
+        スラッシュ区切りのパス文字列
+    """
+    return "/".join([elem.name for elem in path_elements])
+
+
+# ============================================================================
+# メインロジック
+# ============================================================================
+
+async def data_processor(
+    data_queue: asyncio.Queue,
+    metrics: CollectorMetrics,
+    shutdown_event: asyncio.Event
+) -> None:
+    """
+    テレメトリデータをキューから取り出してバッチ処理する非同期タスク
+
+    動作:
+    1. キューからデータを取り出す
+    2. バッファにため込む
+    3. 一定サイズ (DATA_BATCH_SIZE_FOR_WRITE) に達したら処理（DB書き込み等）
+    4. shutdown_event が set されたら終了
+
+    Args:
+        data_queue: テレメトリデータのasyncio.Queue
+        metrics: メトリクス記録オブジェクト
+        shutdown_event: シャットダウンシグナル
     """
     logger.info("Data Processor task started.")
     data_buffer = []
@@ -177,10 +379,14 @@ async def data_processor(data_queue: asyncio.Queue, metrics: CollectorMetrics, s
     try:
         while not shutdown_event.is_set():
             try:
-                # タイムアウト付きで取得（shutdown_event を定期的にチェック）
-                data = await asyncio.wait_for(data_queue.get(), timeout=1.0)
+                # タイムアウト付きでキューからデータ取得
+                # shutdown_event を定期的にチェックするため、タイムアウトを設定
+                data = await asyncio.wait_for(
+                    data_queue.get(),
+                    timeout=DATA_PROCESSOR_TIMEOUT_SEC
+                )
             except asyncio.TimeoutError:
-                # タイムアウト時もバッファが溜まっていたら処理
+                # タイムアウト時：バッファが溜まっていれば処理
                 if data_buffer:
                     logger.info(f"Processing {len(data_buffer)} records (timeout flush).")
                     data_buffer = []
@@ -188,18 +394,26 @@ async def data_processor(data_queue: asyncio.Queue, metrics: CollectorMetrics, s
 
             data_buffer.append(data)
 
-            # ノンブロッキングで追加データを取得
-            while not data_queue.empty() and len(data_buffer) < 50:  # 上限設定
+            # ノンブロッキングで追加データを取得（バッチ処理の効率化）
+            while not data_queue.empty() and len(data_buffer) < DATA_BUFFER_FETCH_LIMIT:
                 try:
                     data_buffer.append(data_queue.get_nowait())
                 except asyncio.QueueEmpty:
                     break
 
-            # バッチ処理
-            if len(data_buffer) >= 10:
+            # バッファが一定サイズに達したら処理（実装例）
+            if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
                 logger.info(f"Processing {len(data_buffer)} records.")
+
+                # --- 実装例：データベース書き込みなど ---
+                # for record in data_buffer:
+                #     db.insert(record)  # 疑似コード
+                # ---
+
+                # メトリクス記録
                 for record in data_buffer:
                     metrics.record_data(record['host'])
+
                 data_buffer = []
 
             data_queue.task_done()
@@ -220,9 +434,25 @@ async def collector(
     data_queue: asyncio.Queue,
     metrics: CollectorMetrics,
     shutdown_event: asyncio.Event
-):
+) -> None:
     """
-    改善版：エラー分類、リソース管理強化、メトリクス記録
+    単一ホストからgNMI購読でテレメトリを継続的に収集する非同期タスク
+
+    動作:
+    1. gRPCチャネルを確立
+    2. gNMI Subscribe RPC でストリーミング開始
+    3. レスポンスを処理してキューにデータを投入
+    4. 接続エラーで落ちた場合は指数バックオフで再接続
+    5. shutdown_event が set されたら終了
+
+    Args:
+        host: 接続先ホストアドレス
+        port: gNMIサーバポート
+        user: ユーザ名
+        password: パスワード
+        data_queue: データ投入先キュー
+        metrics: メトリクス記録オブジェクト
+        shutdown_event: シャットダウンシグナル
     """
     retry_count = 0
     last_success_time = time.time()
@@ -231,225 +461,266 @@ async def collector(
         channel = None
 
         try:
-            # チャネル作成（タイムアウト・キープアライブ設定）
-            channel_opts = [
+            # ============================================================
+            # 1. gRPCチャネル作成
+            # ============================================================
+            channel_options = [
                 ('grpc.max_connection_idle_ms', 60000),
-                ('grpc.keepalive_time_ms', GRPC_KEEPALIVE_TIME * 1000),
-                ('grpc.keepalive_timeout_ms', GRPC_KEEPALIVE_TIMEOUT * 1000),
+                ('grpc.keepalive_time_ms', GRPC_KEEPALIVE_TIME_SEC * 1000),
+                ('grpc.keepalive_timeout_ms', GRPC_KEEPALIVE_TIMEOUT_SEC * 1000),
             ]
-            channel = grpc.aio.insecure_channel(f"{host}:{port}", options=channel_opts)
+            channel = grpc.aio.insecure_channel(
+                f"{host}:{port}",
+                options=channel_options
+            )
             stub = gnmi_pb2_grpc.gNMIStub(channel)
-            metadata = [("username", user), ("password", password)]
 
-            subscribe_request = gnmi_pb2.SubscribeRequest(
-                subscribe=gnmi_pb2.SubscriptionList(
-                    mode=gnmi_pb2.SubscriptionList.Mode.STREAM,
-                    encoding=gnmi_pb2.Encoding.PROTO,
-                    subscription=[
-                        gnmi_pb2.Subscription(
-                            path=gnmi_pb2.Path(
-                                elem=[
-                                    gnmi_pb2.PathElem(name="interfaces"),
-                                    gnmi_pb2.PathElem(name="interface", key={"name": "*"}),
-                                    gnmi_pb2.PathElem(name="state"),
-                                    gnmi_pb2.PathElem(name="counters"),
-                                    gnmi_pb2.PathElem(name="in-octets"),
-                                ]
-                            ),
-                            mode=gnmi_pb2.SubscriptionMode.SAMPLE,
-                            sample_interval=10_000_000_000,
-                        ),
-                        gnmi_pb2.Subscription(
-                            path=gnmi_pb2.Path(
-                                elem=[
-                                    gnmi_pb2.PathElem(name="interfaces"),
-                                    gnmi_pb2.PathElem(name="interface", key={"name": "*"}),
-                                    gnmi_pb2.PathElem(name="state"),
-                                    gnmi_pb2.PathElem(name="counters"),
-                                    gnmi_pb2.PathElem(name="out-octets"),
-                                ]
-                            ),
-                            mode=gnmi_pb2.SubscriptionMode.SAMPLE,
-                            sample_interval=10_000_000_000,
-                        ),
-                    ],
-                )
+            # 認証メタデータ（基本認証）
+            auth_metadata = [
+                ("username", user),
+                ("password", password),
+            ]
+
+            # ============================================================
+            # 2. gNMI購読リクエスト構築
+            # ============================================================
+            subscribe_request = build_gnmi_subscription_request()
+
+            logger.info(
+                f"[{host}] Connecting... (attempt {retry_count + 1})"
             )
 
-            logger.info(f"[{host}] Connecting... (attempt {retry_count + 1})")
-            request_iter = request_generator(subscribe_request)
+            # ============================================================
+            # 3. Subscribe RPC 実行 + レスポンス処理
+            # ============================================================
+            request_stream = request_generator(subscribe_request)
 
-            async for response in stub.Subscribe(request_iter, metadata=metadata):
+            async for response in stub.Subscribe(
+                request_stream,
+                metadata=auth_metadata
+            ):
                 logger.debug(f"[{host}] Received gNMI response.")
 
-                # レスポンスの種類を判定
+                # ========================================================
+                # 3a. Sync Response: 購読初期化完了
+                # ========================================================
                 if response.HasField("sync_response"):
                     logger.info(f"[{host}] Sync response received.")
-                    retry_count = 0  # 成功時はリセット
+                    retry_count = 0  # 成功したのでリトライカウンタリセット
                     last_success_time = time.time()
 
+                # ========================================================
+                # 3b. Error Response: エラー通知
+                # ========================================================
                 elif response.HasField("error"):
-                    # エラーオブジェクトの詳細を表示
                     error_code = response.error.code
                     error_message = response.error.message
-                    logger.error(f"[{host}] Error in response: Code={error_code}, Message={error_message}")
-                    # Code=0 は OK、つまりエラーではないので処理を続行
+                    logger.error(
+                        f"[{host}] gNMI Error: Code={error_code}, Message={error_message}"
+                    )
+                    # Code=0 は OK（エラーではない）ので続行
                     if error_code != 0:
                         break
 
+                # ========================================================
+                # 3c. Update Response: テレメトリデータ更新
+                # ========================================================
                 elif response.HasField("update"):
                     update = response.update
                     logger.debug(f"[{host}] Update response received.")
 
-                    # タイムスタンプはナノ秒単位で来るので、秒単位に変換
-                    timestamp_s = update.timestamp / 1e9
+                    # タイムスタンプをナノ秒 -> 秒に変換
+                    timestamp_sec = update.timestamp / 1e9
 
+                    # Prefix 処理
+                    prefix_path = ""
                     if update.prefix:
-                        # prefixはPathオブジェクトなので、文字列に変換して表示
-                        prefix_path = "/".join([elem.name for elem in update.prefix.elem])
-                    else:
-                        prefix_path = ""
+                        prefix_path = path_to_string(update.prefix.elem)
 
+                    # Delete 処理
                     for delete_path in update.delete:
-                        delete_path_str = "/".join([elem.name for elem in delete_path.elem])
-                        logger.debug(f"[{host}] Deleted: /{prefix_path}/{delete_path_str}")
+                        delete_path_str = path_to_string(delete_path.elem)
+                        logger.debug(
+                            f"[{host}] Deleted: /{prefix_path}/{delete_path_str}"
+                        )
 
-                    for update_val in update.update:
-                        path_str = "/".join([elem.name for elem in update_val.path.elem])
+                    # Update 処理（実際のテレメトリデータ）
+                    for update_value in update.update:
+                        path_str = path_to_string(update_value.path.elem)
+                        value_str = extract_telemetry_value(update_value.val)
 
-                        # 値のタイプによって表示を調整
-                        value_str = None
-                        if update_val.val.HasField("json_ietf_val"):
-                            value_str = update_val.val.json_ietf_val.decode('utf-8')
-                        elif update_val.val.HasField("string_val"):
-                            value_str = update_val.val.string_val
-                        elif update_val.val.HasField("int_val"):
-                            value_str = str(update_val.val.int_val)
-                        elif update_val.val.HasField("uint_val"):
-                            value_str = str(update_val.val.uint_val)
-                        elif update_val.val.HasField("bytes_val"):
-                            value_str = update_val.val.bytes_val.hex()
-                        else:
-                            value_str = str(update_val.val)
+                        logger.info(
+                            f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}"
+                        )
 
-                        logger.info(f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}")
-
+                        # テレメトリレコード作成
                         telemetry_record = {
                             'host': host,
                             'path': path_str,
                             'value': value_str,
-                            'timestamp': timestamp_s,
+                            'timestamp': timestamp_sec,
                             'received_at': time.time()
                         }
 
-                        # キューにデータを投入
-                        await data_queue.put(telemetry_record)
+                        # キューに投入（バックプレッシャー対応）
+                        if data_queue.full():
+                            # キューが満杯の場合は非同期待機
+                            await data_queue.put(telemetry_record)
+                        else:
+                            # キューに余裕がある場合はノンブロッキング投入
+                            data_queue.put_nowait(telemetry_record)
 
                 else:
-                    logger.debug(f"[{host}] Unknown response type received.")
+                    logger.debug(
+                        f"[{host}] Unknown response type received."
+                    )
 
-            logger.warning(f"[{host}] Stream ended. Reconnecting...")
-
-        except grpc.aio.AioRpcError as e:
-            is_retryable = is_retryable_error(e)
-            logger.error(
-                f"[{host}] gRPC error: {e.code()} - {e.details()} (retryable={is_retryable})"
+            logger.warning(
+                f"[{host}] Stream ended normally. Attempting to reconnect."
             )
-            metrics.record_error(host, f"{e.code()}")
 
+        # ============================================================
+        # 例外処理
+        # ============================================================
+
+        except grpc.aio.AioRpcError as error:
+            is_retryable = is_retryable_error(error)
+            logger.error(f"[{host}] gRPC error: {error.code()} - {error.details()} " f"(retryable={is_retryable})")
+            metrics.record_error(host, str(error.code()))
+
+            # リトライ不可能なエラーは終了
             if not is_retryable:
-                logger.error(f"[{host}] Non-retryable error. Stopping collector.")
+                logger.error(f"[{host}] Non-retryable gRPC error. Stopping collector.")
                 break
 
         except asyncio.CancelledError:
             logger.warning(f"[{host}] Collection task cancelled.")
             break
 
-        except Exception as e:
-            logger.error(f"[{host}] Error: {e.__class__.__name__}: {e}")
-            metrics.record_error(host, str(e))
+        except Exception as error:
+            logger.error(f"[{host}] Unexpected error: {error.__class__.__name__}: {error}")
+            metrics.record_error(host, str(error))
 
         finally:
+            # ============================================================
+            # チャネルのクローズ
+            # ============================================================
             if channel:
                 try:
-                    await asyncio.wait_for(channel.close(), timeout=GRPC_CONNECT_TIMEOUT)
+                    await asyncio.wait_for(channel.close(), timeout=GRPC_CONNECT_TIMEOUT_SEC)
                 except asyncio.TimeoutError:
                     logger.warning(f"[{host}] Channel close timeout.")
-                except Exception as close_e:
-                    logger.debug(f"[{host}] Channel close error: {close_e}")
+                except Exception as close_error:
+                    logger.debug(f"[{host}] Channel close error: {close_error}")
 
-            # リセット判定：10分以上成功していたらリトライ数をリセット
-            if time.time() - last_success_time > RETRY_RESET_TIME:
+            # ============================================================
+            # 再接続判定・待機
+            # ============================================================
+            # 成功時刻から RETRY_SUCCESS_RESET_TIME_SEC 経過していたら
+            # リトライカウントをリセット（無限増加を防止）
+            if time.time() - last_success_time > RETRY_SUCCESS_RESET_TIME_SEC:
                 retry_count = 0
 
+            # シャットダウン中でなければ再接続
             if not shutdown_event.is_set():
-                backoff_time = calculate_backoff(retry_count)
-                logger.info(f"[{host}] Retrying in {backoff_time:.1f}s (retry_count={retry_count})")
-                await asyncio.sleep(backoff_time)
+                backoff_delay = calculate_backoff_delay(retry_count)
+                logger.info(
+                    f"[{host}] Waiting {backoff_delay:.1f}s before retry "
+                    f"(retry_count={retry_count})"
+                )
+                await asyncio.sleep(backoff_delay)
                 retry_count += 1
                 metrics.record_reconnect(host)
 
 
-# =================================================================
-# メイン実行部
-# =================================================================
+async def main() -> None:
+    """
+    メイン関数：全ての非同期タスクを管理・調整
 
-async def main():
+    動作:
+    1. ルータインベントリを読み込み（実運用ではDBから）
+    2. データキュー、メトリクス、シャットダウンシグナルを初期化
+    3. 各ルータごとに collector タスクを起動
+    4. data_processor タスクを起動
+    5. Ctrl+C でグレースフルシャットダウン
     """
-    改善版：グレースフルシャットダウン、メトリクス報告
-    """
-    # ルータのインベントリ情報 (実際には外部ファイルやDBから読み込む)
+    # ルータインベントリ（実装例）
+    # 実運用では外部ファイルやDBから読み込む推奨
     router_inventory = [
-        {"host": "192.168.254.1", "port": 9339, "user": "cisco", "password": "cisco123"},
-        {"host": "192.168.254.2", "port": 9339, "user": "cisco", "password": "cisco123"},
+        {
+            "host": "192.168.254.1",
+            "port": 9339,
+            "user": "cisco",
+            "password": "cisco123"
+        },
+        {
+            "host": "192.168.254.2",
+            "port": 9339,
+            "user": "cisco",
+            "password": "cisco123"
+        },
     ]
 
-    # データ共有のためのasyncio.Queueを初期化
-    data_queue = asyncio.Queue(maxsize=500)  # キューサイズを明示的に設定
+    # 共有リソース初期化
+    data_queue = asyncio.Queue(maxsize=DATA_QUEUE_MAX_SIZE)
     metrics = CollectorMetrics()
     shutdown_event = asyncio.Event()
 
-    # データ処理タスクを開始
+    # データ処理タスク起動
     data_processor_task = asyncio.create_task(
         data_processor(data_queue, metrics, shutdown_event)
     )
 
-    # 全ルータの収集Taskを作成
+    # 各ルータの収集タスク起動
     collection_tasks = []
     for router in router_inventory:
         task = asyncio.create_task(
             collector(
-                router['host'],
-                router['port'],
-                router['user'],
-                router['password'],
-                data_queue,
-                metrics,
-                shutdown_event
+                host=router['host'],
+                port=router['port'],
+                user=router['user'],
+                password=router['password'],
+                data_queue=data_queue,
+                metrics=metrics,
+                shutdown_event=shutdown_event,
             )
         )
         collection_tasks.append(task)
 
-    logger.info(f"Started {len(collection_tasks)} collection task(s) and 1 processor task.")
+    all_tasks = collection_tasks + [data_processor_task]
+    logger.info(
+        f"Started {len(collection_tasks)} collection task(s) "
+        f"and 1 data processor task."
+    )
 
     try:
-        # 全ての収集タスクが継続的に実行されるように待機
-        # return_exceptions=True により、個別タスクエラーで全体が止まらない
-        await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
+        # 全タスク継続実行を待機
+        # return_exceptions=True により、1つのタスク失敗で全体が止まらない
+        await asyncio.gather(*all_tasks, return_exceptions=True)
+
     except KeyboardInterrupt:
-        logger.info("Received shutdown signal.")
+        logger.info("Received Ctrl+C, initiating graceful shutdown...")
+
     finally:
+        # ============================================================
+        # グレースフルシャットダウン
+        # ============================================================
+
+        # 全タスクにシャットダウンシグナル送信
         shutdown_event.set()
-        # 全収集タスクをキャンセル
-        for task in collection_tasks + [data_processor_task]:
+
+        # 実行中のタスクをキャンセル
+        for task in all_tasks:
             if not task.done():
                 task.cancel()
 
-        # 収集タスクのキャンセルを待機
-        await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
+        # 全タスクの終了を待機
+        await asyncio.gather(*all_tasks, return_exceptions=True)
 
-        # 最終メトリクス表示
-        logger.info(f"Final Metrics: {metrics.get_summary()}")
+        # 最終レポート
+        logger.info("All tasks stopped.")
+        summary = metrics.get_summary()
+        logger.info(f"Final Metrics: {summary}")
 
 
 if __name__ == "__main__":

@@ -397,5 +397,73 @@ if __name__ == "__main__":
 
 
 """
+cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
+2025-12-17 11:59:55,010 - asyncio - DEBUG - Using selector: EpollSelector
+2025-12-17 11:59:55,010 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
+2025-12-17 11:59:55,011 - gNMI_Telemetry - INFO - Data Processor task started.
+2025-12-17 11:59:55,011 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:55,011 - grpc._cython.cygrpc - DEBUG - Using AsyncIOEngine.POLLER as I/O engine
+2025-12-17 11:59:55,012 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:55,013 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 11:59:55,013 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:55,014 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:55,014 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:55,014 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 11:59:55,014 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:55,026 - gNMI_Telemetry - ERROR - [192.168.254.1] gRPC error: StatusCode.UNIMPLEMENTED - rpc error: code = Unimplemented desc = unsupported encoding: JSON. Retrying in 1s.
+2025-12-17 11:59:55,035 - gNMI_Telemetry - ERROR - [192.168.254.2] gRPC error: StatusCode.UNIMPLEMENTED - rpc error: code = Unimplemented desc = unsupported encoding: JSON. Retrying in 1s.
+2025-12-17 11:59:56,028 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:56,028 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:56,028 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 11:59:56,028 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:56,035 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:56,035 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:56,036 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 11:59:56,036 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:56,037 - gNMI_Telemetry - ERROR - [192.168.254.1] gRPC error: StatusCode.UNIMPLEMENTED - rpc error: code = Unimplemented desc = unsupported encoding: JSON. Retrying in 1.8975427814869497s.
+2025-12-17 11:59:56,043 - gNMI_Telemetry - ERROR - [192.168.254.2] gRPC error: StatusCode.UNIMPLEMENTED - rpc error: code = Unimplemented desc = unsupported encoding: JSON. Retrying in 1.9903299202633629s.
+2025-12-17 11:59:57,936 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:57,936 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:57,937 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 11:59:57,937 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:57,946 - gNMI_Telemetry - ERROR - [192.168.254.1] gRPC error: StatusCode.UNIMPLEMENTED - rpc error: code = Unimplemented desc = unsupported encoding: JSON. Retrying in 3.490344965008329s.
+2025-12-17 11:59:58,034 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:58,035 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:58,035 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 11:59:58,035 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 11:59:58,043 - gNMI_Telemetry - ERROR - [192.168.254.2] gRPC error: StatusCode.UNIMPLEMENTED - rpc error: code = Unimplemented desc = unsupported encoding: JSON. Retrying in 3.662216435692464s.
+2025-12-17 12:00:01,438 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 12:00:01,438 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 12:00:01,438 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 12:00:01,438 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 12:00:01,446 - gNMI_Telemetry - ERROR - [192.168.254.1] gRPC error: StatusCode.UNIMPLEMENTED - rpc error: code = Unimplemented desc = unsupported encoding: JSON. Retrying in 5.84513814929679s.
+2025-12-17 12:00:01,707 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 12:00:01,707 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 12:00:01,707 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 12:00:01,707 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125822510847216
+2025-12-17 12:00:01,715 - gNMI_Telemetry - ERROR - [192.168.254.2] gRPC error: StatusCode.UNIMPLEMENTED - rpc error: code = Unimplemented desc = unsupported encoding: JSON. Retrying in 8.20612105051072s.
+^C2025-12-17 12:00:02,402 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
+2025-12-17 12:00:02,402 - gNMI_Telemetry - INFO - Data Processor task stopped.
+2025-12-17 12:00:02,404 - grpc.aio._call - DEBUG - Client request_iterator raised exception:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/cisco/expt-cml/arcos/./gnmi_async.py", line 378, in main
+    await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
 
 """

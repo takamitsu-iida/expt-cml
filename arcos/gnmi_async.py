@@ -580,7 +580,10 @@ def format_data_table(records: list) -> str:
     rows = []
     for record in records:
         event_type = "EVENT" if record.get('is_event', False) else "DATA"
-        timestamp_str = time.strftime('%H:%M:%S',time.localtime(record['timestamp']))
+        timestamp_str = time.strftime(
+            '%H:%M:%S',
+            time.localtime(record['timestamp'])
+        )
 
         rows.append([
             record['host'],
@@ -614,36 +617,6 @@ def format_data_table(records: list) -> str:
         table_lines.append(data_line)
 
     return "\n".join(table_lines)
-
-
-def format_processing_summary(
-    total_records: int,
-    event_count: int,
-    processing_time_sec: float
-) -> str:
-    """
-    データ処理のサマリーをフォーマット
-
-    Args:
-        total_records: 処理したレコード数
-        event_count: ON_CHANGE イベント数
-        processing_time_sec: 処理にかかった時間（秒）
-
-    Returns:
-        フォーマット済みのサマリー文字列
-    """
-    summary_lines = [
-        "=" * 80,
-        f"Data Processing Summary",
-        f"  Total Records:  {total_records}",
-        f"  Events (ON_CHANGE): {event_count}",
-        f"  Normal Data:    {total_records - event_count}",
-        f"  Processing Time: {processing_time_sec:.3f}s",
-        "=" * 80,
-    ]
-
-    return "\n".join(summary_lines)
-
 
 # ============================================================================
 # メインロジック
@@ -729,15 +702,6 @@ async def data_processor(
                 data_table = format_data_table(data_buffer)
                 if data_table:
                     display_lines.append(data_table)
-
-                # サマリー表示
-                summary = format_processing_summary(
-                    total_records=len(data_buffer),
-                    event_count=event_count,
-                    processing_time_sec=processing_time
-                )
-                display_lines.append("")
-                display_lines.append(summary)
 
                 # 画面出力
                 print("\n".join(display_lines))

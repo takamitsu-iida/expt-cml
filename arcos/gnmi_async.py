@@ -642,7 +642,6 @@ def format_processing_summary(
         f"  Events (ON_CHANGE): {event_count}",
         f"  Normal Data:    {total_records - event_count}",
         f"  Processing Time: {processing_time_sec:.3f}s",
-        f"  Throughput:     {total_records / processing_time_sec:.1f} records/sec",
         "=" * 80,
     ]
 

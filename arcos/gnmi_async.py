@@ -118,10 +118,15 @@ DATA_PROCESSOR_TIMEOUT_SEC = 1.0      # データ処理のタイムアウト（�
 GNMI_SAMPLE_INTERVAL_NANOSEC = 30_000_000_000  # サンプル間隔（30秒、ナノ秒）
 
 # テレメトリ収集パス
-TELEMETRY_PATHS = [
+SAMPLE_PATHS = [
     "/interfaces/interface[name=*]/state/counters/in-octets",
     "/interfaces/interface[name=*]/state/counters/out-octets",
 ]
+
+ON_CHANGE_PATHS = [
+    "interfaces/interface[name=*]/subinterfaces/subinterface/state/ifindex ON_CHANGE",
+]
+
 
 # バックプレッシャー判定の際のジッター範囲
 BACKOFF_JITTER_MIN = 0.8
@@ -257,17 +262,17 @@ def build_gnmi_subscription_request() -> gnmi_pb2.SubscribeRequest:
     """
     gNMI購読リクエストを構築
 
-    テレメトリパス (TELEMETRY_PATHS) に基づいて、
-    SAMPLE モード + 10秒間隔でのストリーミング購読を設定
+    SAMPLE モード（定期的なサンプリング）と ON_CHANGE モード（イベント検知）の両方のパスを含める
 
     Returns:
         構築されたSubscribeRequest
     """
     subscriptions = []
 
-    for path_str in TELEMETRY_PATHS:
-        # パス文字列をgNMI PathElemに変換（簡略版：名前のみ）
-        # 実運用では XPath -> PathElem 変換ライブラリの使用を推奨
+    # ========================================================
+    # SAMPLE モード: 定期的なサンプリング
+    # ========================================================
+    for path_str in SAMPLE_PATHS:
         subscription = gnmi_pb2.Subscription(
             path=gnmi_pb2.Path(
                 elem=[
@@ -283,10 +288,32 @@ def build_gnmi_subscription_request() -> gnmi_pb2.SubscribeRequest:
         )
         subscriptions.append(subscription)
 
+    # ========================================================
+    # ON_CHANGE モード: 値変更を検知して通知
+    # ========================================================
+    for path_str in ON_CHANGE_PATHS:
+        # パス文字列から " ON_CHANGE" 部分を除去
+        clean_path = path_str.replace(" ON_CHANGE", "").strip()
+
+        subscription = gnmi_pb2.Subscription(
+            path=gnmi_pb2.Path(
+                elem=[
+                    gnmi_pb2.PathElem(name="interfaces"),
+                    gnmi_pb2.PathElem(name="interface", key={"name": "*"}),
+                    gnmi_pb2.PathElem(name="subinterfaces"),
+                    gnmi_pb2.PathElem(name="subinterface"),
+                    gnmi_pb2.PathElem(name="state"),
+                    gnmi_pb2.PathElem(name="ifindex"),
+                ]
+            ),
+            mode=gnmi_pb2.SubscriptionMode.ON_CHANGE,
+        )
+        subscriptions.append(subscription)
+
     return gnmi_pb2.SubscribeRequest(
         subscribe=gnmi_pb2.SubscriptionList(
             mode=gnmi_pb2.SubscriptionList.Mode.STREAM,
-            encoding=gnmi_pb2.Encoding.PROTO,  # JSON ではなく PROTO を使用
+            encoding=gnmi_pb2.Encoding.PROTO,
             subscription=subscriptions,
         )
     )
@@ -348,6 +375,25 @@ def path_to_string(path_elements) -> str:
         スラッシュ区切りのパス文字列
     """
     return "/".join([elem.name for elem in path_elements])
+
+
+def is_on_change_update(path_str: str) -> bool:
+    """
+    パス文字列が ON_CHANGE 対象パスかを判定
+
+    Args:
+        path_str: パス文字列（"elem1/elem2/..." 形式）
+
+    Returns:
+        True: ON_CHANGE パス / False: 通常のパス
+    """
+    for on_change_path in ON_CHANGE_PATHS:
+        # ON_CHANGE_PATHS の " ON_CHANGE" 部分を除去して比較
+        clean_on_change_path = on_change_path.replace(" ON_CHANGE", "").strip()
+        # 簡易的なマッチング（実運用ではより厳密なパターンマッチング推奨）
+        if "ifindex" in clean_on_change_path and "ifindex" in path_str:
+            return True
+    return False
 
 
 # ============================================================================
@@ -506,7 +552,7 @@ async def collector(
                 # ========================================================
                 if response.HasField("sync_response"):
                     logger.info(f"[{host}] Sync response received.")
-                    retry_count = 0  # 成功したのでリトライカウンタリセット
+                    retry_count = 0
                     last_success_time = time.time()
 
                 # ========================================================
@@ -518,7 +564,6 @@ async def collector(
                     logger.error(
                         f"[{host}] gNMI Error: Code={error_code}, Message={error_message}"
                     )
-                    # Code=0 は OK（エラーではない）ので続行
                     if error_code != 0:
                         break
 
@@ -529,10 +574,7 @@ async def collector(
                     update = response.update
                     logger.debug(f"[{host}] Update response received.")
 
-                    # タイムスタンプをナノ秒 -> 秒に変換
                     timestamp_sec = update.timestamp / 1e9
-
-                    # Prefix 処理
                     prefix_path = ""
                     if update.prefix:
                         prefix_path = path_to_string(update.prefix.elem)
@@ -549,9 +591,18 @@ async def collector(
                         path_str = path_to_string(update_value.path.elem)
                         value_str = extract_telemetry_value(update_value.val)
 
-                        logger.info(
-                            f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}"
-                        )
+                        # ================================================
+                        # ON_CHANGE イベント検知：目立つログで表示
+                        # ================================================
+                        if is_on_change_update(path_str):
+                            logger.warning(
+                                f"[{host}] *** EVENT DETECTED (ON_CHANGE) ***: "
+                                f"/{prefix_path}/{path_str} = {value_str}"
+                            )
+                        else:
+                            logger.info(
+                                f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}"
+                            )
 
                         # テレメトリレコード作成
                         telemetry_record = {
@@ -559,21 +610,18 @@ async def collector(
                             'path': path_str,
                             'value': value_str,
                             'timestamp': timestamp_sec,
-                            'received_at': time.time()
+                            'received_at': time.time(),
+                            'is_event': is_on_change_update(path_str)  # イベントフラグを追加
                         }
 
                         # キューに投入（バックプレッシャー対応）
                         if data_queue.full():
-                            # キューが満杯の場合は非同期待機
                             await data_queue.put(telemetry_record)
                         else:
-                            # キューに余裕がある場合はノンブロッキング投入
                             data_queue.put_nowait(telemetry_record)
 
                 else:
-                    logger.debug(
-                        f"[{host}] Unknown response type received."
-                    )
+                    logger.debug(f"[{host}] Unknown response type received.")
 
             logger.warning(
                 f"[{host}] Stream ended normally. Attempting to reconnect."
@@ -588,7 +636,6 @@ async def collector(
             logger.error(f"[{host}] gRPC error: {error.code()} - {error.details()} " f"(retryable={is_retryable})")
             metrics.record_error(host, str(error.code()))
 
-            # リトライ不可能なエラーは終了
             if not is_retryable:
                 logger.error(f"[{host}] Non-retryable gRPC error. Stopping collector.")
                 break

@@ -76,6 +76,8 @@ import logging
 import random
 import time
 from typing import Dict, Any
+from enum import Enum
+from collections import defaultdict
 
 import grpc.aio
 
@@ -88,9 +90,15 @@ import gnmi_pb2_grpc
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('gNMI_Telemetry')
 
-# 再接続設定
-INITIAL_DELAY = 1      # 最初の再接続までの待機時間（秒）
-MAX_RETRY_DELAY = 120  # 最大待機時間（秒）
+# 再接続設定（改善版）
+INITIAL_DELAY = 1
+MAX_RETRY_DELAY = 120
+RETRY_RESET_TIME = 600  # 10分間成功したらリセット
+
+# チャネル設定
+GRPC_CONNECT_TIMEOUT = 10
+GRPC_KEEPALIVE_TIME = 30
+GRPC_KEEPALIVE_TIMEOUT = 5
 
 # 収集するテレメトリパスの定義
 TELEMETRY_PATH = [
@@ -98,79 +106,57 @@ TELEMETRY_PATH = [
     "/interfaces/interface[name=*]/state/counters/out-octets",
 ]
 
-# gNMI Subscribeリクエスト
-SUBSCRIBE_REQUEST = {
-    "subscription": [
-        {
-            "path": path,
-            "mode": "sample",
-            "sample_interval": 30_000_000_000,  # ナノ秒 = 30秒
-        } for path in TELEMETRY_PATH
-    ]
-}
+
+class RetryableError(Enum):
+    """リトライ可能なエラー判定"""
+    UNAVAILABLE = "unavailable"
+    RESOURCE_EXHAUSTED = "resource_exhausted"
+    INTERNAL = "internal"
+    UNKNOWN = "unknown"
 
 
-# =================================================================
-# 1. データ処理タスク (DataProcessor)
-# =================================================================
+class CollectorMetrics:
+    """簡易監視メトリクス"""
+    def __init__(self):
+        self.metrics = defaultdict(lambda: {
+            'total_records': 0,
+            'errors': 0,
+            'last_error': None,
+            'reconnects': 0,
+            'last_update_time': None
+        })
 
-async def data_processor(data_queue: asyncio.Queue):
-    """
-    キューからテレメトリデータを取り出して処理を行うタスク
-    """
-    logger.info("Data Processor task started.")
+    def record_data(self, host: str):
+        self.metrics[host]['total_records'] += 1
+        self.metrics[host]['last_update_time'] = time.time()
 
-    # リアルタイム処理用のバッファ
-    data_buffer = []
+    def record_error(self, host: str, error: str):
+        self.metrics[host]['errors'] += 1
+        self.metrics[host]['last_error'] = error
 
-    try:
-        while True:
-            # キューからデータを取り出す (キューが空の場合は待機)
-            data: Dict[str, Any] = await data_queue.get()
+    def record_reconnect(self, host: str):
+        self.metrics[host]['reconnects'] += 1
 
-            # データの処理・バッファリング
-            data_buffer.append(data)
-
-            # キューにデータがある場合は、できるだけ早く取り出す (まとめて処理するため)
-            while not data_queue.empty():
-                data_buffer.append(data_queue.get_nowait())
-
-            # 一定サイズに達したら、データベースにまとめて書き込む
-            if len(data_buffer) >= 10: # 例: 10個溜まったらDBに書き込む
-
-                # --- ここにデータベース書き込み処理を実装 ---
-                # 例: InfluxDBへの書き込み、KafkaへのPublishなど
-                #
-                # 実際のDB I/Oは時間がかかるため、
-                # DBクライアントがasyncに対応していない場合は、
-                # `await asyncio.to_thread(sync_db_write, data_buffer)`
-                # のように別スレッドで実行することを推奨します。
-
-                logger.info(f"Processing {len(data_buffer)} records. (Host: {data['host']}, Path: {data['path']})")
-
-                data_buffer = [] # バッファをクリア
-                # ----------------------------------------------
-
-            # キューのタスク完了を通知
-            data_queue.task_done()
-
-    except asyncio.CancelledError:
-        logger.warning("Data Processor task cancelled.")
-    except Exception as e:
-        logger.error(f"Data Processor failed: {e}")
-
-    logger.info("Data Processor task stopped.")
+    def get_summary(self):
+        return dict(self.metrics)
 
 
-def build_auth_metadata(user: str, password: str) -> list:
-    """
-    gNMI 認証用メタデータを作成
-    gNMI では username と password を個別メタデータとして渡す
-    """
-    return [
-        ("username", user),
-        ("password", password),
-    ]
+def is_retryable_error(error: grpc.aio.AioRpcError) -> bool:
+    """gRPCエラーがリトライ可能かを判定"""
+    retryable_codes = {
+        grpc.StatusCode.UNAVAILABLE,
+        grpc.StatusCode.RESOURCE_EXHAUSTED,
+        grpc.StatusCode.INTERNAL,
+        grpc.StatusCode.UNKNOWN,
+    }
+    return error.code() in retryable_codes
+
+
+def calculate_backoff(retry_count: int, initial: int = INITIAL_DELAY, max_delay: int = MAX_RETRY_DELAY) -> float:
+    """指数バックオフ + ジッター（改善版）"""
+    delay = min(initial * (2 ** retry_count), max_delay)
+    jitter = random.uniform(0.8, 1.2)
+    return delay * jitter
 
 
 async def request_generator(subscribe_request: gnmi_pb2.SubscribeRequest):
@@ -181,32 +167,84 @@ async def request_generator(subscribe_request: gnmi_pb2.SubscribeRequest):
     yield subscribe_request
 
 
-
-async def collector(host: str, port: int, user: str, password: str, data_queue: asyncio.Queue):
+async def data_processor(data_queue: asyncio.Queue, metrics: CollectorMetrics, shutdown_event: asyncio.Event):
     """
-    gNMI テレメトリ収集タスク (非同期)
+    改善版：バックプレッシャー対応、終了シグナル対応
     """
-    retry_delay = INITIAL_DELAY
+    logger.info("Data Processor task started.")
+    data_buffer = []
 
-    while True:
+    try:
+        while not shutdown_event.is_set():
+            try:
+                # タイムアウト付きで取得（shutdown_event を定期的にチェック）
+                data = await asyncio.wait_for(data_queue.get(), timeout=1.0)
+            except asyncio.TimeoutError:
+                # タイムアウト時もバッファが溜まっていたら処理
+                if data_buffer:
+                    logger.info(f"Processing {len(data_buffer)} records (timeout flush).")
+                    data_buffer = []
+                continue
+
+            data_buffer.append(data)
+
+            # ノンブロッキングで追加データを取得
+            while not data_queue.empty() and len(data_buffer) < 50:  # 上限設定
+                try:
+                    data_buffer.append(data_queue.get_nowait())
+                except asyncio.QueueEmpty:
+                    break
+
+            # バッチ処理
+            if len(data_buffer) >= 10:
+                logger.info(f"Processing {len(data_buffer)} records.")
+                for record in data_buffer:
+                    metrics.record_data(record['host'])
+                data_buffer = []
+
+            data_queue.task_done()
+
+    except asyncio.CancelledError:
+        logger.warning("Data Processor task cancelled.")
+    except Exception as e:
+        logger.error(f"Data Processor failed: {e}")
+    finally:
+        logger.info("Data Processor task stopped.")
+
+
+async def collector(
+    host: str,
+    port: int,
+    user: str,
+    password: str,
+    data_queue: asyncio.Queue,
+    metrics: CollectorMetrics,
+    shutdown_event: asyncio.Event
+):
+    """
+    改善版：エラー分類、リソース管理強化、メトリクス記録
+    """
+    retry_count = 0
+    last_success_time = time.time()
+
+    while not shutdown_event.is_set():
         channel = None
 
         try:
-            # チャネルを作成
-            channel = grpc.aio.insecure_channel(f"{host}:{port}")
-
-            # 非同期 gNMI Stub を作成
+            # チャネル作成（タイムアウト・キープアライブ設定）
+            channel_opts = [
+                ('grpc.max_connection_idle_ms', 60000),
+                ('grpc.keepalive_time_ms', GRPC_KEEPALIVE_TIME * 1000),
+                ('grpc.keepalive_timeout_ms', GRPC_KEEPALIVE_TIMEOUT * 1000),
+            ]
+            channel = grpc.aio.insecure_channel(f"{host}:{port}", options=channel_opts)
             stub = gnmi_pb2_grpc.gNMIStub(channel)
+            metadata = [("username", user), ("password", password)]
 
-            # 基本認証メタデータを準備
-            metadata = build_auth_metadata(user, password)
-
-            # SubscribeRequest の設定
-            # encoding を PROTO に設定することが重要
             subscribe_request = gnmi_pb2.SubscribeRequest(
                 subscribe=gnmi_pb2.SubscriptionList(
                     mode=gnmi_pb2.SubscriptionList.Mode.STREAM,
-                    encoding=gnmi_pb2.Encoding.PROTO,  # JSON ではなく PROTO を指定
+                    encoding=gnmi_pb2.Encoding.PROTO,
                     subscription=[
                         gnmi_pb2.Subscription(
                             path=gnmi_pb2.Path(
@@ -219,7 +257,7 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
                                 ]
                             ),
                             mode=gnmi_pb2.SubscriptionMode.SAMPLE,
-                            sample_interval=10_000_000_000,  # 10秒（ナノ秒）
+                            sample_interval=10_000_000_000,
                         ),
                         gnmi_pb2.Subscription(
                             path=gnmi_pb2.Path(
@@ -232,26 +270,23 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
                                 ]
                             ),
                             mode=gnmi_pb2.SubscriptionMode.SAMPLE,
-                            sample_interval=10_000_000_000,  # 10秒（ナノ秒）
+                            sample_interval=10_000_000_000,
                         ),
                     ],
                 )
             )
 
-            logger.info(f"[{host}] Sending SubscribeRequest...")
-
-
-            # リクエストジェネレータを作成
+            logger.info(f"[{host}] Connecting... (attempt {retry_count + 1})")
             request_iter = request_generator(subscribe_request)
 
-            # Subscribe RPC を呼び出し、レスポンスを非同期でイテレート
             async for response in stub.Subscribe(request_iter, metadata=metadata):
-
                 logger.debug(f"[{host}] Received gNMI response.")
 
                 # レスポンスの種類を判定
                 if response.HasField("sync_response"):
                     logger.info(f"[{host}] Sync response received.")
+                    retry_count = 0  # 成功時はリセット
+                    last_success_time = time.time()
 
                 elif response.HasField("error"):
                     # エラーオブジェクトの詳細を表示
@@ -313,35 +348,46 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
                 else:
                     logger.debug(f"[{host}] Unknown response type received.")
 
-            logger.warning(f"[{host}] Stream ended normally. Attempting to reconnect.")
+            logger.warning(f"[{host}] Stream ended. Reconnecting...")
 
         except grpc.aio.AioRpcError as e:
-            logger.error(f"[{host}] gRPC error: {e.code()} - {e.details()}. Retrying in {retry_delay}s.")
+            is_retryable = is_retryable_error(e)
+            logger.error(
+                f"[{host}] gRPC error: {e.code()} - {e.details()} (retryable={is_retryable})"
+            )
+            metrics.record_error(host, f"{e.code()}")
+
+            if not is_retryable:
+                logger.error(f"[{host}] Non-retryable error. Stopping collector.")
+                break
 
         except asyncio.CancelledError:
             logger.warning(f"[{host}] Collection task cancelled.")
             break
 
         except Exception as e:
-            logger.error(f"[{host}] Connection failed: {e.__class__.__name__}: {e}. Retrying in {retry_delay}s.")
+            logger.error(f"[{host}] Error: {e.__class__.__name__}: {e}")
+            metrics.record_error(host, str(e))
 
         finally:
             if channel:
                 try:
-                    await channel.close()
+                    await asyncio.wait_for(channel.close(), timeout=GRPC_CONNECT_TIMEOUT)
+                except asyncio.TimeoutError:
+                    logger.warning(f"[{host}] Channel close timeout.")
                 except Exception as close_e:
-                    logger.debug(f"[{host}] Error during channel close: {close_e}")
+                    logger.debug(f"[{host}] Channel close error: {close_e}")
 
-            # キャンセルされた場合は再接続しない
-            if not asyncio.current_task().cancelled():
-                # 再接続までの待機
-                await asyncio.sleep(retry_delay)
-                retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY)
+            # リセット判定：10分以上成功していたらリトライ数をリセット
+            if time.time() - last_success_time > RETRY_RESET_TIME:
+                retry_count = 0
 
-                # ジッター (ランダムなノイズ) の追加
-                jitter = random.uniform(0.8, 1.2)
-                retry_delay = retry_delay * jitter
-
+            if not shutdown_event.is_set():
+                backoff_time = calculate_backoff(retry_count)
+                logger.info(f"[{host}] Retrying in {backoff_time:.1f}s (retry_count={retry_count})")
+                await asyncio.sleep(backoff_time)
+                retry_count += 1
+                metrics.record_reconnect(host)
 
 
 # =================================================================
@@ -350,7 +396,7 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
 
 async def main():
     """
-    メイン関数：全ての非同期タスクを管理
+    改善版：グレースフルシャットダウン、メトリクス報告
     """
     # ルータのインベントリ情報 (実際には外部ファイルやDBから読み込む)
     router_inventory = [
@@ -359,10 +405,14 @@ async def main():
     ]
 
     # データ共有のためのasyncio.Queueを初期化
-    data_queue = asyncio.Queue(maxsize=1000)
+    data_queue = asyncio.Queue(maxsize=500)  # キューサイズを明示的に設定
+    metrics = CollectorMetrics()
+    shutdown_event = asyncio.Event()
 
     # データ処理タスクを開始
-    data_processor_task = asyncio.create_task(data_processor(data_queue))
+    data_processor_task = asyncio.create_task(
+        data_processor(data_queue, metrics, shutdown_event)
+    )
 
     # 全ルータの収集Taskを作成
     collection_tasks = []
@@ -373,7 +423,9 @@ async def main():
                 router['port'],
                 router['user'],
                 router['password'],
-                data_queue
+                data_queue,
+                metrics,
+                shutdown_event
             )
         )
         collection_tasks.append(task)
@@ -384,7 +436,10 @@ async def main():
         # 全ての収集タスクが継続的に実行されるように待機
         # return_exceptions=True により、個別タスクエラーで全体が止まらない
         await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
+    except KeyboardInterrupt:
+        logger.info("Received shutdown signal.")
     finally:
+        shutdown_event.set()
         # 全収集タスクをキャンセル
         for task in collection_tasks + [data_processor_task]:
             if not task.done():
@@ -393,14 +448,14 @@ async def main():
         # 収集タスクのキャンセルを待機
         await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
 
+        # 最終メトリクス表示
+        logger.info(f"Final Metrics: {metrics.get_summary()}")
+
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Program interrupted by user.")
-
-"""
-
 
 """

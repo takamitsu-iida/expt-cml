@@ -69,6 +69,73 @@ cd ~/git/expt-cml/arcos
 # 念のため確認
 grep "import gnmi_ext_pb2" gnmi_pb2.py
 
+
+
+
+
+
+
+cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
+2025-12-17 11:49:01,999 - asyncio - DEBUG - Using selector: EpollSelector
+2025-12-17 11:49:01,999 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
+2025-12-17 11:49:02,000 - gNMI_Telemetry - INFO - Data Processor task started.
+2025-12-17 11:49:02,000 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125665813320896
+2025-12-17 11:49:02,000 - grpc._cython.cygrpc - DEBUG - Using AsyncIOEngine.POLLER as I/O engine
+2025-12-17 11:49:02,000 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125665813320896
+2025-12-17 11:49:02,001 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 11:49:02,002 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125665813320896
+2025-12-17 11:49:02,002 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125665813320896
+2025-12-17 11:49:02,002 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125665813320896
+2025-12-17 11:49:02,002 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 11:49:02,003 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=125665813320896
+2025-12-17 11:49:02,003 - grpc.aio._call - DEBUG - Client request_iterator raised exception:
+Traceback (most recent call last):
+  File "/home/cisco/expt-cml/.venv/lib/python3.12/site-packages/grpc/aio/_call.py", line 459, in _consume_request_iterator
+    for request in request_iterator:
+TypeError: 'SubscribeRequest' object is not iterable
+
+2025-12-17 11:49:02,004 - grpc.aio._call - DEBUG - Client request_iterator raised exception:
+Traceback (most recent call last):
+  File "/home/cisco/expt-cml/.venv/lib/python3.12/site-packages/grpc/aio/_call.py", line 459, in _consume_request_iterator
+    for request in request_iterator:
+TypeError: 'SubscribeRequest' object is not iterable
+
+2025-12-17 11:49:02,007 - grpc._cython.cygrpc - DEBUG - Failed to receive any message from Core
+2025-12-17 11:49:02,007 - gNMI_Telemetry - WARNING - [192.168.254.1] Collection task cancelled.
+2025-12-17 11:49:02,007 - grpc._cython.cygrpc - DEBUG - Failed to receive any message from Core
+2025-12-17 11:49:02,008 - gNMI_Telemetry - WARNING - [192.168.254.2] Collection task cancelled.
+^C2025-12-17 11:49:49,824 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
+2025-12-17 11:49:49,824 - gNMI_Telemetry - INFO - Data Processor task stopped.
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/cisco/expt-cml/arcos/./gnmi_async.py", line 362, in main
+    await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/cisco/expt-cml/arcos/./gnmi_async.py", line 377, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+
+cisco@jumphost:~/expt-cml/arcos$
+
+
+
+
+
+
 """
 
 import asyncio

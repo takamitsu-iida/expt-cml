@@ -865,9 +865,7 @@ async def collector(
                             # 現在の値を保存
                             metrics.store_previous_value(value_key, value_str)
                         else:
-                            logger.info(
-                                f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}"
-                            )
+                            logger.info(f"[{host}] Updated: /{prefix_path}/{path_str} = {value_str}")
 
                         # テレメトリレコード作成
                         telemetry_record = {

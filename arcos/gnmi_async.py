@@ -6,14 +6,20 @@
 1. 適当な作業ディレクトリ(tmp)を作成して移動
 
 mkdir -p tmp
-cd tmp
 
 tmpは.gitignoreで管理対象外に指定済み
+
+
+2. tmpディレクトリに移動
+
+cd tmp
+
+3. 必要なディレクトリ構造を作成
 
 mkdir -p github.com/openconfig/gnmi/proto/gnmi
 mkdir -p github.com/openconfig/gnmi/proto/gnmi_ext
 
-2. NMI protoファイルを取得
+4. NMI protoファイルを取得
 
 wget -O github.com/openconfig/gnmi/proto/gnmi/gnmi.proto \
     https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi/gnmi.proto
@@ -22,15 +28,16 @@ wget -O github.com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext.proto \
     https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi_ext/gnmi_ext.proto
 
 
-3. 必要なライブラリをインストール
+5. 必要なライブラリをインストール
 
 pip install grpcio grpcio-tools
 
-4. プロトコルバッファをコンパイル
+6. プロトコルバッファをコンパイル
 
 python -m grpc_tools.protoc \
     -I. \
     --python_out=. \
+    --pyi_out=. \
     --grpc_python_out=. \
     github.com/openconfig/gnmi/proto/gnmi/gnmi.proto \
     github.com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext.proto
@@ -39,26 +46,28 @@ python -m grpc_tools.protoc \
 
 cp github/com/openconfig/gnmi/proto/gnmi/gnmi_pb2.py ..
 cp github/com/openconfig/gnmi/proto/gnmi/gnmi_pb2_grpc.py ..
+cp github/com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext_pb2.py ..
 
-5. tmpディレクトリを削除して元のディレクトリに戻る
+7. tmpディレクトリを削除して元のディレクトリに戻る
 
 cd ..
 rm -rf tmp
 
 
-このやり方だと、以下のエラーがでる。
+8. コピーした gnmi_pb2.py と gnmi_pb2_grpc.py のインポートパスを手動で編集するか、sedコマンドで修正する
 
+# gnmi_pb2.py のインポートパスを修正
+sed -i 's/from github\.com\.openconfig\.gnmi\.proto\.gnmi_ext import gnmi_ext_pb2/import gnmi_ext_pb2/g' gnmi_pb2.py
 
-cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
-Traceback (most recent call last):
-  File "/home/cisco/expt-cml/arcos/./gnmi_async.py", line 60, in <module>
-    import gnmi_pb2
-  File "/home/cisco/expt-cml/arcos/gnmi_pb2.py", line 27, in <module>
-    from github.com.openconfig.gnmi.proto.gnmi_ext import gnmi_ext_pb2 as github_dot_com_dot_openconfig_dot_gnmi_dot_proto_dot_gnmi__ext_dot_gnmi__ext__pb2
-ModuleNotFoundError: No module named 'github'
-cisco@jumphost:~/expt-cml/arcos$
+# gnmi_pb2_grpc.py も同様に修正（生成されている場合）
+sed -i 's/from github\.com\.openconfig\.gnmi\.proto\.gnmi import gnmi_pb2/import gnmi_pb2/g' gnmi_pb2_grpc.py
+sed -i 's/from github\.com\.openconfig\.gnmi\.proto\.gnmi import gnmi_pb2 as gnmi__pb2/import gnmi_pb2 as gnmi__pb2/g' gnmi_pb2_grpc.py
+sed -i 's/import gnmi_ext_pb2 as github_dot_com_dot_openconfig_dot_gnmi_dot_proto_dot_gnmi__ext_dot_gnmi__ext__pb2/import gnmi_ext_pb2/g' gnmi_pb2.py
 
+cd ~/git/expt-cml/arcos
 
+# 念のため確認
+grep "import gnmi_ext_pb2" gnmi_pb2.py
 
 """
 

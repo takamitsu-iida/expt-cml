@@ -127,7 +127,6 @@ ON_CHANGE_PATHS = [
     "interfaces/interface[name=*]/state/oper-status"
 ]
 
-
 # バックプレッシャー判定の際のジッター範囲
 BACKOFF_JITTER_MIN = 0.8
 BACKOFF_JITTER_MAX = 1.2

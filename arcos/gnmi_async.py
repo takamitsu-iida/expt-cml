@@ -640,9 +640,33 @@ def format_data_table(records: list) -> str:
 
     return "\n".join(table_lines)
 
+
+def display_on_change_event(batch_number: int, data: Dict[str, Any]) -> None:
+    """
+    ON_CHANGE イベントを画面に表示する専用関数
+
+    Args:
+        batch_number: バッチ番号
+        data: イベントデータ（辞書）
+    """
+    display_lines = [
+        "",
+        "=" * 80,
+        f"[BATCH #{batch_number}] ON_CHANGE Event Detected",
+        f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+        "=" * 80,
+    ]
+
+    data_table = format_data_table([data])
+    if data_table:
+        display_lines.append(data_table)
+
+    print("\n".join(display_lines))
+
 # ============================================================================
 # メインロジック
 # ============================================================================
+
 
 async def data_processor(
     data_queue: asyncio.Queue,
@@ -670,75 +694,21 @@ async def data_processor(
     try:
         while not shutdown_event.is_set():
             try:
-                # タイムアウト付きでキューからデータ取得
-                # shutdown_event を定期的にチェックするため、タイムアウトを設定
+                # shutdown_event を定期的にチェックするため、タイムアウト付きでキューからデータ取得
                 data = await asyncio.wait_for(data_queue.get(), timeout=DATA_PROCESSOR_TIMEOUT_SEC)
             except asyncio.TimeoutError:
-                # タイムアウト時：バッファが溜まっていれば処理
-                if data_buffer:
-                    logger.info(f"Processing {len(data_buffer)} records (timeout flush).")
-                    data_buffer = []
                 continue
 
-            # ========================================================
-            # ON_CHANGE イベントは即座に処理・表示
-            # ========================================================
-            if data.get('is_event', False):
-                batch_number += 1
-
-                # まずイベント単独で表示
-                display_lines = [
-                    "",
-                    "=" * 80,
-                    f"[BATCH #{batch_number}] ON_CHANGE Event Detected",
-                    f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-                    "=" * 80,
-                ]
-
-                data_table = format_data_table([data])
-                if data_table:
-                    display_lines.append(data_table)
-
-                print("\n".join(display_lines))
-
-                # メトリクス記録
-                metrics.record_data(data['host'])
-
-                data_queue.task_done()
-                continue  # 次のデータ取得へ
-
-            # ========================================================
-            # 通常データ（SAMPLE）はバッチ処理
-            # ========================================================
+            # バッファにデータを追加してバッチ処理にする
             data_buffer.append(data)
 
             # ノンブロッキングで追加データを取得（バッチ処理の効率化）
             while not data_queue.empty() and len(data_buffer) < DATA_BUFFER_FETCH_LIMIT:
                 try:
                     next_data = data_queue.get_nowait()
-
-                    # バッファ内でイベントを検出した場合も即座に処理
-                    if next_data.get('is_event', False):
-                        batch_number += 1
-                        display_lines = [
-                            "",
-                            "=" * 80,
-                            f"[BATCH #{batch_number}] ON_CHANGE Event Detected",
-                            f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-                            "=" * 80,
-                        ]
-                        data_table = format_data_table([next_data])
-                        if data_table:
-                            display_lines.append(data_table)
-                        print("\n".join(display_lines))
-                        metrics.record_data(next_data['host'])
-                        data_queue.task_done()
-                    else:
-                        # 通常データはバッファに追加（task_done()は後で一括処理）
-                        data_buffer.append(next_data)
+                    data_buffer.append(next_data)
                 except asyncio.QueueEmpty:
                     break
-
 
             # 通常データがバッチサイズに達したら処理・表示
             if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
@@ -820,6 +790,7 @@ async def collector(
     """
     retry_count = 0
     last_success_time = time.time()
+    batch_number = 0
 
     while not shutdown_event.is_set():
         channel = None
@@ -895,9 +866,7 @@ async def collector(
                     # Delete 処理
                     for delete_path in update.delete:
                         delete_path_str = path_to_string(delete_path.elem)
-                        logger.debug(
-                            f"[{host}] Deleted: /{prefix_path}/{delete_path_str}"
-                        )
+                        logger.debug(f"[{host}] Deleted: /{prefix_path}/{delete_path_str}")
 
                     # Update 処理（実際のテレメトリデータ）
                     for update_value in update.update:
@@ -905,7 +874,7 @@ async def collector(
                         value_str = extract_telemetry_value(update_value.val)
 
                         # ================================================
-                        # ON_CHANGE イベント検知：詳細情報を表示
+                        # ON_CHANGE イベントを検知
                         # ================================================
                         if is_on_change_update(path_str):
                             metrics.record_on_change_event(host)
@@ -933,26 +902,39 @@ async def collector(
                             )
                             logger.warning("\n" + event_details)
 
+                            # テーブル表示（collector側）
+                            batch_number += 1
+                            telemetry_record = {
+                                'host': host,
+                                'path': f"{prefix_path}/{path_str}",
+                                'value': value_str,
+                                'timestamp': timestamp_sec,
+                                'received_at': time.time(),
+                                'is_event': True
+                            }
+                            display_on_change_event(batch_number, telemetry_record)
+
                             # 現在の値を保存
                             metrics.store_previous_value(value_key, value_str)
+
                         else:
                             logger.info(f"[{host}] Updated: {prefix_path}/{path_str} = {value_str}")
 
-                        # テレメトリレコード作成
-                        telemetry_record = {
-                            'host': host,
-                            'path': path_str,
-                            'value': value_str,
-                            'timestamp': timestamp_sec,
-                            'received_at': time.time(),
-                            'is_event': is_on_change_update(path_str)
-                        }
+                            # テレメトリレコード作成
+                            telemetry_record = {
+                                'host': host,
+                                'path': path_str,
+                                'value': value_str,
+                                'timestamp': timestamp_sec,
+                                'received_at': time.time(),
+                                'is_event': is_on_change_update(path_str)
+                            }
 
-                        # キューに投入（バックプレッシャー対応）
-                        if data_queue.full():
-                            await data_queue.put(telemetry_record)
-                        else:
-                            data_queue.put_nowait(telemetry_record)
+                            # キューに投入して処理終了
+                            if data_queue.full():
+                                await data_queue.put(telemetry_record)
+                            else:
+                                data_queue.put_nowait(telemetry_record)
 
                 else:
                     logger.debug(f"[{host}] Unknown response type received.")

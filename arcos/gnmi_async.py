@@ -640,33 +640,9 @@ def format_data_table(records: list) -> str:
 
     return "\n".join(table_lines)
 
-
-def display_on_change_event(batch_number: int, data: Dict[str, Any]) -> None:
-    """
-    ON_CHANGE イベントを画面に表示する専用関数
-
-    Args:
-        batch_number: バッチ番号
-        data: イベントデータ（辞書）
-    """
-    display_lines = [
-        "",
-        "=" * 80,
-        f"[BATCH #{batch_number}] ON_CHANGE Event Detected",
-        f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-        "=" * 80,
-    ]
-
-    data_table = format_data_table([data])
-    if data_table:
-        display_lines.append(data_table)
-
-    print("\n".join(display_lines))
-
 # ============================================================================
 # メインロジック
 # ============================================================================
-
 
 async def data_processor(
     data_queue: asyncio.Queue,
@@ -790,7 +766,6 @@ async def collector(
     """
     retry_count = 0
     last_success_time = time.time()
-    batch_number = 0
 
     while not shutdown_event.is_set():
         channel = None
@@ -878,10 +853,8 @@ async def collector(
                         # ================================================
                         if is_on_change_update(path_str):
                             metrics.record_on_change_event(host)
-
                             value_key = f"{host}:{prefix_path}/{path_str}"
                             previous_value = metrics.get_previous_value(value_key)
-
                             # インターフェース情報抽出
                             interface_info = extract_interface_info(
                                 update_value.path.elem
@@ -900,41 +873,30 @@ async def collector(
                                 interface_info=interface_info,
                                 timestamp=timestamp_sec
                             )
-                            logger.warning("\n" + event_details)
-
-                            # テーブル表示（collector側）
-                            batch_number += 1
-                            telemetry_record = {
-                                'host': host,
-                                'path': f"{prefix_path}/{path_str}",
-                                'value': value_str,
-                                'timestamp': timestamp_sec,
-                                'received_at': time.time(),
-                                'is_event': True
-                            }
-                            display_on_change_event(batch_number, telemetry_record)
+                            logger.info("\n" + event_details)
 
                             # 現在の値を保存
                             metrics.store_previous_value(value_key, value_str)
 
+                            continue  # イベントはキューに投入しない
+
+                        logger.info(f"[{host}] Updated: {prefix_path}/{path_str} = {value_str}")
+
+                        # テレメトリレコード作成
+                        telemetry_record = {
+                            'host': host,
+                            'path': path_str,
+                            'value': value_str,
+                            'timestamp': timestamp_sec,
+                            'received_at': time.time(),
+                            'is_event': is_on_change_update(path_str)
+                        }
+
+                        # キューに投入して処理終了
+                        if data_queue.full():
+                            await data_queue.put(telemetry_record)
                         else:
-                            logger.info(f"[{host}] Updated: {prefix_path}/{path_str} = {value_str}")
-
-                            # テレメトリレコード作成
-                            telemetry_record = {
-                                'host': host,
-                                'path': path_str,
-                                'value': value_str,
-                                'timestamp': timestamp_sec,
-                                'received_at': time.time(),
-                                'is_event': is_on_change_update(path_str)
-                            }
-
-                            # キューに投入して処理終了
-                            if data_queue.full():
-                                await data_queue.put(telemetry_record)
-                            else:
-                                data_queue.put_nowait(telemetry_record)
+                            data_queue.put_nowait(telemetry_record)
 
                 else:
                     logger.debug(f"[{host}] Unknown response type received.")

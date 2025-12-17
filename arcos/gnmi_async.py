@@ -56,7 +56,7 @@ from typing import Dict, Any
 
 import grpc.aio
 
-# ローカルにある、生成したprotobufモジュールをインポート
+# ローカルに保存したprotobufモジュール（gnmi_pb2.pyとgnmi_pb2_grps.py）をインポート
 import gnmi_pb2
 import gnmi_pb2_grpc
 

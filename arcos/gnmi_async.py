@@ -616,18 +616,15 @@ def format_data_table(records: list) -> str:
 # ============================================================================
 
 
-def process_data_buffer(data_buffer, batch_number, metrics, data_queue, pending_ack, title: str):
+def flush_data_buffer(data_buffer, batch_number, metrics, data_queue, pending_ack, title: str):
     """
-    data_buffer を処理・表示し、pending_ack 分だけ task_done() を呼ぶユーティリティ。
+    data_buffer を処理・表示し、pending_ack 分だけ task_done() を呼ぶ。
     戻り値: (新しい batch_number, 新しい pending_ack(=0))
     """
     batch_number += 1
-
-    # 1) メトリクス処理
     for record in data_buffer:
         metrics.record_data(record['host'])
 
-    # 2) 表示
     display_lines = [
         "",
         f"[BATCH #{batch_number}] {title}",
@@ -639,11 +636,9 @@ def process_data_buffer(data_buffer, batch_number, metrics, data_queue, pending_
         display_lines.append(data_table)
     print("\n".join(display_lines))
 
-    # 3) ACK：未ACK件数ぶんだけ正確に task_done()
     for _ in range(pending_ack):
         data_queue.task_done()
 
-    # バッファ/ACKをリセット（バッファはin-placeで空にする）
     data_buffer.clear()
     return batch_number, 0
 
@@ -681,12 +676,8 @@ async def data_processor(
             except asyncio.TimeoutError:
                 # タイムアウト時：溜まっていれば処理・表示・ACK
                 if data_buffer:
-                    batch_number, pending_ack = process_data_buffer(
-                        data_buffer,
-                        batch_number,
-                        metrics,
-                        data_queue,
-                        pending_ack,
+                    batch_number, pending_ack = flush_data_buffer(
+                        data_buffer, batch_number, metrics, data_queue, pending_ack,
                         title="Data Processing Report (timeout flush)"
                     )
                 continue
@@ -710,12 +701,8 @@ async def data_processor(
 
             # 通常データがバッチサイズに達したら処理・表示
             if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
-                batch_number, pending_ack = process_data_buffer(
-                    data_buffer,
-                    batch_number,
-                    metrics,
-                    data_queue,
-                    pending_ack,
+                batch_number, pending_ack = flush_data_buffer(
+                    data_buffer, batch_number, metrics, data_queue, pending_ack,
                     title="Data Processing Report"
                 )
 
@@ -724,6 +711,12 @@ async def data_processor(
     except Exception as e:
         logger.error(f"Data Processor failed: {e}")
     finally:
+        # 残データの最終フラッシュ（シャットダウン時）
+        if data_buffer and pending_ack:
+            batch_number, pending_ack = flush_data_buffer(
+                data_buffer, batch_number, metrics, data_queue, pending_ack,
+                title="Data Processing Report (final flush)"
+            )
         logger.info("Data Processor task stopped.")
 
 

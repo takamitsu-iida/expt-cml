@@ -111,8 +111,8 @@ GRPC_KEEPALIVE_TIMEOUT_SEC = 5
 
 # データ処理設定
 DATA_QUEUE_MAX_SIZE = 500             # データキューの最大サイズ
-DATA_BATCH_SIZE_FOR_WRITE = 10        # この数に達したらデータベースに書き込む
-DATA_BUFFER_FETCH_LIMIT = 50          # 1回で取得する最大データ数
+DATA_BATCH_SIZE_FOR_WRITE = 50        # この数に達したらデータベースに書き込む
+DATA_BUFFER_FETCH_LIMIT = 100         # 1回で取得する最大データ数
 DATA_PROCESSOR_TIMEOUT_SEC = 1.0      # データ処理のタイムアウト（秒）
 
 # gNMI購読設定
@@ -404,21 +404,6 @@ def extract_telemetry_value(typed_value) -> str:
         return typed_value.bytes_val.hex()
     else:
         return str(typed_value)
-
-
-def _path_to_string(path_elements) -> str:
-    """
-    gNMI PathElem のリストをパス文字列に変換
-
-    例: [PathElem(name="a"), PathElem(name="b")] -> "a/b"
-
-    Args:
-        path_elements: PathElem のイテラブル
-
-    Returns:
-        スラッシュ区切りのパス文字列
-    """
-    return "/".join([elem.name for elem in path_elements])
 
 
 def path_to_string(path_elements) -> str:

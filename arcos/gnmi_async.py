@@ -124,7 +124,7 @@ SAMPLE_PATHS = [
 ]
 
 ON_CHANGE_PATHS = [
-    "interfaces/interface[name=*]/subinterfaces/subinterface/state/ifindex ON_CHANGE",
+    "interfaces/interface[name=*]/state/oper-status"
 ]
 
 

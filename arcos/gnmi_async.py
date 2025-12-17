@@ -637,6 +637,7 @@ async def data_processor(
     logger.info("Data Processor task started.")
     data_buffer = []
     batch_number = 0
+    pending_ack = 0  # queue.get()/get_nowait() の未ACK件数を厳密に管理
 
     try:
         while not shutdown_event.is_set():
@@ -644,18 +645,50 @@ async def data_processor(
                 # shutdown_event を定期的にチェックするため、タイムアウト付きでキューからデータ取得
                 data = await asyncio.wait_for(data_queue.get(), timeout=DATA_PROCESSOR_TIMEOUT_SEC)
             except asyncio.TimeoutError:
+                # タイムアウト時：溜まっていれば処理・表示・ACK
+                if data_buffer:
+                    batch_number += 1
+
+                    # 1) メトリクス処理
+                    for record in data_buffer:
+                        metrics.record_data(record['host'])
+
+                    # 2) 表示
+                    display_lines = [
+                        "",
+                        f"[BATCH #{batch_number}] Data Processing Report (timeout flush)",
+                        f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                        ""
+                    ]
+                    data_table = format_data_table(data_buffer)
+                    if data_table:
+                        display_lines.append(data_table)
+                    print("\n".join(display_lines))
+
+                    # 3) ACK：未ACK件数ぶんだけ正確に task_done()
+                    for _ in range(pending_ack):
+                        data_queue.task_done()
+                    pending_ack = 0
+                    data_buffer = []
+
                 continue
 
-            # バッファにデータを追加してバッチ処理にする
+
+            # 取得した1件をバッファに追加して
             data_buffer.append(data)
 
-            # ノンブロッキングで追加データを取得（バッチ処理の効率化）
+            # 未処理ACK件数をインクリメント
+            pending_ack += 1
+
+            # まだデータがあるかもしれないので、ノンブロッキングで追加データを取得（バッチ処理の効率化）
             while not data_queue.empty() and len(data_buffer) < DATA_BUFFER_FETCH_LIMIT:
                 try:
                     next_data = data_queue.get_nowait()
-                    data_buffer.append(next_data)
                 except asyncio.QueueEmpty:
                     break
+                else:
+                    data_buffer.append(next_data)
+                    pending_ack += 1
 
             # 通常データがバッチサイズに達したら処理・表示
             if len(data_buffer) >= DATA_BATCH_SIZE_FOR_WRITE:
@@ -688,16 +721,13 @@ async def data_processor(
                 print("\n".join(display_lines))
 
                 # ========================================================
-                # 3. task_done() を呼び出し（バッファ内の全データ分）
+                # 3. task_done() を呼び出し
                 # ========================================================
-                for _ in data_buffer:
+                for _ in range(pending_ack):
                     data_queue.task_done()
 
-                # バッファクリア
+                pending_ack = 0
                 data_buffer = []
-            else:
-                # バッチサイズに達していない場合、１回だけtask_done()を呼び出す
-                data_queue.task_done()
 
     except asyncio.CancelledError:
         logger.warning("Data Processor task cancelled.")

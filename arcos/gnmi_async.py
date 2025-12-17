@@ -271,7 +271,10 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
                     logger.info(f"[{host}] Sync response received.")
 
                 elif response.error:
-                    logger.error(f"[{host}] Error in response: {response.error}")
+                    # エラーオブジェクトの詳細を表示
+                    error_code = response.error.code
+                    error_message = response.error.message
+                    logger.error(f"[{host}] Error in response: Code={error_code}, Message={error_message}")
 
                 elif response.update:
                     update = response.update
@@ -407,31 +410,4 @@ if __name__ == "__main__":
 
 
 """
-cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
-2025-12-17 12:03:23,909 - asyncio - DEBUG - Using selector: EpollSelector
-2025-12-17 12:03:23,910 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
-2025-12-17 12:03:23,910 - gNMI_Telemetry - INFO - Data Processor task started.
-2025-12-17 12:03:23,910 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=139643037112400
-2025-12-17 12:03:23,910 - grpc._cython.cygrpc - DEBUG - Using AsyncIOEngine.POLLER as I/O engine
-2025-12-17 12:03:23,910 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=139643037112400
-2025-12-17 12:03:23,911 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
-2025-12-17 12:03:23,912 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=139643037112400
-2025-12-17 12:03:23,912 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=139643037112400
-2025-12-17 12:03:23,912 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=139643037112400
-2025-12-17 12:03:23,912 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
-2025-12-17 12:03:23,912 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=139643037112400
-2025-12-17 12:03:23,926 - gNMI_Telemetry - DEBUG - [192.168.254.2] Received gNMI response.
-2025-12-17 12:03:23,926 - gNMI_Telemetry - ERROR - [192.168.254.2] Error in response:
-2025-12-17 12:03:23,926 - gNMI_Telemetry - DEBUG - [192.168.254.1] Received gNMI response.
-2025-12-17 12:03:23,926 - gNMI_Telemetry - ERROR - [192.168.254.1] Error in response:
-2025-12-17 12:03:23,927 - gNMI_Telemetry - DEBUG - [192.168.254.2] Received gNMI response.
-2025-12-17 12:03:23,927 - gNMI_Telemetry - ERROR - [192.168.254.2] Error in response:
-2025-12-17 12:03:23,927 - gNMI_Telemetry - DEBUG - [192.168.254.1] Received gNMI response.
-2025-12-17 12:03:23,927 - gNMI_Telemetry - ERROR - [192.168.254.1] Error in response:
-^C2025-12-17 12:03:40,049 - gNMI_Telemetry - WARNING - [192.168.254.1] Collection task cancelled.
-2025-12-17 12:03:40,050 - gNMI_Telemetry - WARNING - [192.168.254.2] Collection task cancelled.
-2025-12-17 12:03:40,050 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
-2025-12-17 12:03:40,050 - gNMI_Telemetry - INFO - Data Processor task stopped.
-2025-12-17 12:03:41,052 - gNMI_Telemetry - INFO - Program interrupted by user.
-cisco@jumphost:~/expt-cml/arcos$
 """

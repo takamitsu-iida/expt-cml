@@ -587,7 +587,7 @@ def format_data_table(records: list) -> str:
 
         rows.append([
             record['host'],
-            record['path'][:60],  # パスを60文字に制限
+            record['path'][:80],  # パスを80文字に制限
             str(record['value'])[:20],  # 値を20文字に制限
             event_type,
             timestamp_str

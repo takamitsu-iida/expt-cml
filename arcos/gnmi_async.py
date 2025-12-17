@@ -556,7 +556,8 @@ def format_event_details(
     Returns:
         フォーマット済みの詳細ログ文字列
     """
-    timestamp_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
+    # 日時を含む形式 (月/日 時:分:秒)
+    timestamp_str = time.strftime('%m/%d %H:%M:%S', time.localtime(timestamp))
 
     details_lines = []
     details_lines.append(f"  [EVENT] ON_CHANGE")
@@ -611,15 +612,16 @@ def format_data_table(records: list) -> str:
     rows = []
     for record in records:
         event_type = "EVENT" if record.get('is_event', False) else "DATA"
+        # 日時を含む形式 (月/日 時:分:秒)
         timestamp_str = time.strftime(
-            '%H:%M:%S',
+            '%m/%d %H:%M:%S',
             time.localtime(record['timestamp'])
         )
 
         rows.append([
             record['host'],
-            record['path'][:80],  # パスを80文字に制限
-            str(record['value'])[:20],  # 値を20文字に制限
+            record['path'][:50],  # パスを50文字に制限
+            str(record['value'])[:15],  # 値を15文字に制限
             event_type,
             timestamp_str
         ])
@@ -648,6 +650,7 @@ def format_data_table(records: list) -> str:
         table_lines.append(data_line)
 
     return "\n".join(table_lines)
+
 
 # ============================================================================
 # メインロジック

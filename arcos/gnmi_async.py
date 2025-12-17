@@ -3,30 +3,47 @@
 """
 【事前準備】
 
-＊適当な作業ディレクトリを作成
+1. 適当な作業ディレクトリ(tmp)を作成して移動
 
-mkdir proto
-cd proto
+mkdir -p tmp
+cd tmp
 
-＊gNMI protoファイルを取得
+tmpは.gitignoreで管理対象外に指定済み
 
-wget https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi/gnmi.proto
-wget https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi_ext/gnmi_ext.proto
+mkdir -p github.com/openconfig/gnmi/proto/gnmi
+mkdir -p github.com/openconfig/gnmi/proto/gnmi_ext
 
-＊必要なライブラリをインストール
+2. NMI protoファイルを取得
+
+wget -O github.com/openconfig/gnmi/proto/gnmi/gnmi.proto \
+    https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi/gnmi.proto
+
+wget -O github.com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext.proto \
+    https://raw.githubusercontent.com/openconfig/gnmi/master/proto/gnmi_ext/gnmi_ext.proto
+
+
+3. 必要なライブラリをインストール
 
 pip install grpcio grpcio-tools
 
-＊プロトコルバッファをコンパイル
+4. プロトコルバッファをコンパイル
 
 python -m grpc_tools.protoc \
     -I. \
     --python_out=. \
     --grpc_python_out=. \
-    gnmi.proto gnmi_ext.proto
+    github.com/openconfig/gnmi/proto/gnmi/gnmi.proto \
+    github.com/openconfig/gnmi/proto/gnmi_ext/gnmi_ext.proto
 
-これで、gnmi_pb2.py と gnmi_pb2_grpc.py が生成される
+これで、gnmi_pb2.py と gnmi_pb2_grpc.py が生成されるので、この2つを使いたい場所にコピー
 
+cp github/com/openconfig/gnmi/proto/gnmi/gnmi_pb2.py ..
+cp github/com/openconfig/gnmi/proto/gnmi/gnmi_pb2_grpc.py ..
+
+5. tmpディレクトリを削除して元のディレクトリに戻る
+
+cd ..
+rm -rf tmp
 
 """
 

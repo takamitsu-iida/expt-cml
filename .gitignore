@@ -19,6 +19,9 @@ terminal_log*.txt
 # ログディレクトリ
 log/
 
+# 一時ディレクトリ
+tmp/
+
 # cisco_radkit関連の一時ファイル
 *.tgz
 cisco*.sh

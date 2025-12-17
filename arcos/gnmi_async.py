@@ -462,19 +462,19 @@ def is_on_change_update(path_str: str) -> bool:
         # " ON_CHANGE" 部分を除去
         clean_path = on_change_path.replace(" ON_CHANGE", "").strip()
 
-        # ワイルドカード [name=*] や [index=*] を正規表現に置換
+        # ワイルドカード [name=*] を正規表現に変換（手動で括弧をエスケープ）
         # 例: "interfaces/interface[name=*]/state/oper-status"
-        #  -> "interfaces/interface\\[name=[^\\]]+\\]/state/oper-status"
-        pattern = re.escape(clean_path)
-        pattern = pattern.replace(r"\[name=\*\]", r"\\[name=[^\\]]+\\]")
-        pattern = pattern.replace(r"\[index=\*\]", r"\\[index=[^\\]]+\\]")
+        #  -> r"interfaces/interface\[name=[^\]]+\]/state/oper-status"
+        pattern = clean_path
+        pattern = pattern.replace(".", r"\.")  # . を \. に
+        pattern = pattern.replace("[name=*]", r"\[name=[^\]]+\]")
+        pattern = pattern.replace("[index=*]", r"\[index=[^\]]+\]")
         pattern = f"^{pattern}$"
 
         if re.match(pattern, path_str):
             return True
 
     return False
-
 
 
 def extract_interface_info(path_elements) -> Dict[str, str]:

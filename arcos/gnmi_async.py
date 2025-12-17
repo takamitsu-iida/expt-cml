@@ -1100,7 +1100,7 @@ if __name__ == "__main__":
     def test_is_on_change_update():
         """is_on_change_update() の動作確認"""
         test_cases = [
-            ("/interfaces/interface/state/oper-status", True),
+            ("interfaces/interface/state/oper-status", True),
             ("interfaces/interface[name=eth0]/state/oper-status", True),
             ("interfaces/interface[name=eth1]/state/oper-status", True),
             ("interfaces/interface[name=eth0]/state/counters/in-octets", False),

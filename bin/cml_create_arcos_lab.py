@@ -184,6 +184,11 @@ system cli commit-message true
 system netconf-server enable true
 system netconf-server transport ssh enable true
 system restconf-server enable false
+system grpc-server enable true
+system grpc-server transport-security false
+system grpc-server connections management
+ port 9339
+!
 system aaa authentication admin-user admin-password $6$cY9EPmy0Nms9aP1k$Z2HzLTQGLpu5mlYx/dw0rWlsXM.Y3D56m7OBSkNWdpEuJC/Htnk36jPDGZ8yqNgsOzWbo3qQDEcxz8LJ3rnim0
 system aaa authentication user admin
  password $6$vNZR.uPPRaj9w2YE$fT8DCzLZ8yyad7UleD/lkRRwo038UD/j1JM0.QIAlZ9IG.2QscG7BnO7KALU6O8BGtjtWAQgPWpqlkCsm/IVu/
@@ -202,6 +207,7 @@ interface ma1
  mtu     1500
  enabled true
  subinterface 0
+  ipv6 router-advertisement suppress true
  exit
 !
 {% for iface_num in range(1,5) -%}
@@ -419,6 +425,11 @@ system cli commit-message true
 system netconf-server enable true
 system netconf-server transport ssh enable true
 system restconf-server enable false
+system grpc-server enable true
+system grpc-server transport-security false
+system grpc-server connections management
+ port 9339
+!
 system aaa authentication admin-user admin-password $6$q.g4YxQzck5YdWdt$7ePZ1heUAqjJ9g2u07LQTxtA8D4K.B11I8jRmeLLHFLhJYRTkoHfPx/E.Fun/U2adMLRPEiWSdoR5L.lncKZ/.
 system aaa authentication user cisco
  password $6$bFtJofvHxD3pDH1M$msEMHJgm2cYWhP2rfwsOz27XB6Mf04WLOcdYYGb7JLJQFqmNhCydmU/S6xCfVqVFiDBr07kNvpudfM8zxKxxp/
@@ -433,6 +444,7 @@ interface ma1
  mtu     1500
  enabled true
  subinterface 0
+  ipv6 router-advertisement suppress true
  exit
 !
 {% for iface_num in range(1,3) -%}

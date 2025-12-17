@@ -515,7 +515,6 @@ ipv4-entries entry 192.168.255.2/32
 
 `show interface swp1 counters | repeat 1` 1秒に一度、インタフェースのカウンター値を表示します。
 
-
 <br><br>
 
 ## 装置へのログイン
@@ -585,13 +584,32 @@ operator@P1# config
 syntax error: expecting
 ```
 
+別のルータからrootでSSH接続した場合の例。普通に入れてしまいます。
+
+```bash
+root@PE14# ssh 2001:db8:ffff::1
+The authenticity of host '2001:db8:ffff::1 (2001:db8:ffff::1)' can't be established.
+ED25519 key fingerprint is SHA256:j0trpa9kntLW6sgyGNQynA7tnfRnY5kjFoJe80uf34I.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '2001:db8:ffff::1' (ED25519) to the list of known hosts.
+ArcOS (c) Arrcus, Inc.
+root@2001:db8:ffff::1's password:
+root@P1:~#
+root@P1:~#
+```
+
+SSH接続をmanagement vrfに制限する方法はなさそうです。
+
+商用環境だとまずいので、装置へのアクセス制御をしっかりとかけなければいけません。
+
 <br><br><br>
 
 # L3VPN over SRv6
 
 <br>
 
-L3VPN over SRv6を検証します。
+いろいろ検証するための環境として L3VPN over SRv6 の環境を構築します。
 
 <br>
 
@@ -599,7 +617,7 @@ L3VPN over SRv6を検証します。
 
 <br>
 
-このラボはPythonスクリプトで作成しますが、手順を踏むために `make` コマンドを使います。
+このラボはPythonスクリプトで作成しますが、手順を踏む必要があるため `make` コマンドを使います。
 
 ```bash
 $ make
@@ -659,6 +677,21 @@ network-instance default
 ```
 
 これを設定しない場合は、状態がESTABLISHEDになっても、L3VPN_IPV4_UNICASTの経路は交換してくれません。
+
+
+<br><br>
+
+## 装置へのアクセス制御
+
+初期状態でmanagementという名前のvrfが作られています。
+
+SNMPやSSH、NETCONF、RESTCONF等の管理通信がmanagement vrfに限定されている、ということはないようです。
+
+装置自身への着信通信は別途制限を付ける必要があります。
+
+これはCoPPとコントロールプレーンACLで制御します。
+
+処理の順序は、CoPP → コントロールプレーンACL、の順になっています。
 
 <br><br>
 
@@ -815,27 +848,14 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 ✅ ルータ 192.168.254.1:9339 への接続に成功しました。
 
 ⏳ Subscribe (mode=STREAM) リクエストを送信中... (Ctrl+Cで終了)
-時刻: 1765774295520372665, パス: interfaces/interface[name=swp1]/state/counters/in-octets, 値: 4684177
-時刻: 1765774295520837391, パス: interfaces/interface[name=swp1]/state/counters/out-octets, 値: 4678344
-時刻: 1765774325533688884, パス: interfaces/interface[name=swp1]/state/counters/out-octets, 値: 4690443
-時刻: 1765774325533816253, パス: interfaces/interface[name=swp1]/state/counters/in-octets, 値: 4693290
-^C
-
-🛑 ユーザーによって処理が中断されました (Ctrl+C)。
+時刻: 1765796248495984113, パス: interfaces/interface[name=swp1]/state/counters/in-octets, 値: 12384867
+時刻: 1765796248496053115, パス: interfaces/interface[name=swp1]/state/counters/out-octets, 値: 12394757
+時刻: 1765796278518973062, パス: interfaces/interface[name=swp1]/state/counters/out-octets, 値: 12403869
+時刻: 1765796278519134420, パス: interfaces/interface[name=swp1]/state/counters/in-octets, 値: 12393980
+時刻: 1765796308514761891, パス: interfaces/interface[name=swp1]/state/counters/out-octets, 値: 12416160
+時刻: 1765796308514860266, パス: interfaces/interface[name=swp1]/state/counters/in-octets, 値: 12403284
 ✅ プログラムを終了します。
 ```
-
-<br><br>
-
-## 装置へのアクセス制御
-
-初期状態でmanagementという名前のvrfが作られていますが、装置への管理アクセスはmanagement vrfに制限されているわけではなさそうです。
-
-管理用の別ネットワークがあったときに、経路が混ざらない、というだけのようです。
-
-装置への通信はCoPPとコントロールプレーンACLで制御できます。
-
-処理の順序は、CoPP → コントロールプレーンACL、の順になっています。
 
 <br><br>
 
@@ -850,8 +870,6 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 arcosディレクトリにログがある
 
 `monitor start`　リアルタイムにログを表示、tail -fと同等
-
-
 
 
 

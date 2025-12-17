@@ -39,12 +39,12 @@ try:
                 {
                     'path': path1,
                     'mode': 'sample',
-                    'sample_interval': 30000  # ミリ秒 = 30秒 ArcOSの最小値
+                    'sample_interval': 30_000_000_000  # ナノ秒 = 30秒 ArcOSの最小値
                 },
                 {
                     'path': path2,
                     'mode': 'sample',
-                    'sample_interval': 30000
+                    'sample_interval': 30_000_000_000  # ナノ秒 = 30秒 ArcOSの最小値
                 },
             ],
             'use_aliases': False,

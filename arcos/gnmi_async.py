@@ -449,6 +449,7 @@ def is_on_change_update(path_str: str) -> bool:
     パス文字列が ON_CHANGE 対象パスかを判定
 
     ON_CHANGE_PATHS のパターンと照合（ワイルドカード対応）。
+    キーがないパスにも対応。
 
     Args:
         path_str: パス文字列（"elem1/elem2/..." 形式）
@@ -462,16 +463,24 @@ def is_on_change_update(path_str: str) -> bool:
         # " ON_CHANGE" 部分を除去
         clean_path = on_change_path.replace(" ON_CHANGE", "").strip()
 
-        # ワイルドカード [name=*] を正規表現に変換（手動で括弧をエスケープ）
-        # 例: "interfaces/interface[name=*]/state/oper-status"
-        #  -> r"interfaces/interface\[name=[^\]]+\]/state/oper-status"
+        # パターン1: ワイルドカード付きパス（例: "interfaces/interface[name=*]/state/oper-status"）
         pattern = clean_path
-        pattern = pattern.replace(".", r"\.")  # . を \. に
+        pattern = pattern.replace(".", r"\.")
         pattern = pattern.replace("[name=*]", r"\[name=[^\]]+\]")
         pattern = pattern.replace("[index=*]", r"\[index=[^\]]+\]")
         pattern = f"^{pattern}$"
 
         if re.match(pattern, path_str):
+            return True
+
+        # パターン2: キーを除去したパス（例: "interfaces/interface/state/oper-status"）
+        # ワイルドカード部分を削除してマッチングを試みる
+        pattern_without_keys = clean_path
+        pattern_without_keys = re.sub(r"\[[^\]]*\]", "", pattern_without_keys)  # [name=*] などを削除
+        pattern_without_keys = pattern_without_keys.replace(".", r"\.")
+        pattern_without_keys = f"^{pattern_without_keys}$"
+
+        if re.match(pattern_without_keys, path_str):
             return True
 
     return False

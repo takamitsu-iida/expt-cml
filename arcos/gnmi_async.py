@@ -110,7 +110,7 @@ GRPC_KEEPALIVE_TIMEOUT_SEC = 5
 
 # データ処理設定
 DATA_QUEUE_MAX_SIZE = 500             # データキューの最大サイズ
-DATA_BATCH_SIZE_FOR_WRITE = 10        # この数に達したらデータベースに書き込む
+DATA_BATCH_SIZE_FOR_WRITE = 1        # この数に達したらデータベースに書き込む
 DATA_BUFFER_FETCH_LIMIT = 50          # 1回で取得する最大データ数
 DATA_PROCESSOR_TIMEOUT_SEC = 1.0      # データ処理のタイムアウト（秒）
 

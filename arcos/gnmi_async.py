@@ -490,11 +490,11 @@ def format_event_details(
     """
     timestamp_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
 
-    details_lines = [
-        "=" * 80,
-        f"[EVENT] ON_CHANGE Detection on {host}",
-        f"Timestamp: {timestamp_str}"
-    ]
+    details_lines = []
+    details_lines.append("=" * 80)
+
+    details_lines.append(f"[EVENT] ON_CHANGE Detection on {host}")
+    details_lines.append(f"Timestamp: {timestamp_str}")
 
     # インターフェース情報
     if interface_info['interface']:
@@ -510,19 +510,9 @@ def format_event_details(
     details_lines.append(f"Full Path: /{prefix_path}/{path_str}")
 
     # 値の変更
-    details_lines.append("-" * 80)
     if previous_value is not None:
         details_lines.append(f"Previous Value: {previous_value}")
         details_lines.append(f"Current Value:  {current_value}")
-        # 値が数値の場合、変更量を計算
-        try:
-            prev_num = int(previous_value)
-            curr_num = int(current_value)
-            delta = curr_num - prev_num
-            delta_str = f"+{delta}" if delta >= 0 else str(delta)
-            details_lines.append(f"Delta:          {delta_str} ({delta/prev_num*100:.2f}% change)")
-        except (ValueError, ZeroDivisionError):
-            pass
     else:
         details_lines.append(f"Initial Value: {current_value}")
 

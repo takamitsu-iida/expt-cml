@@ -695,8 +695,9 @@ async def data_processor(
 
                 # バッファクリア
                 data_buffer = []
-
-            data_queue.task_done()
+            else:
+                # バッチサイズに達していない場合、１回だけtask_done()を呼び出す
+                data_queue.task_done()
 
     except asyncio.CancelledError:
         logger.warning("Data Processor task cancelled.")
@@ -1040,4 +1041,4 @@ if __name__ == "__main__":
         logger.info("Program interrupted by user.")
 
 
-# 2025-12-17 18:06:06,514 - gNMI_Telemetry - ERROR - Data Processor failed: task_done() called too many times
+#

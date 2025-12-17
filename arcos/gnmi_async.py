@@ -546,7 +546,7 @@ def format_event_details(
     timestamp_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
 
     details_lines = []
-    details_lines.append("=" * 80)
+    details_lines.append("")
 
     details_lines.append(f"[EVENT] ON_CHANGE Detection on {host}")
     details_lines.append(f"Timestamp: {timestamp_str}")
@@ -571,7 +571,7 @@ def format_event_details(
     else:
         details_lines.append(f"Initial Value: {current_value}")
 
-    details_lines.append("=" * 80)
+    details_lines.append("")
 
     return "\n".join(details_lines)
 
@@ -703,10 +703,9 @@ async def data_processor(
                 # バッチ情報ヘッダー
                 display_lines = [
                     "",
-                    "=" * 80,
                     f"[BATCH #{batch_number}] Data Processing Report",
                     f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-                    "=" * 80,
+                    ""
                 ]
 
                 # テーブル表示

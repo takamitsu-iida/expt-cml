@@ -145,6 +145,9 @@ class RetryableError(Enum):
     UNKNOWN = "unknown"
 
 
+METRICS_CLEANUP_INTERVAL_SEC = 3600  # 1時間ごとにクリーンアップ
+METRICS_MAX_AGE_SEC = 86400  # 24時間以上更新がないホストを削除
+
 class CollectorMetrics:
     """
     各ホストのテレメトリ収集状況を記録するメトリクス管理クラス。
@@ -168,6 +171,8 @@ class CollectorMetrics:
             'last_update_time': None,
             'on_change_events': 0
         })
+        self.last_cleanup_time = time.time()
+
 
     def record_data(self, host: str) -> None:
         """
@@ -178,6 +183,27 @@ class CollectorMetrics:
         """
         self.metrics[host]['total_records'] += 1
         self.metrics[host]['last_update_time'] = time.time()
+        self._cleanup_old_metrics()
+
+
+    def _cleanup_old_metrics(self) -> None:
+        """古いメトリクスエントリを削除（定期実行）"""
+        now = time.time()
+        if now - self.last_cleanup_time < METRICS_CLEANUP_INTERVAL_SEC:
+            return
+
+        self.last_cleanup_time = now
+        hosts_to_remove = []
+
+        for host, data in self.metrics.items():
+            last_update = data.get('last_update_time')
+            if last_update and (now - last_update) > METRICS_MAX_AGE_SEC:
+                hosts_to_remove.append(host)
+
+        for host in hosts_to_remove:
+            logger.info(f"Cleaning up metrics for inactive host: {host}")
+            del self.metrics[host]
+
 
     def record_error(self, host: str, error: str) -> None:
         """
@@ -924,7 +950,11 @@ async def collector(
                 try:
                     await asyncio.wait_for(channel.close(), timeout=GRPC_CONNECT_TIMEOUT_SEC)
                 except asyncio.TimeoutError:
-                    logger.warning(f"[{host}] Channel close timeout.")
+                    logger.warning(f"[{host}] Channel close timeout. Force closing...")
+                    try:
+                        channel.close()  # 同期メソッドで強制クローズ
+                    except Exception as e:
+                        logger.error(f"[{host}] Failed to force close channel: {e}")
                 except Exception as close_error:
                     logger.debug(f"[{host}] Channel close error: {close_error}")
 
@@ -946,6 +976,20 @@ async def collector(
                 await asyncio.sleep(backoff_delay)
                 retry_count += 1
                 metrics.record_reconnect(host)
+
+
+async def health_check_reporter(
+    metrics: CollectorMetrics,
+    data_queue: asyncio.Queue,
+    shutdown_event: asyncio.Event
+):
+    """定期的にシステムヘルスを報告"""
+    while not shutdown_event.is_set():
+        await asyncio.sleep(600)  # 10分ごと
+        summary = metrics.get_summary()
+        logger.info(f"Health Check: Active hosts={len(summary)}, Queue size={data_queue.qsize()}")
+        for host, data in summary.items():
+            logger.info(f"  [{host}] Records={data['total_records']}, Errors={data['errors']}, Reconnects={data['reconnects']}")
 
 
 async def main() -> None:
@@ -1002,7 +1046,12 @@ async def main() -> None:
         )
         collection_tasks.append(task)
 
-    all_tasks = collection_tasks + [data_processor_task]
+    # ヘルスチェックタスク起動
+    health_task = asyncio.create_task(
+        health_check_reporter(metrics, data_queue, shutdown_event)
+    )
+
+    all_tasks = collection_tasks + [data_processor_task, health_task]
     logger.info(
         f"Started {len(collection_tasks)} collection task(s) "
         f"and 1 data processor task."
@@ -1039,26 +1088,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-
-    # テスト用コード（main関数の前に追加）
-
-    def test_is_on_change_update():
-        """is_on_change_update() の動作確認"""
-        test_cases = [
-            ("interfaces/interface/state/oper-status", True),
-            ("interfaces/interface[name=eth0]/state/oper-status", True),
-            ("interfaces/interface[name=eth1]/state/oper-status", True),
-            ("interfaces/interface[name=eth0]/state/counters/in-octets", False),
-            ("system/state/hostname", False),
-        ]
-
-        for path, expected in test_cases:
-            result = is_on_change_update(path)
-            status = "✓" if result == expected else "✗"
-            print(f"{status} is_on_change_update('{path}') = {result} (expected {expected})")
-
-    # テスト実行（デバッグ用）
-    test_is_on_change_update()
 
     try:
         asyncio.run(main())

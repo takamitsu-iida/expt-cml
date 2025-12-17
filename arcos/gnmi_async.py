@@ -173,6 +173,14 @@ def build_auth_metadata(user: str, password: str) -> list:
     ]
 
 
+async def request_generator(subscribe_request: gnmi_pb2.SubscribeRequest):
+    """
+    gNMI Subscribe のリクエストストリームを生成
+    最初に SubscribeRequest を送信して終了
+    """
+    yield subscribe_request
+
+
 
 async def collector(host: str, port: int, user: str, password: str, data_queue: asyncio.Queue):
     """
@@ -233,8 +241,11 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
             logger.info(f"[{host}] Sending SubscribeRequest...")
 
 
+            # リクエストジェネレータを作成
+            request_iter = request_generator(subscribe_request)
+
             # Subscribe RPC を呼び出し、レスポンスを非同期でイテレート
-            async for response in stub.Subscribe(subscribe_request, metadata=metadata):
+            async for response in stub.Subscribe(request_iter, metadata=metadata):
 
                 logger.debug(f"[{host}] Received gNMI response.")
 
@@ -390,38 +401,6 @@ if __name__ == "__main__":
         logger.info("Program interrupted by user.")
 
 """
-cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
-2025-12-17 12:19:13,284 - asyncio - DEBUG - Using selector: EpollSelector
-2025-12-17 12:19:13,284 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
-2025-12-17 12:19:13,285 - gNMI_Telemetry - INFO - Data Processor task started.
-2025-12-17 12:19:13,285 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=127550284028416
-2025-12-17 12:19:13,285 - grpc._cython.cygrpc - DEBUG - Using AsyncIOEngine.POLLER as I/O engine
-2025-12-17 12:19:13,285 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=127550284028416
-2025-12-17 12:19:13,286 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
-2025-12-17 12:19:13,286 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=127550284028416
-2025-12-17 12:19:13,286 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=127550284028416
-2025-12-17 12:19:13,286 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=127550284028416
-2025-12-17 12:19:13,287 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
-2025-12-17 12:19:13,287 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=127550284028416
-2025-12-17 12:19:13,288 - grpc.aio._call - DEBUG - Client request_iterator raised exception:
-Traceback (most recent call last):
-  File "/home/cisco/expt-cml/.venv/lib/python3.12/site-packages/grpc/aio/_call.py", line 459, in _consume_request_iterator
-    for request in request_iterator:
-TypeError: 'SubscribeRequest' object is not iterable
-
-2025-12-17 12:19:13,289 - grpc.aio._call - DEBUG - Client request_iterator raised exception:
-Traceback (most recent call last):
-  File "/home/cisco/expt-cml/.venv/lib/python3.12/site-packages/grpc/aio/_call.py", line 459, in _consume_request_iterator
-    for request in request_iterator:
-TypeError: 'SubscribeRequest' object is not iterable
-
-2025-12-17 12:19:13,292 - grpc._cython.cygrpc - DEBUG - Failed to receive any message from Core
-2025-12-17 12:19:13,293 - gNMI_Telemetry - WARNING - [192.168.254.1] Collection task cancelled.
-2025-12-17 12:19:13,295 - grpc._cython.cygrpc - DEBUG - Failed to receive any message from Core
-2025-12-17 12:19:13,295 - gNMI_Telemetry - WARNING - [192.168.254.2] Collection task cancelled.
-^C2025-12-17 12:19:23,417 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
-2025-12-17 12:19:23,418 - gNMI_Telemetry - INFO - Data Processor task stopped.
-2025-12-17 12:19:23,418 - gNMI_Telemetry - INFO - Program interrupted by user.
 
 
 """

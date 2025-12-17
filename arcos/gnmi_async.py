@@ -69,10 +69,6 @@ cd ~/git/expt-cml/arcos
 # 念のため確認
 grep "import gnmi_ext_pb2" gnmi_pb2.py
 
-
-
-
-
 """
 
 import asyncio
@@ -89,7 +85,8 @@ import gnmi_pb2
 import gnmi_pb2_grpc
 
 # ロギング設定
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('gNMI_Telemetry')
 
 # 再接続設定

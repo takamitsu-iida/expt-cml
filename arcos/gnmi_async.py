@@ -45,6 +45,21 @@ cp github/com/openconfig/gnmi/proto/gnmi/gnmi_pb2_grpc.py ..
 cd ..
 rm -rf tmp
 
+
+このやり方だと、以下のエラーがでる。
+
+
+cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
+Traceback (most recent call last):
+  File "/home/cisco/expt-cml/arcos/./gnmi_async.py", line 60, in <module>
+    import gnmi_pb2
+  File "/home/cisco/expt-cml/arcos/gnmi_pb2.py", line 27, in <module>
+    from github.com.openconfig.gnmi.proto.gnmi_ext import gnmi_ext_pb2 as github_dot_com_dot_openconfig_dot_gnmi_dot_proto_dot_gnmi__ext_dot_gnmi__ext__pb2
+ModuleNotFoundError: No module named 'github'
+cisco@jumphost:~/expt-cml/arcos$
+
+
+
 """
 
 import asyncio

@@ -71,39 +71,7 @@ grep "import gnmi_ext_pb2" gnmi_pb2.py
 
 
 
-cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
-2025-12-17 11:41:29,148 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
-2025-12-17 11:41:29,148 - gNMI_Telemetry - INFO - Data Processor task started.
-2025-12-17 11:41:29,149 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
-2025-12-17 11:41:29,149 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
-2025-12-17 11:41:29,154 - gNMI_Telemetry - WARNING - [192.168.254.1] Collection task cancelled.
-2025-12-17 11:41:29,154 - gNMI_Telemetry - WARNING - [192.168.254.2] Collection task cancelled.
-^C2025-12-17 11:41:50,126 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
-2025-12-17 11:41:50,126 - gNMI_Telemetry - INFO - Data Processor task stopped.
-Traceback (most recent call last):
-  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
-    return future.result()
-           ^^^^^^^^^^^^^^^
-  File "/home/cisco/expt-cml/arcos/./gnmi_async.py", line 350, in main
-    await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
-asyncio.exceptions.CancelledError
 
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/cisco/expt-cml/arcos/./gnmi_async.py", line 365, in <module>
-    asyncio.run(main())
-  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
-    return runner.run(main)
-           ^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/asyncio/runners.py", line 123, in run
-    raise KeyboardInterrupt()
-KeyboardInterrupt
-
-cisco@jumphost:~/expt-cml/arcos$
 
 """
 
@@ -207,6 +175,17 @@ def build_auth_metadata(user: str, password: str) -> list:
     return [("authorization", f"Basic {encoded}")]
 
 
+
+def build_auth_metadata(user: str, password: str) -> list:
+    """
+    基本認証用メタデータを作成
+    """
+    credentials = f"{user}:{password}"
+    encoded = base64.b64encode(credentials.encode()).decode()
+    # gRPCメタデータは tuple のリストとして返す
+    return [("authorization", f"Basic {encoded}")]
+
+
 async def collector(host: str, port: int, user: str, password: str, data_queue: asyncio.Queue):
     """
     gNMI テレメトリ収集タスク (非同期)
@@ -217,8 +196,7 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
         channel = None
 
         try:
-            # grpc.aio.secure_channel() または grpc.aio.insecure_channel() を使用
-            # 本番環境ではセキュアチャンネル推奨、開発環境では insecure でテスト可能
+            # チャネルを作成
             channel = grpc.aio.insecure_channel(f"{host}:{port}")
 
             # 非同期 gNMI Stub を作成
@@ -265,6 +243,7 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
             logger.info(f"[{host}] Sending SubscribeRequest...")
 
             # Subscribe RPC を呼び出し、レスポンスを非同期でイテレート
+            # metadata パラメータを tuple のリストとして明示的に渡す
             async for response in stub.Subscribe(subscribe_request, metadata=metadata):
                 logger.debug(f"[{host}] Received gNMI response.")
 
@@ -345,7 +324,7 @@ async def collector(host: str, port: int, user: str, password: str, data_queue: 
 
 
 # =================================================================
-# 2. メイン実行部
+# メイン実行部
 # =================================================================
 
 async def main():

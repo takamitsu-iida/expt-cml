@@ -168,8 +168,6 @@ class CollectorMetrics:
             'last_update_time': None,
             'on_change_events': 0
         })
-        # ON_CHANGE イベントの前の値を保持（変更検知用）
-        self.previous_values = {}
 
     def record_data(self, host: str) -> None:
         """
@@ -209,28 +207,6 @@ class CollectorMetrics:
             host: ホストアドレス
         """
         self.metrics[host]['on_change_events'] += 1
-
-    def store_previous_value(self, key: str, value: str) -> None:
-        """
-        前の値を保存（変更検知用）
-
-        Args:
-            key: ホスト+パスの複合キー
-            value: 値
-        """
-        self.previous_values[key] = value
-
-    def get_previous_value(self, key: str) -> Optional[str]:
-        """
-        前の値を取得
-
-        Args:
-            key: ホスト+パスの複合キー
-
-        Returns:
-            前の値（ない場合は None）
-        """
-        return self.previous_values.get(key)
 
     def get_summary(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -525,7 +501,6 @@ def format_event_details(
     prefix_path: str,
     path_str: str,
     current_value: str,
-    previous_value: Optional[str],
     interface_info: Dict[str, str],
     timestamp: float
 ) -> str:
@@ -537,7 +512,6 @@ def format_event_details(
         prefix_path: プレフィックスパス
         path_str: 更新されたパス
         current_value: 現在の値
-        previous_value: 前の値
         interface_info: インターフェース情報
         timestamp: タイムスタンプ
 
@@ -564,13 +538,10 @@ def format_event_details(
     # パス情報
     details_lines.append(f"Full Path: /{prefix_path}/{path_str}")
 
-    # 値の変更
-    if previous_value is not None:
-        details_lines.append(f"Previous Value: {previous_value}")
-        details_lines.append(f"Current Value:  {current_value}")
-    else:
-        details_lines.append(f"Initial Value: {current_value}")
+    # 値
+    details_lines.append(f"Value: {current_value}")
 
+    # 空行を入れて見やすく
     details_lines.append("")
 
     return "\n".join(details_lines)
@@ -853,14 +824,14 @@ async def collector(
                         if is_on_change_update(path_str):
                             metrics.record_on_change_event(host)
                             value_key = f"{host}:{prefix_path}/{path_str}"
-                            previous_value = metrics.get_previous_value(value_key)
+
                             # インターフェース情報抽出
                             interface_info = extract_interface_info(
                                 update_value.path.elem
                             )
 
-                            # デバッグログ：current_value と previous_value を確認
-                            logger.debug(f"[DEBUG] value_key={value_key}, prev={previous_value}, curr={value_str}")
+                            # デバッグログ
+                            logger.debug(f"[DEBUG] value_key={value_key}, value={value_str}")
 
                             # 詳細ログ出力
                             event_details = format_event_details(
@@ -868,14 +839,10 @@ async def collector(
                                 prefix_path=prefix_path,
                                 path_str=path_str,
                                 current_value=value_str,
-                                previous_value=previous_value,
                                 interface_info=interface_info,
                                 timestamp=timestamp_sec
                             )
                             logger.info("\n" + event_details)
-
-                            # 現在の値を保存
-                            metrics.store_previous_value(value_key, value_str)
 
                             continue  # イベントはキューに投入しない
 

@@ -393,3 +393,69 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Program interrupted by user.")
+
+
+"""
+cisco@jumphost:~/expt-cml/arcos$ ./gnmi_async.py
+2025-12-17 11:55:51,501 - asyncio - DEBUG - Using selector: EpollSelector
+2025-12-17 11:55:51,502 - gNMI_Telemetry - INFO - Started 2 collection task(s) and 1 processor task.
+2025-12-17 11:55:51,502 - gNMI_Telemetry - INFO - Data Processor task started.
+2025-12-17 11:55:51,502 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:51,502 - grpc._cython.cygrpc - DEBUG - Using AsyncIOEngine.POLLER as I/O engine
+2025-12-17 11:55:51,503 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:51,504 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 11:55:51,504 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:51,504 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:51,504 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:51,504 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 11:55:51,505 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:51,512 - gNMI_Telemetry - ERROR - [192.168.254.1] gRPC error: StatusCode.UNAUTHENTICATED - User name not specified. Retrying in 1s.
+2025-12-17 11:55:51,512 - gNMI_Telemetry - ERROR - [192.168.254.2] gRPC error: StatusCode.UNAUTHENTICATED - User name not specified. Retrying in 1s.
+2025-12-17 11:55:52,513 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:52,513 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:52,513 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 11:55:52,513 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:52,513 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:52,513 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:52,513 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 11:55:52,513 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:52,515 - gNMI_Telemetry - ERROR - [192.168.254.1] gRPC error: StatusCode.UNAUTHENTICATED - User name not specified. Retrying in 1.898705786713433s.
+2025-12-17 11:55:52,515 - gNMI_Telemetry - ERROR - [192.168.254.2] gRPC error: StatusCode.UNAUTHENTICATED - User name not specified. Retrying in 2.345757299089872s.
+2025-12-17 11:55:54,416 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:54,416 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:54,416 - gNMI_Telemetry - INFO - [192.168.254.1] Sending SubscribeRequest...
+2025-12-17 11:55:54,416 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:54,418 - gNMI_Telemetry - ERROR - [192.168.254.1] gRPC error: StatusCode.UNAUTHENTICATED - User name not specified. Retrying in 3.6519574156367285s.
+2025-12-17 11:55:54,863 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:54,863 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:54,863 - gNMI_Telemetry - INFO - [192.168.254.2] Sending SubscribeRequest...
+2025-12-17 11:55:54,864 - grpc._cython.cygrpc - DEBUG - [_cygrpc] Loaded running loop: id(loop)=140312420407184
+2025-12-17 11:55:54,865 - gNMI_Telemetry - ERROR - [192.168.254.2] gRPC error: StatusCode.UNAUTHENTICATED - User name not specified. Retrying in 4.612376778010818s.
+^C2025-12-17 11:55:57,801 - gNMI_Telemetry - WARNING - Data Processor task cancelled.
+2025-12-17 11:55:57,802 - gNMI_Telemetry - INFO - Data Processor task stopped.
+2025-12-17 11:55:57,803 - grpc.aio._call - DEBUG - Client request_iterator raised exception:
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/cisco/expt-cml/arcos/./gnmi_async.py", line 377, in main
+    await asyncio.gather(*collection_tasks, data_processor_task, return_exceptions=True)
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+
+"""

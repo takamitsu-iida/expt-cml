@@ -463,6 +463,10 @@ def main() -> int:
     Returns:
         int: 終了コード (0: 成功, 1: 失敗)
     """
+
+    # グローバル変数を引数で上書き可能にする
+    global COMMIT_CONFIRM_TIMEOUT
+
     parser = argparse.ArgumentParser(description=SCRIPT_DESCRIPTION)
     subparsers = parser.add_subparsers(dest='command', help='実行するコマンド')
 
@@ -527,7 +531,6 @@ def main() -> int:
         success = apply_xml_config(args.file)
     elif args.command == 'apply-confirmed':
         # グローバルのタイムアウト値を更新
-        global COMMIT_CONFIRM_TIMEOUT
         COMMIT_CONFIRM_TIMEOUT = args.timeout
         success = apply_xml_config_confirmed(args.file)
     elif args.command == 'confirm':

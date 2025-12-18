@@ -48,6 +48,9 @@ OUTPUT_FILE = f"{OUTPUT_DIR}/{TARGET_HOST}.xml"
 # この時間内に確定コミットがない場合、設定は自動的にロールバックされる
 COMMIT_CONFIRM_TIMEOUT = 120  # 2分
 
+# confirmed commitに付与するID
+PERSIST_ID = "ABC"
+
 
 def connect_netconf() -> manager.Manager | None:
     """
@@ -231,7 +234,7 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
         return False
 
     # persist用のキーワードは固定にします
-    persist_id = "ABC"
+    persist_id = PERSIST_ID
 
     try:
         # --- 設定を装置に反映 (<edit-config> を実行) ---
@@ -281,7 +284,7 @@ def confirm_commit() -> bool:
     if not conn:
         return False
 
-    persist_id = "ABC"
+    persist_id = PERSIST_ID
 
     try:
         print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
@@ -314,7 +317,7 @@ def cancel_commit() -> bool:
     if not conn:
         return False
 
-    persist_id = "ABC"
+    persist_id = PERSIST_ID
 
     try:
         print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")

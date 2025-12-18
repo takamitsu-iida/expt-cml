@@ -371,26 +371,6 @@ root@localhost(config)#
 
 <br><br>
 
-## 設定をファイルとして保存
-
-設定をテキストファイルに保存します。
-
-```text
-root@localhost# show running-config | save run-conf.txt
-```
-
-exitでシェルを抜けてbashに戻ると、保存したファイルを確認できます。
-
-```bash
-root@localhost:~# ls
-run-conf.txt
-root@localhost:~#
-```
-
-このように別ファイルに保存することはできるものの、ルータが起動時に読み込むコンフィグがどこに保存されているかは不明です。
-
-<br><br>
-
 ## 注意事項
 
 <br>
@@ -601,7 +581,56 @@ root@P1:~#
 
 SSH接続をmanagement vrfに制限する方法はなさそうです。
 
-商用環境だとまずいので、装置へのアクセス制御をしっかりとかけなければいけません。
+商用環境だとインバンドでの接続が解放されているとまずいので、装置へのアクセス制御をしっかりとかけなければいけません。
+
+<br><br>
+
+## 設定関連の操作
+
+変更した設定はcommitで反映します。
+
+一定時間経過したら自動でもとに戻すこともできます。
+
+その場合、指定した時間内に改めてcommitすれば確定できますし、キャンセルすれば直ちに元に戻せます。
+
+
+commitで確定したコンフィグは履歴が残りますので、その履歴に戻すこともできます。
+
+rollback
+
+装置のコンフィグをLinux上のファイルとして保存できます。
+
+```text
+root@localhost# show running-config | save run-conf.txt
+```
+
+exitでシェルを抜けてbashに戻ると、保存したファイルを確認できます。
+
+```bash
+root@localhost:~# ls
+run-conf.txt
+root@localhost:~#
+```
+
+保存しておいたファイルからロードすることもできます。
+
+**merge** - 現在の設定にファイルの中身をマージします
+
+**override** - 今動いている設定を全て消してから、ファイルの中身を反映させます
+
+**replace** - ファイルの内容で置き換え、ファイルにない部分は今のコンフィグを継続します
+
+mergeとreplaceの違いは、全文か、一部分か、の違いかな？
+
+
+
+
+
+
+
+
+
+
 
 <br><br><br>
 
@@ -1047,6 +1076,8 @@ system grpc-server transport-security true
 
 SAMPLEの間隔は最小30秒。それ以下を指定しても30秒間隔になります。
 
+ターゲットが単一ルータの場合は、同期処理で実装するのが簡単です。
+
 サンプルスクリプト　[gnmi.py](/arcos/gnmi.py)
 
 実行例。
@@ -1064,6 +1095,17 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 時刻: 1765796308514860266, パス: interfaces/interface[name=swp1]/state/counters/in-octets, 値: 12403284
 ✅ プログラムを終了します。
 ```
+
+ターゲットが複数のルータの場合、同時にコネクションを張り続けることになりますので、非同期の方が望ましいです。
+
+サンプルスクリプト　[gnmi_async.py](/arcos/gnmi_async.py)
+
+
+
+
+
+
+
 
 <br><br>
 

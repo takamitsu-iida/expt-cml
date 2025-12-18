@@ -872,15 +872,6 @@ root@P1#
 ```
 
 
-cisco@jumphost:~/expt-cml/arcos$ ./nc.py confirm
-➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
-✅ NETCONFセッションが確立されました。セッションID: 310
-
-➡️ 設定変更を確定するため <commit> RPC を送信中...
-   persist ID: ABC
-❌ 致命的なエラーが発生しました: Invalid tag name "<Element '{urn:ietf:params:xml:ns:netconf:base:1.0}commit' at 0x72ed2b6a6ed0>"
-
-接続を閉じました。
 
 
 <br><br>

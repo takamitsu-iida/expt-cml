@@ -320,12 +320,9 @@ def confirm_commit() -> bool:
         print(f"   persist ID: {persist_key}")
 
         # ArcOSではpersist-idのみを指定した通常のcommitで確定
-        # ncclientの内部実装を直接呼び出す
-        rpc_xml = f'''
-        <nc:commit xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-            <nc:persist-id>{persist_key}</nc:persist-id>
-        </nc:commit>
-        '''
+        # 名前空間を正しく定義してXMLを構築
+        rpc_xml = f'''<commit xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><persist-id>{persist_key}</persist-id></commit>'''
+
         result = conn.rpc(ET.fromstring(rpc_xml))
 
         print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
@@ -341,6 +338,7 @@ def confirm_commit() -> bool:
         if conn:
             conn.close_session()
             print("\n接続を閉じました。")
+
 
 
 
@@ -397,11 +395,9 @@ def cancel_commit() -> bool:
         print(f"   persist ID: {persist_key}")
 
         # ArcOSのcancel-commitもRPCを直接送信
-        rpc_xml = f'''
-        <nc:cancel-commit xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-            <nc:persist-id>{persist_key}</nc:persist-id>
-        </nc:cancel-commit>
-        '''
+        # 名前空間を正しく定義してXMLを構築
+        rpc_xml = f'''<cancel-commit xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><persist-id>{persist_key}</persist-id></cancel-commit>'''
+
         result = conn.rpc(ET.fromstring(rpc_xml))
 
         print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
@@ -417,6 +413,7 @@ def cancel_commit() -> bool:
         if conn:
             conn.close_session()
             print("\n接続を閉じました。")
+
 
 
 def apply_xml_config(config_file: str = OUTPUT_FILE) -> bool:

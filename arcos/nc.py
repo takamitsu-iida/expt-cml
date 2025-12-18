@@ -18,6 +18,7 @@ SCRIPT_DESCRIPTION = 'netconfで装置から設定を取得・反映します'
 import argparse
 import os
 import sys
+import time
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
@@ -229,6 +230,12 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
     if not conn:
         return False
 
+    # persist用のキーワードを生成 (セッションIDを使用)
+    # persist_key = f"session-{conn.session_id}"
+
+    # persist用のキーワードはスクリプト名で固定にします
+    persist_key = os.path.basename(__file__)
+
     try:
         # --- 設定を装置に反映 (<edit-config> を実行) ---
         print(f"\n➡️ <edit-config> RPCを送信中...")
@@ -238,14 +245,16 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
 
         # --- 変更内容を confirmed コミット ---
         print(f"\n➡️ <commit confirmed> RPCを送信中 (timeout: {COMMIT_CONFIRM_TIMEOUT}秒)...")
-        conn.commit(confirmed=True, timeout=str(COMMIT_CONFIRM_TIMEOUT), persist="ABC")
+        print(f"   persist ID: {persist_key}")
+        conn.commit(confirmed=True, timeout=str(COMMIT_CONFIRM_TIMEOUT), persist=persist_key)
         print(f"✅ <commit confirmed>が成功しました。")
 
         print(f"\n⚠️ 設定は一時的に適用されました。{COMMIT_CONFIRM_TIMEOUT}秒以内に以下のコマンドで変更を永続化してください:")
-        print(f"   python {os.path.basename(__file__)} confirm")
+        print(f"   python {os.path.basename(__file__)} confirm --persist-id {persist_key}")
         print(f"\n   時間内に確定コミットが行われない場合、変更は自動的にロールバックされます。")
         print(f"   手動でロールバックするには以下のコマンドを実行してください:")
-        print(f"   python {os.path.basename(__file__)} cancel")
+        print(f"   python {os.path.basename(__file__)} cancel --persist-id {persist_key}")
+
         return True
 
     except RPCError as e:
@@ -274,9 +283,12 @@ def confirm_commit() -> bool:
     if not conn:
         return False
 
+    # persist用のキーワードはスクリプト名で固定にします
+    persist_key = os.path.basename(__file__)
+
     try:
         print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
-        conn.commit()
+        conn.commit(persist=persist_key)
         print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
         return True
     except RPCError as e:
@@ -305,9 +317,12 @@ def cancel_commit() -> bool:
     if not conn:
         return False
 
+    # persist用のキーワードはスクリプト名で固定にします
+    persist_key = os.path.basename(__file__)
+
     try:
         print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")
-        conn.cancel_commit()
+        conn.cancel_commit(persist=persist_key)
         print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
         return True
     except RPCError as e:

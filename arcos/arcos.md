@@ -956,7 +956,34 @@ HTTPSを使うRESTCONFはTCPポート8009です。
 
 暗号化されないHTTPのRESTCONFはTCPポート8008です。
 
-`system restconf-server enable true`　この設定でどのポートが開く？
+`system restconf-server enable true`
+
+この設定でどのポートが開く？
+
+```
+root@P1(config)# system restconf-server transport-security ?
+Description: Configure RESTCONF transport security
+Possible completions:
+  [true]
+  false
+  true
+```
+
+
+```
+root@P1(config)# system restconf-server listen-addresses ?
+Description: Listen IP addresses for the RESTCONF server
+Possible completions:
+  <address>   IPv4 or IPv6 address
+  ANY         Listen on all IP addresses (IPv4/IPv6)
+  [
+```
+
+
+
+
+
+
 
 ```bash
 curl -k -u cisco:cisco123 \

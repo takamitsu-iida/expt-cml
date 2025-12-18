@@ -1258,7 +1258,6 @@ Possible completions:
   true
 ```
 
-
 ```
 root@P1(config)# system restconf-server listen-addresses ?
 Description: Listen IP addresses for the RESTCONF server
@@ -1269,11 +1268,6 @@ Possible completions:
 ```
 
 
-
-
-
-
-
 ```bash
 curl -k -u cisco:cisco123 \
 -H "Content-Type: application/yang-data+json" \
@@ -1281,6 +1275,21 @@ curl -k -u cisco:cisco123 \
 -i https://192.168.254.1:8009/<URI>
 ```
 
+
+GET /restconf/data
+GET /restconf/data/openconfig-interfaces:interfaces
+GET /restconf/data/openconfig-interfaces:interfaces
+GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0
+
+%2Fはスラッシュ/
+
+GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0/config
+GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0/state
+GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0/state/counters
+
+GET /restconf/data/openconfig-system:system
+GET /restconf/data/openconfig-system:system/config/hostname
+GET /restconf/data/openconfig-system:system/ntp/config/enabled
 
 
 <br><br>

@@ -587,30 +587,233 @@ SSH接続をmanagement vrfに制限する方法はなさそうです。
 
 ## 設定関連の操作
 
+コンフィグモードに入る方法
+
+```bash
+root@P1# conf ?
+Possible completions:
+  exclusive   Obtain an exclusive lock on the candidate database
+  shared      Work in a shared candidate database
+  terminal    Work in a private candidate database (default)
+  |           Output modifiers
+  <cr>
+```
+
+コンフィグモードの抜け方
+
+**exit** 編集中のコンフィグがなければオペレーションモードに戻ります
+
+**end** 編集中のコンフィグがなければオペレーションモードに戻ります
+
+**ctrl-z** 編集中のコンフィグがなければオペレーションモードに戻ります
+
+**abort** 編集中のコンフィグがあっても、それを破棄して抜けます
+
+編集中のコンフィグがあるときは、次のように動作を促されます。
+
+```bash
+root@P1(config)# exit
+Uncommitted changes found, commit them? [yes/no/CANCEL]
+```
+
 変更した設定はcommitで反映します。
 
-一定時間経過したら自動でもとに戻すこともできます。
+```bash
+oot@P1(config)# commit ?
+Possible completions:
+  comment        Add a commit comment
+  label          Add a commit label
+  persist-id     Specify a persist-id
+  rollback-id    Display rollback-id for commit
+  save-running   Save running to file before performing the commit
+  ---
+  abort          Abort a pending commit
+  and-quit       Commit current set of changes and exit configuration mode
+  check          Validate current configuration
+  confirmed      Commit current set of changes with a timeout
+  no-confirm     Commit current set of changes, do not query user
+  <cr>
+```
 
-その場合、指定した時間内に改めてcommitすれば確定できますし、キャンセルすれば直ちに元に戻せます。
+ラベルとコメントを付けてコミットしてみます。
+コメントに空白を含む場合はダブルクオートで囲みます。
 
+```bash
+root@P1(config)# commit label LABEL-1 comment "change hostname by iida"
+```
 
-commitで確定したコンフィグは履歴が残りますので、その履歴に戻すこともできます。
+過去のコミット履歴を確認するには　`show configuration commit list`　です。
 
-rollback
+```bash
+root@PP1# show configuration commit list
+2025-12-16 13:57:31
+SNo. ID       User       Client      Time Stamp          Label       Comment
+~~~~ ~~       ~~~~       ~~~~~~      ~~~~~~~~~~          ~~~~~       ~~~~~~~
+0    10101    root       cli         2025-12-16 13:55:55 LABEL-1     change hostname by iida
+1    10100    root       cli         2025-12-16 09:46:19
+2    10099    root       cli         2025-12-16 09:42:35
+```
+
+上が新しいです。シリアル番号は最新が0です。
+
+そのコミットで何を変更したのかを確認するには　`show configuration commit changes ＜番号＞`　です。
+
+```bash
+root@PP1# show configuration commit changes 0
+!
+! Created by: root
+! Date: 2025-12-16 13:55:55
+! Client: cli
+! Label: LABEL-1
+! Comment: change hostname by iida
+!
+system hostname PP1
+```
+
+過去のコミットに戻すこともできますが、これは設定変更になるのでコンフィグモードに移らないとできません。
+
+コンフィグモードで　`rollback configuration ＜番号＞`　です。
+
+一つ前の状態、すなわち番号1に戻してみます。
+
+```bash
+root@PP1(config)# rollback configuration ?
+Possible completions:
+  0      2025-12-16 13:55:55 by root via cli label LABEL-1 comment change
+         hostname by iida
+  1      2025-12-16 09:46:19 by root via cli
+
+root@PP1(config)# rollback configuration 1
+root@PP1(config)#
+```
+
+この時点では何も起きてないように見えますが、変更はcandidate-configの中に反映されてます。
+
+```bash
+root@PP1(config)# show configuration
+system hostname P1
+root@PP1(config)#
+```
+
+改めてコミットすれば反映されます。
+
+<br>
+
+コミットしてから一定時間経過したら自動でもとに戻すこともできます。
+
+排他コンフィグモードで　`commit confirmed ＜分＞`　です。
+
+排他コンフィグモードではない、通常のコンフィグモードで実際にやってみると、次のようなエラーになります。
+
+```bash
+root@PP1(config)# commit confirmed ?
+Possible completions:
+  <timeout>   Number of minutes until rollback <1..65535>
+  <cr>
+root@PP1(config)# commit confirmed 10
+Error: confirmed commit is not supported in 'private' mode
+root@PP1(config)#
+```
+
+排他コンフィグモードでやってみます。
+
+```bash
+root@PP1# config exclusive
+Entering configuration mode exclusive
+Warning: uncommitted changes will be discarded on exit
+root@PP1(config)#
+root@PP1(config)# rollback configuration 1
+root@PP1(config)# commit confirmed 1
+root@PP1(config)# rollback configuration 1
+root@PP1(config)# commit confirmed 1
+Warning: The configuration will be reverted if you exit the CLI without
+performing the commit operation within 1 minutes.
+root@P1(config)#
+```
+
+設定が反映されたのでプロンプトが PP1 から P1 に戻ってます。
+
+１分経過すると、
+
+```bash
+root@P1(config)#
+Message from system at 2025-12-16 14:11:25...
+confirmed commit operation not confirmed by root from cli
+configuration rolled back
+root@P1(config)#
+root@PP1(config)#
+root@PP1(config)#
+```
+
+元の設定に戻ります。
+
+指定した時間内に、確定するには commit を再度実行します。
+
+```bash
+root@PP1(config)# rollback configuration 1
+root@PP1(config)# commit confirmed 1
+Warning: The configuration will be reverted if you exit the CLI without
+performing the commit operation within 1 minutes.
+root@P1(config)#
+root@P1(config)# commit
+Commit complete. Configuration is now permanent.
+root@P1(config)#
+```
+
+タイムアウトを待たずとも、不都合が発覚したらすぐさま取り消すこともできます。
+
+```bash
+root@PP1(config)# rollback configuration 1
+root@PP1(config)# commit confirmed 1
+Warning: The configuration will be reverted if you exit the CLI without
+performing the commit operation within 1 minutes.
+root@P1(config)#
+root@P1(config)#
+root@P1(config)#
+root@P1(config)# commit abort
+Confirmed commit has been aborted. Old configuration will now be restored.
+root@PP1(config)#
+Message from system at 2025-12-16 14:14:39...
+confirmed commit operation not confirmed by root from cli
+configuration rolled back
+root@PP1(config)#
+root@PP1(config)#
+```
+
+ホスト名が PP1 だったのが、ロールバックして P1 に戻りましたが、abortしたので元の PP1 に戻ってます
+
+<br>
 
 装置のコンフィグをLinux上のファイルとして保存できます。
 
 ```text
-root@localhost# show running-config | save run-conf.txt
+root@PP1# show running-config | save config.txt
 ```
 
-exitでシェルを抜けてbashに戻ると、保存したファイルを確認できます。
+rootの場合はexitでCLIを抜けてbashに戻るかと、保存したファイルを確認できます。
 
 ```bash
-root@localhost:~# ls
-run-conf.txt
-root@localhost:~#
+root@P1:~# ls
+config.txt
+root@P1:~#
 ```
+
+bashに戻らずとも、CLIの中からも確認できます。
+
+```bash
+root@PP1# file list
+.bash_history
+.bashrc
+.config
+.lesshst
+.lttngrc
+.profile
+.ssh
+config.txt
+root@PP1#
+```
+
+<br>
 
 保存しておいたファイルからロードすることもできます。
 
@@ -620,10 +823,70 @@ root@localhost:~#
 
 **replace** - ファイルの内容で置き換え、ファイルにない部分は今のコンフィグを継続します
 
-mergeとreplaceの違いは、全文か、一部分か、の違いかな？
+ファイルに保存してあるものが完全な全体コンフィグの場合、どれを選んでも同じです。
 
 
+`system hostname PP1` という１行だけを含んだファイルを作って、それをロードしてみます。
 
+```bash
+root@P1:~# echo "system hostname PP1" > config.txt
+root@P1:~# cat config.txt
+system hostname PP1
+root@P1:~#
+```
+
+まずは **merge** の場合。期待通りの動きをします。
+
+```bash
+root@P1# config
+Entering configuration mode terminal
+root@P1(config)# load merge config.txt
+Loading.
+20 bytes parsed in 0.02 sec (961 bytes/sec)
+root@P1(config)# show config
+system hostname PP1
+root@P1(config)# commit
+Commit complete.
+root@PP1(config)#
+```
+
+次に **override** の場合。これは超危険な操作です。
+
+ファイルに書いてあるのが `system hostname PP1` だけなので、
+それ以外の部分は全部noで消してデフォルトに戻そうとします。
+
+show configで何が変更されるのかを確認して、おかしいことに気づけばabortで抜けるだけです。
+
+```bash
+oot@P1(config)# load override config.txt
+Loading.
+20 bytes parsed in 0.15 sec (131 bytes/sec)
+root@P1(config)#
+root@P1(config)# show configuration
+system hostname PP1
+no version "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
+no features feature ARCOS_RIOT
+no features feature ARCOS_ICMP_SRC_REWRITE
+no features feature ARCOS_SUBIF
+no features feature ARCOS_QoS
+no features feature ARCOS_MPLS
+no features feature ARCOS_SFLOW
+no system login-banner "ArcOS (c) Arrcus, Inc."
+no system clock timezone-name Asia/Tokyo
+no system ssh-server enable true
+no system ssh-server permit-root-login true
+```
+
+最後に **replace** の場合です。mergeの場合と区別が付きませんね。
+
+```bash
+root@P1(config)# load replace config.txt
+Loading.
+20 bytes parsed in 0.02 sec (932 bytes/sec)
+root@P1(config)# show config
+system hostname PP1
+root@P1(config)#
+```
 
 
 

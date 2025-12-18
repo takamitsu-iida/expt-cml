@@ -231,7 +231,7 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
         return False
 
     # persist用のキーワードは固定にします
-    persist_key = "ABC"
+    persist_id = "ABC"
 
     try:
         # --- 設定を装置に反映 (<edit-config> を実行) ---
@@ -242,8 +242,8 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
 
         # --- 変更内容を confirmed コミット ---
         print(f"\n➡️ <commit confirmed> RPCを送信中 (timeout: {COMMIT_CONFIRM_TIMEOUT}秒)...")
-        print(f"   persist ID: {persist_key}")
-        result = conn.commit(confirmed=True, timeout=str(COMMIT_CONFIRM_TIMEOUT), persist=persist_key)
+        print(f"   persist ID: {persist_id}")
+        result = conn.commit(confirmed=True, timeout=str(COMMIT_CONFIRM_TIMEOUT), persist=persist_id)
         # print(result)
         print(f"✅ <commit confirmed>が成功しました。")
 
@@ -268,68 +268,6 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
             print("\n接続を閉じました。")
 
 
-def __confirm_commit() -> bool:
-    """
-    commit confirmedで保留中の変更を永続化する
-
-    apply-confirmedで一時適用された設定を確定し、永続化します。
-
-    Returns:
-        bool: 成功時True、失敗時False
-    """
-    conn = connect_netconf()
-    if not conn:
-        return False
-
-    try:
-        print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
-        conn.commit(confirmed=False)
-        print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
-        return True
-    except RPCError as e:
-        print(f"❌ NETCONF RPCエラーが発生しました: {e}")
-        print("   ヒント: 保留中のconfirmed commitが存在しない可能性があります。")
-        return False
-    except Exception as e:
-        print(f"❌ 致命的なエラーが発生しました: {e}")
-        return False
-    finally:
-        if conn:
-            conn.close_session()
-            print("\n接続を閉じました。")
-
-
-def __cancel_commit() -> bool:
-    """
-    commit confirmedで保留中の変更をキャンセルする
-
-    apply-confirmedで一時適用された設定をキャンセルし、ロールバックします。
-
-    Returns:
-        bool: 成功時True、失敗時False
-    """
-    conn = connect_netconf()
-    if not conn:
-        return False
-
-    try:
-        print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")
-        conn.cancel_commit(confirmed=False)
-        print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
-        return True
-    except RPCError as e:
-        print(f"❌ NETCONF RPCエラーが発生しました: {e}")
-        print("   ヒント: 保留中のconfirmed commitが存在しない可能性があります。")
-        return False
-    except Exception as e:
-        print(f"❌ 致命的なエラーが発生しました: {e}")
-        return False
-    finally:
-        if conn:
-            conn.close_session()
-            print("\n接続を閉じました。")
-
-
 def confirm_commit() -> bool:
     """
     commit confirmedで保留中の変更を永続化する
@@ -343,22 +281,11 @@ def confirm_commit() -> bool:
     if not conn:
         return False
 
-    # persist用のキーワードは固定
-    persist_key = "ABC"
+    persist_id = "ABC"
 
     try:
         print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
-        print(f"   persist ID: {persist_key}")
-
-        # ncclientのcommit()メソッドを使わず、直接RPCを構築
-        # ElementTreeで要素を構築
-        NS_NETCONF = "urn:ietf:params:xml:ns:netconf:base:1.0"
-        commit_elem = ET.Element("{%s}commit" % NS_NETCONF)
-        persist_elem = ET.SubElement(commit_elem, "{%s}persist-id" % NS_NETCONF)
-        persist_elem.text = persist_key
-
-        result = conn.rpc(commit_elem)
-
+        conn.commit(confirmed=False, persist_id=persist_id)
         print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
         return True
     except RPCError as e:
@@ -372,7 +299,6 @@ def confirm_commit() -> bool:
         if conn:
             conn.close_session()
             print("\n接続を閉じました。")
-
 
 
 def cancel_commit() -> bool:
@@ -388,22 +314,11 @@ def cancel_commit() -> bool:
     if not conn:
         return False
 
-    # persist用のキーワードは固定
-    persist_key = "ABC"
+    persist_id = "ABC"
 
     try:
         print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")
-        print(f"   persist ID: {persist_key}")
-
-        # ncclientのcancel_commit()メソッドを使わず、直接RPCを構築
-        # ElementTreeで要素を構築
-        NS_NETCONF = "urn:ietf:params:xml:ns:netconf:base:1.0"
-        cancel_elem = ET.Element("{%s}cancel-commit" % NS_NETCONF)
-        persist_elem = ET.SubElement(cancel_elem, "{%s}persist-id" % NS_NETCONF)
-        persist_elem.text = persist_key
-
-        result = conn.rpc(cancel_elem)
-
+        conn.cancel_commit(persist_id=persist_id)
         print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
         return True
     except RPCError as e:

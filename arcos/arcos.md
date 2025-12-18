@@ -850,10 +850,21 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply-confirmed -f /tmp/192.168.254.1.x
 ```text
 Message from system at 2025-12-16 07:09:23...
 confirmed commit operation not confirmed by cisco from netconf
-WARNING: configuration failed to be rolled back
 ```
 
 そのまま放置してみます。
+
+設定変更でホスト名が一時的にPP1に変わっていますが、コミットが発行されなかったので元に戻っています。
+
+```bash
+root@PP1#
+Message from system at 2025-12-16 07:24:30...
+confirmed commit operation not confirmed by cisco from netconf
+configuration rolled back
+root@PP1#
+root@P1#
+root@P1#
+```
 
 
 

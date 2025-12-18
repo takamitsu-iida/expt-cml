@@ -244,9 +244,7 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
         print(f"\n➡️ <commit confirmed> RPCを送信中 (timeout: {COMMIT_CONFIRM_TIMEOUT}秒)...")
         print(f"   persist ID: {persist_key}")
         result = conn.commit(confirmed=True, timeout=str(COMMIT_CONFIRM_TIMEOUT), persist=persist_key)
-        print(result)
-
-
+        # print(result)
         print(f"✅ <commit confirmed>が成功しました。")
 
         print(f"\n⚠️ 設定は一時的に適用されました。{COMMIT_CONFIRM_TIMEOUT}秒以内に以下のコマンドで変更を永続化してください:")
@@ -285,7 +283,7 @@ def confirm_commit() -> bool:
 
     try:
         print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
-        conn.commit(persist="ABC")
+        conn.commit(confirmed=False, persist="ABC")
         print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
         return True
     except RPCError as e:
@@ -316,7 +314,7 @@ def cancel_commit() -> bool:
 
     try:
         print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")
-        conn.cancel_commit(persist="ABC")
+        conn.cancel_commit(confirmed=False, persist="ABC")
         print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
         return True
     except RPCError as e:

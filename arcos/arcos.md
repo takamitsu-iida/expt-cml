@@ -685,6 +685,18 @@ network-instance default
 
 <br><br>
 
+## 装置の管理アドレス
+
+ループバックにIPv4とIPv6アドレスを割り当てて、それを装置を代表するアドレスにします。
+
+ICMPメッセージの送信元IPアドレスは指定するようにします。
+
+```text
+system icmp source-interface loopback0
+```
+
+<br><br>
+
 ## 装置へのアクセス制御
 
 初期状態でmanagementという名前のvrfが作られています。
@@ -737,6 +749,8 @@ system netconf-server transport ssh enable true
 
 Capabilityを確認する例。
 
+`./nc.py capability`
+
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py capability
 ➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
@@ -781,7 +795,11 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py capability
 接続を閉じました。
 ```
 
-XML形式で保存する例。
+<br>
+
+XML形式の設定を取得してファイルに保存する例。
+
+`./nc.py get`
 
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py get
@@ -794,9 +812,13 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py get
 ✅ XML設定を保存しました: /tmp/192.168.254.1.xml
 ```
 
-/tmp/192.168.254.1.xmlを手動で編集して、ホスト名を変更します。
+<br>
+
+/tmp/192.168.254.1.xml に保存されたので、これを手動で編集して、ホスト名を変更します。
 
 手動で変更したXML形式のファイルを適用する例。
+
+`./nc.py apply -f /tmp/192.168.254.1.xml`
 
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply -f /tmp/192.168.254.1.xml
@@ -811,7 +833,9 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply -f /tmp/192.168.254.1.xml
 ✅ <commit>が成功しました。設定が装置に反映されました
 ```
 
-ルータのコンソールには次のように表示されます。
+<br>
+
+実行すると、ルータのコンソールには次のように表示されます。
 
 ```text
 root@P1#
@@ -825,7 +849,11 @@ root@PP1#
 
 ホスト名が変更されたことでプロンプトも変化しています。
 
-confirmed commitの場合
+<br>
+
+一定時間後に元の設定に戻す場合（confirmed commit）
+
+`./nc.py apply-confirmed -f /tmp/192.168.254.1.xml`
 
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply-confirmed -f /tmp/192.168.254.1.xml
@@ -849,8 +877,9 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply-confirmed -f /tmp/192.168.254.1.x
 
 接続を閉じました。
 ```
+<br>
 
-ルータのコンソールには以下のように表示されます。設定変更でホスト名がP1からPP1に変わっています。
+このときルータのコンソールには以下のように表示されます。設定変更でホスト名がP1からPP1に変わっています。
 
 ```text
 System message at 2025-12-16 07:42:55...
@@ -858,6 +887,8 @@ Commit performed by cisco via ssh using netconf.
 root@P1#
 root@PP1#
 ```
+
+<br>
 
 そのまま放置すると、2分後にルータのコンソールにメッセージが表示されて、設定はもとに戻ります。
 
@@ -871,7 +902,9 @@ root@P1#
 root@P1#
 ```
 
-2分以内に確定すれば永続化します。
+<br>
+
+2分以内に確定すれば永続化できます。
 
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py confirm
@@ -883,6 +916,8 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py confirm
 
 接続を閉じました。
 ```
+
+<br>
 
 2分待たずにキャンセルすることもできます。
 
@@ -897,6 +932,8 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py cancel
 接続を閉じました。
 ```
 
+<br>
+
 ルータのコンソールにはこのようなメッセージが表示されます。
 
 ```text
@@ -910,9 +947,20 @@ root@P1#
 
 ## RESTCONF
 
-HTTPSを使うRESTCONFはデフォルトで有効かも？ TCPポート8009です。
+RFC8040
 
-暗号化されないHTTPのRESTCONFはTCPポート8008です。これはデフォルトでは動いてません。
+HTTPSを使うRESTCONFはTCPポート8009です。
+
+暗号化されないHTTPのRESTCONFはTCPポート8008です。
+
+`system restconf-server enable true`　この設定でどのポートが開く？
+
+```bash
+curl -k -u cisco:cisco123 \
+-H "Content-Type: application/yang-data+json" \
+-H "Accept: application/yang-data+json" \
+-i https://192.168.254.1:8009/<URI>
+```
 
 
 

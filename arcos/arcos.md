@@ -871,8 +871,40 @@ root@P1#
 root@P1#
 ```
 
+2分以内に確定すれば永続化します。
 
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ./nc.py confirm
+➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
+✅ NETCONFセッションが確立されました。セッションID: 331
 
+➡️ 設定変更を確定するため <commit> RPC を送信中...
+✅ <commit>が成功しました。保留中の変更が永続化されました。
+
+接続を閉じました。
+```
+
+2分待たずにキャンセルすることもできます。
+
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ./nc.py cancel
+➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
+✅ NETCONFセッションが確立されました。セッションID: 338
+
+➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...
+✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。
+
+接続を閉じました。
+```
+
+ルータのコンソールにはこのようなメッセージが表示されます。
+
+```text
+Message from system at 2025-12-16 08:38:24...
+confirmed commit operation not confirmed by cisco from netconf
+configuration rolled back
+root@P1#
+```
 
 <br><br>
 

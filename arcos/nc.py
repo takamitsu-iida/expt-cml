@@ -283,12 +283,9 @@ def confirm_commit() -> bool:
     if not conn:
         return False
 
-    # persist用のキーワードはスクリプト名で固定にします
-    persist_key = os.path.basename(__file__)
-
     try:
         print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
-        conn.commit(persist=persist_key)
+        conn.commit()
         print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
         return True
     except RPCError as e:

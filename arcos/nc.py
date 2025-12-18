@@ -243,7 +243,10 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
         # --- 変更内容を confirmed コミット ---
         print(f"\n➡️ <commit confirmed> RPCを送信中 (timeout: {COMMIT_CONFIRM_TIMEOUT}秒)...")
         print(f"   persist ID: {persist_key}")
-        conn.commit(confirmed=True, timeout=str(COMMIT_CONFIRM_TIMEOUT), persist=persist_key)
+        result = conn.commit(confirmed=True, timeout=str(COMMIT_CONFIRM_TIMEOUT), persist=persist_key)
+        print(result)
+
+
         print(f"✅ <commit confirmed>が成功しました。")
 
         print(f"\n⚠️ 設定は一時的に適用されました。{COMMIT_CONFIRM_TIMEOUT}秒以内に以下のコマンドで変更を永続化してください:")

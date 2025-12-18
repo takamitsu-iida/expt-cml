@@ -250,10 +250,10 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
         print(f"✅ <commit confirmed>が成功しました。")
 
         print(f"\n⚠️ 設定は一時的に適用されました。{COMMIT_CONFIRM_TIMEOUT}秒以内に以下のコマンドで変更を永続化してください:")
-        print(f"   python {os.path.basename(__file__)} confirm --persist-id {persist_key}")
+        print(f"   python {os.path.basename(__file__)} confirm")
         print(f"\n   時間内に確定コミットが行われない場合、変更は自動的にロールバックされます。")
         print(f"   手動でロールバックするには以下のコマンドを実行してください:")
-        print(f"   python {os.path.basename(__file__)} cancel --persist-id {persist_key}")
+        print(f"   python {os.path.basename(__file__)} cancel")
 
         return True
 
@@ -317,12 +317,9 @@ def cancel_commit() -> bool:
     if not conn:
         return False
 
-    # persist用のキーワードはスクリプト名で固定にします
-    persist_key = os.path.basename(__file__)
-
     try:
         print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")
-        conn.cancel_commit(persist=persist_key)
+        conn.cancel_commit()
         print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
         return True
     except RPCError as e:

@@ -692,7 +692,10 @@ network-instance default
 ICMPメッセージの送信元IPアドレスは指定するようにします。
 
 ```text
+!
 system icmp source-interface loopback0
+ network-instance default
+!
 ```
 
 <br><br>

@@ -717,7 +717,6 @@ SNMPやSSH、NETCONF、RESTCONF等の管理通信がmanagement vrfに限定さ�
 
 状態取得はgNMIの方が充実しています。
 
-
 <br>
 
 有効にする設定。
@@ -730,6 +729,52 @@ system netconf-server enable true
 
 ```text
 system netconf-server transport ssh enable true
+```
+
+Capabilityを確認する例。
+
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ./nc.py capability
+➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
+✅ NETCONFセッションが確立されました。セッションID: 191
+
+📋 サーバのCapabilities一覧 (128件):
+
+================================================================================
+
+[YANG Modules] (112件)
+  - INET-ADDRESS-MIB
+  - IPV6-TC
+  - SNMPv2-SMI
+  - SNMPv2-TC
+  - TRANSPORT-ADDRESS-MIB
+  - arcos-chassis
+  - arcos-ldp-debug
+  - arcos-rsvp-debug-mplste
+  - arcos-rsvp-debug-proto
+  - confd_dyncfg
+  ... and 102 more modules
+  (--verbose オプションで全て表示)
+
+[Operations]
+  urn:ietf:params:netconf:capability:confirmed-commit:1.1
+  urn:ietf:params:netconf:capability:confirmed-commit:1.0
+  urn:ietf:params:netconf:capability:candidate:1.0
+  urn:ietf:params:netconf:capability:rollback-on-error:1.0
+  urn:ietf:params:netconf:capability:url:1.0?scheme=ftp,sftp,file
+  urn:ietf:params:netconf:capability:validate:1.0
+  urn:ietf:params:netconf:capability:validate:1.1
+  urn:ietf:params:netconf:capability:xpath:1.0
+  urn:ietf:params:netconf:capability:notification:1.0
+  urn:ietf:params:netconf:capability:partial-lock:1.0
+  urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all-tagged,report-all
+  urn:ietf:params:netconf:capability:with-operational-defaults:1.0?basic-mode=explicit&also-supported=report-all-tagged,report-all
+  urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&module-set-id=a16375f5c78e8d07ffef0c170609ef94
+  urn:ietf:params:netconf:capability:yang-library:1.1?revision=2019-01-04&content-id=a16375f5c78e8d07ffef0c170609ef94
+
+================================================================================
+
+接続を閉じました。
 ```
 
 XML形式で保存する例。
@@ -775,6 +820,10 @@ root@PP1#
 自動でコミットされました。
 
 ホスト名が変更されたことでプロンプトも変化しています。
+
+➡️ <commit confirmed> RPCを送信中 (timeout: 120秒)...
+❌ 致命的なエラーが発生しました: Commit.request() got an unexpected keyword argument 'confirm_timeout'
+
 
 <br><br>
 

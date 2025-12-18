@@ -823,17 +823,17 @@ root@PP1#
 
 **replace** - ファイルの内容で置き換え、ファイルにない部分は今のコンフィグを継続します
 
-ファイルに保存してあるものが完全な全体コンフィグの場合、どれを選んでも同じです。
+この3個はNETCONFで定義されているものと同じと考えられます。
 
+mergeとreplaceは近しい動作で分かりづらいです。
 
-`system hostname PP1` という１行だけを含んだファイルを作って、それをロードしてみます。
+mergeの場合、新しい設定にのみ存在する要素は追加され、両方に存在する要素は新しい値で更新、既存の設定にのみ存在する要素は変更されず、削除もされません。
 
-```bash
-root@P1:~# echo "system hostname PP1" > config.txt
-root@P1:~# cat config.txt
-system hostname PP1
-root@P1:~#
-```
+replaceの場合、既存の設定データを新しい設定データで完全に置き換えます。もし既存の設定に存在する要素が新しい設定データに含まれていなければ、それらの要素は削除されます。
+
+overrideは初期化した状態からの回復になるので、丸ごと入れ替えるときに使います。
+
+全文を含むコンフィグの場合、どれを選んでも変わらないので、試しにここでは `system hostname PP1` という１行だけを含んだファイルを作って、それをロードしてみます。
 
 まずは **merge** の場合。期待通りの動きをします。
 
@@ -850,7 +850,9 @@ Commit complete.
 root@PP1(config)#
 ```
 
-次に **override** の場合。これは超危険な操作です。
+次に **override** の場合。
+
+部分的なコンフィグしかないのにoverrideするのは超危険な操作です。
 
 ファイルに書いてあるのが `system hostname PP1` だけなので、
 それ以外の部分は全部noで消してデフォルトに戻そうとします。
@@ -877,7 +879,7 @@ no system ssh-server enable true
 no system ssh-server permit-root-login true
 ```
 
-最後に **replace** の場合です。mergeの場合と区別が付きませんね。
+最後に **replace** の場合です。投入されているのが1行だけだとmergeと区別が付きません。
 
 ```bash
 root@P1(config)# load replace config.txt
@@ -888,12 +890,7 @@ system hostname PP1
 root@P1(config)#
 ```
 
-
-
-
-
-
-
+コンフィグをツリーの階層構造で考えたときに、そのツリーを丸ごと入れ替えるのがreplace、指定されたものだけを入れ替えて既に存在している部分は残すのがmergeです。
 
 <br><br><br>
 

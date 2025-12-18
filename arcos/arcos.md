@@ -821,8 +821,41 @@ root@PP1#
 
 ホスト名が変更されたことでプロンプトも変化しています。
 
+confirmed commitの場合
+
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply-confirmed -f /tmp/192.168.254.1.xml
+➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
+✅ NETCONFセッションが確立されました。セッションID: 212
+
+➡️ <edit-config> RPCを送信中...
+   設定ファイル: /tmp/192.168.254.1.xml
+✅ <edit-config>が成功しました (target=candidate)
+
 ➡️ <commit confirmed> RPCを送信中 (timeout: 120秒)...
-❌ 致命的なエラーが発生しました: Commit.request() got an unexpected keyword argument 'confirm_timeout'
+✅ <commit confirmed>が成功しました。
+
+⚠️ 設定は一時的に適用されました。120秒以内に以下のコマンドで変更を永続化してください:
+   python nc.py confirm
+
+   時間内に確定コミットが行われない場合、変更は自動的にロールバックされます。
+   手動でロールバックするには以下のコマンドを実行してください:
+   python nc.py cancel
+
+接続を閉じました。
+```
+
+ルータのコンソールには以下のように表示されます。
+
+```text
+Message from system at 2025-12-16 07:09:23...
+confirmed commit operation not confirmed by cisco from netconf
+WARNING: configuration failed to be rolled back
+```
+
+そのまま放置してみます。
+
+
 
 
 <br><br>

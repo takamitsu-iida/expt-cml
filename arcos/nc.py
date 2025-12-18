@@ -268,7 +268,7 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
             print("\n接続を閉じました。")
 
 
-def confirm_commit() -> bool:
+def __confirm_commit() -> bool:
     """
     commit confirmedで保留中の変更を永続化する
 
@@ -283,7 +283,7 @@ def confirm_commit() -> bool:
 
     try:
         print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
-        conn.commit(confirmed=False, persist="ABC")
+        conn.commit(confirmed=False)
         print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
         return True
     except RPCError as e:
@@ -299,7 +299,52 @@ def confirm_commit() -> bool:
             print("\n接続を閉じました。")
 
 
-def cancel_commit() -> bool:
+def confirm_commit() -> bool:
+    """
+    commit confirmedで保留中の変更を永続化する
+
+    apply-confirmedで一時適用された設定を確定し、永続化します。
+
+    Returns:
+        bool: 成功時True、失敗時False
+    """
+    conn = connect_netconf()
+    if not conn:
+        return False
+
+    # persist用のキーワードは固定
+    persist_key = "ABC"
+
+    try:
+        print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
+        print(f"   persist ID: {persist_key}")
+
+        # ArcOSではpersist-idのみを指定した通常のcommitで確定
+        # ncclientの内部実装を直接呼び出す
+        rpc_xml = f'''
+        <nc:commit xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <nc:persist-id>{persist_key}</nc:persist-id>
+        </nc:commit>
+        '''
+        result = conn.rpc(ET.fromstring(rpc_xml))
+
+        print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
+        return True
+    except RPCError as e:
+        print(f"❌ NETCONF RPCエラーが発生しました: {e}")
+        print("   ヒント: 保留中のconfirmed commitが存在しない可能性があります。")
+        return False
+    except Exception as e:
+        print(f"❌ 致命的なエラーが発生しました: {e}")
+        return False
+    finally:
+        if conn:
+            conn.close_session()
+            print("\n接続を閉じました。")
+
+
+
+def __cancel_commit() -> bool:
     """
     commit confirmedで保留中の変更をキャンセルする
 
@@ -314,7 +359,51 @@ def cancel_commit() -> bool:
 
     try:
         print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")
-        conn.cancel_commit(confirmed=False, persist="ABC")
+        conn.cancel_commit(confirmed=False)
+        print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
+        return True
+    except RPCError as e:
+        print(f"❌ NETCONF RPCエラーが発生しました: {e}")
+        print("   ヒント: 保留中のconfirmed commitが存在しない可能性があります。")
+        return False
+    except Exception as e:
+        print(f"❌ 致命的なエラーが発生しました: {e}")
+        return False
+    finally:
+        if conn:
+            conn.close_session()
+            print("\n接続を閉じました。")
+
+
+
+def cancel_commit() -> bool:
+    """
+    commit confirmedで保留中の変更をキャンセルする
+
+    apply-confirmedで一時適用された設定をキャンセルし、ロールバックします。
+
+    Returns:
+        bool: 成功時True、失敗時False
+    """
+    conn = connect_netconf()
+    if not conn:
+        return False
+
+    # persist用のキーワードは固定
+    persist_key = "ABC"
+
+    try:
+        print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")
+        print(f"   persist ID: {persist_key}")
+
+        # ArcOSのcancel-commitもRPCを直接送信
+        rpc_xml = f'''
+        <nc:cancel-commit xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <nc:persist-id>{persist_key}</nc:persist-id>
+        </nc:cancel-commit>
+        '''
+        result = conn.rpc(ET.fromstring(rpc_xml))
+
         print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
         return True
     except RPCError as e:

@@ -871,9 +871,7 @@ root@P1#
 root@P1#
 ```
 
-➡️ 設定変更を確定するため <commit> RPC を送信中...
-❌ NETCONF RPCエラーが発生しました: incorrect persist-id
-   ヒント: 保留中のconfirmed commitが存在しない可能性があります。
+
 
 
 <br><br>

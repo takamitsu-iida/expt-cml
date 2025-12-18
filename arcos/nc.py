@@ -230,11 +230,8 @@ def apply_xml_config_confirmed(config_file: str = OUTPUT_FILE) -> bool:
     if not conn:
         return False
 
-    # persist用のキーワードを生成 (セッションIDを使用)
-    # persist_key = f"session-{conn.session_id}"
-
-    # persist用のキーワードはスクリプト名で固定にします
-    persist_key = os.path.basename(__file__)
+    # persist用のキーワードは固定にします
+    persist_key = "ABC"
 
     try:
         # --- 設定を装置に反映 (<edit-config> を実行) ---
@@ -285,7 +282,7 @@ def confirm_commit() -> bool:
 
     try:
         print(f"\n➡️ 設定変更を確定するため <commit> RPC を送信中...")
-        conn.commit()
+        conn.commit(persist="ABC")
         print(f"✅ <commit>が成功しました。保留中の変更が永続化されました。")
         return True
     except RPCError as e:
@@ -316,7 +313,7 @@ def cancel_commit() -> bool:
 
     try:
         print(f"\n➡️ 設定変更をキャンセルするため <cancel-commit> RPC を送信中...")
-        conn.cancel_commit()
+        conn.cancel_commit(persist="ABC")
         print(f"✅ <cancel-commit>が成功しました。保留中の変更はロールバックされました。")
         return True
     except RPCError as e:

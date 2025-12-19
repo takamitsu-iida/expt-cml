@@ -183,6 +183,7 @@ system ssh-server permit-root-login true
 system cli commit-message true
 system netconf-server enable true
 system netconf-server transport ssh enable true
+system netconf-server transport ssh timeout 60
 system restconf-server enable false
 system grpc-server enable true
 system grpc-server transport-security false
@@ -427,6 +428,7 @@ system ssh-server permit-root-login true
 system cli commit-message true
 system netconf-server enable true
 system netconf-server transport ssh enable true
+system netconf-server transport ssh timeout 60
 system restconf-server enable false
 system grpc-server enable true
 system grpc-server transport-security false

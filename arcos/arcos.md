@@ -1267,7 +1267,6 @@ Possible completions:
   [
 ```
 
-
 ```bash
 curl -k -u cisco:cisco123 \
 -H "Content-Type: application/yang-data+json" \
@@ -1275,6 +1274,16 @@ curl -k -u cisco:cisco123 \
 -i https://192.168.254.1:8009/<URI>
 ```
 
+curlのオプション
+
+**-X GET**  情報取得
+**-X PUT**  完全置換で更新、すなわち指定していない設定は消されてデフォルトに戻る
+**-X PATCH**  差分更新、すなわち一部を上書きする動作で、指定していない部分は既存を使う
+**-X POST**  RESTCONFではコマンド実行に利用
+**-u username:password**  基本認証、機器のログイン情報を指定します
+**-k**  自己署名証明書を許可、--insecureと同じ
+**-H Content-Type:**  データ形式を指定
+**-d {...}**  JSON形式のデータ
 
 GET /restconf/data
 GET /restconf/data/openconfig-interfaces:interfaces
@@ -1290,6 +1299,53 @@ GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0/stat
 GET /restconf/data/openconfig-system:system
 GET /restconf/data/openconfig-system:system/config/hostname
 GET /restconf/data/openconfig-system:system/ntp/config/enabled
+
+
+実行可能なオペレーションの一覧を取得する
+
+curl -u "admin:password" -k https://<ArcOS_IP>/restconf/operations
+
+pingはopenconfig-remote-helper
+
+curl -X POST "https://<ArcOS_IP>/restconf/operations/openconfig-remote-helper:ping" \
+     -u "admin:password" \
+     -k \
+     -H "Content-Type: application/yang-data+json" \
+     -H "Accept: application/yang-data+json" \
+     -d '{
+           "input": {
+             "destination": "8.8.8.8",
+             "count": 5,
+             "source": "10.0.0.1"
+           }
+         }'
+
+再起動
+
+curl -X POST "https://<ArcOS_IP>/restconf/operations/openconfig-system:system-reboot" \
+     -u "admin:password" \
+     -k \
+     -H "Content-Type: application/yang-data+json"
+
+
+
+設定変更
+
+
+curl -X PATCH "https://<ArcOS_IP>/restconf/data/openconfig-system:system/config" \
+     -u "admin:your_password" \
+     -k \
+     -H "Content-Type: application/yang-data+json" \
+     -H "Accept: application/yang-data+json" \
+     -d '{
+           "openconfig-system:config": {
+             "hostname": "ArcOS-Leaf-01"
+           }
+         }'
+
+
+
+
 
 
 <br><br>
@@ -1428,6 +1484,24 @@ debugは必ず止めること。
 ## SNMP設定
 
 制限のかけ方を中心に調べる予定。
+
+<br><br>
+
+## イベント駆動
+
+event ON_BOOT
+
+event ON_ARCOS_START
+
+event ON_CONFIG_START
+
+event ON_COMMIT
+
+<br><br>
+
+## AAA
+
+Radius
 
 
 <br><br>
@@ -1736,14 +1810,21 @@ PE11.cfg                                      100% 4856     6.1MB/s   00:00
 
 
 
+
 NETCONF
 
 注意：ArcOSでは、部分的な設定変更はできない
 注意：デフォルトのポートは830
 注意：デフォルトのアイドルタイムアウトは0なので、タイムアウトしない
 
-system netconf-server enable true
-system netconf-server transport ssh enable true
-system netconf-server transport ssh timeout 60
+
+
+踏み台サーバ
+
+TODO: dhcpdからdnsmasqに置き換える。
+TODO: RADIUSサーバをインストールする
+TODO: SNMP
+
+
 
 -->

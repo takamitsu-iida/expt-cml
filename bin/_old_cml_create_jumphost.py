@@ -79,20 +79,15 @@ package_reboot_if_required: true
 
 # packages
 packages:
-  - jq
   - curl
   - git
   - zip
   - unzip
-  - make
   - python3-venv
   - direnv
+  - isc-dhcp-server
+  - tftpd-hpa
   - tftp-hpa
-  - dnsmasq
-  - snmp
-  - snmp-mibs-downloader
-  - freeradius
-  - freeradius-utils
 
 write_files:
   #
@@ -128,12 +123,12 @@ runcmd:
     #
     {{ CML_ADDRESS }} cml
     #
-    {% for rid in [1, 2] %}
-    192.168.254.{{ rid }} P{{ rid }}
-    {% endfor %}
-    {% for rid in [11, 12, 13, 14] %}
-    192.168.254.{{ rid }} PE{{ rid }}
-    {% endfor %}
+    192.168.254.1 P1
+    192.168.254.2 P2
+    192.168.254.11 PE11
+    192.168.254.12 PE12
+    192.168.254.13 PE13
+    192.168.254.14 PE14
     EOS
 
   # Resize terminal window
@@ -184,94 +179,90 @@ runcmd:
   - systemctl disable apparmor.service
   - systemctl mask apparmor.service
 
-  # create /etc/dnsmasq.conf
+  # tftpd-hpa settings
+  # backup original tftpd-hpa config
+  - cp /etc/default/tftpd-hpa /etc/default/tftpd-hpa.orig
+
+  # create tftpd-hpa config
   - |
-    cat << 'EOS' > /etc/dnsmasq.conf
-    # ens4 インターフェースのみでリッスンする
-    interface=ens4
-
-    # 指定したインターフェース/IPアドレスにのみバインドする
-    bind-interfaces
-
-    # ドメイン名の設定 (option domain-name)
-    domain=iida.local
-
-    # DHCPリース範囲の設定 (subnet と range)
-    # 形式: dhcp-range=<開始IP>,<終了IP>,<リース時間>
-    # デフォルトリース時間 600秒 (10分)、最大リース時間 7200秒 (2時間)
-    dhcp-range=192.168.254.101,192.168.254.199,7200s
-
-    # DNSクエリのログも記録する場合
-    # log-queries
-
-    # ログの出力先
-    log-facility=/var/log/dnsmasq.log
-
-    # DHCPオプション
-    # 自分自身を参照させる
-    dhcp-option=option:dns-server,192.168.254.100
-
-    # /etc/dnsmasq.d 内の .conf ファイルをすべて読み込む
-    conf-dir=/etc/dnsmasq.d
-
-    # TFTP サーバを有効にする
-    enable-tftp
-
-    # TFTP のルートディレクトリを指定
-    tftp-root=/srv/tftp
+    cat << 'EOS' > /etc/default/tftpd-hpa
+    # Settings for the tftpd-hpa daemon.
+    TFTP_USERNAME="tftp"
+    TFTP_DIRECTORY="/srv/tftp"
+    TFTP_ADDRESS=":69"
+    TFTP_OPTIONS="--secure --create"
     EOS
 
-  # create /etc/dnsmasq.d/host.conf
-  - |
-    cat << 'EOS' > /etc/dnsmasq.d/host.conf
-    {% for rid in [1, 2] %}
-    dhcp-host=52:54:00:00:00:{{ '%02d' % rid }},P{{ rid }},192.168.254.{{ rid }},option:35,tftp://192.168.254.100/P{{ rid }}.cfg
-    {% endfor %}
+  # DHCP server settings
+  # ref https://www.smarthome-diy.info/blog/developper/smarthome/2024/09/3940/
 
-    {% for rid in [11, 12, 13, 14, 15, 16, 17, 18] %}
-    dhcp-host=52:54:00:00:00:{{ rid }},PE{{ rid }},192.168.254.{{ rid }},option:35,tftp://192.168.254.100/PE{{ rid }}.cfg
+  # backup original dhcpd.conf
+  - cp /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.orig
+
+  # create dhcpd.conf
+  - |
+    cat << 'EOS' > /etc/dhcp/dhcpd.conf
+    option domain-name "iida.local";
+    default-lease-time 600;
+    max-lease-time 7200;
+    ddns-update-style none;
+    log-facility local7;
+
+    # Define custom options for Arrcus ZTP
+    option space arrcus_opt code width 2 length width 2 hash size 17;
+    option arrcus_opt.config-url code 35 = text;
+    option arrcus_opt.script-url code 36 = text;
+
+    subnet 192.168.254.0 netmask 255.255.255.0 {
+        range 192.168.254.101 192.168.254.199;
+    }
+
+    include "/etc/dhcp/dhcpd.hosts";
+    EOS
+
+  # create /etc/dhcp/dhcpd.hosts
+  - |
+    cat << 'EOS' > /etc/dhcp/dhcpd.hosts
+    {% for rid in [1, 2, 11, 12, 13, 14, 15, 16, 17, 18] %}
+    {% if rid in [1, 2] %}
+    host P{{ rid }} {
+    {% else %}
+    host PE{{ rid }} {
+    {% endif %}
+        hardware ethernet 52:54:00:00:00:{{ '%02d' % rid }};
+        fixed-address 192.168.254.{{ rid }};
+        vendor-option-space arrcus_opt;
+        {% if rid in [1, 2] %}
+        option host-name P{{ rid }};
+        option arrcus_opt.config-url "tftp://192.168.254.100/P{{ rid }}.cfg";
+        {% else %}
+        option host-name PE{{ rid }};
+        option arrcus_opt.config-url "tftp://192.168.254.100/PE{{ rid }}.cfg";
+        {% endif %}
+    }
     {% endfor %}
     EOS
+
+  # enable DHCP server on ens4
+  - sed -i 's/^INTERFACESv4=""/INTERFACESv4="ens4"/' /etc/default/isc-dhcp-server
+
+  # エスケープが多すぎて見づらいが、rsyslogの設定の一部を変更してlocal7のログを/var/log/dhcpd.logに出力するようにする
+  # syslog settings for dhcpd
+  - sed -i '0,/^\\*\\.\\*;auth,authpriv\\.none[[:space:]]\\+-\\/var\\/log\\/syslog$/s//*.*;auth,authpriv,local7.none   -\\/var\\/log\\/syslog/' /etc/rsyslog.d/50-default.conf
+  - sed -i '/^#user\\.\\*/a local7.*                        -/var/log/dhcpd.log' /etc/rsyslog.d/50-default.conf
 
   # chnage ownership of /srv/tftp
-  - mkdir -p /srv/tftp
-  - chown nobody:nogroup /srv/tftp
-  - chmod 777 /srv/tftp
-
-  # 自身のresolv.confを設定する
-  # まずsystemd-resolvedを止める
-  - systemctl stop systemd-resolved
-  - systemctl disable systemd-resolved
-
-  # 自分自身のdnsmasqを参照
-  - rm -f /etc/resolv.conf
-  - sh -c 'echo "nameserver 127.0.0.1" > /etc/resolv.conf'
-  - sh -c 'echo "nameserver 8.8.8.8" >> /etc/resolv.conf'
-
-  # freeradius clients.conf
-  - |
-    cat << 'EOS' >> /etc/freeradius/3.0/clients.conf
-    client ma-lan {
-        ipaddr = 192.168.254.0/24
-        secret = cisco123
-    }
-    EOS
-
-  - |
-    cat << 'EOS' >> /etc/freeradius/3.0/users
-    test Cleartext-Password := "test"
-        Reply-Message = "Hello, test user!"
-
-    operator Cleartext-Password := "operator"
-        Service-Type = Login,
-        Login-Service = Telnet,SSH,
-        Login-Host = %{NAS-IP-Address}
+  - chown -R tftp:tftp /srv/tftp
+  - chmod -R 777 /srv/tftp
 
   # enable and start services
-  - systemctl restart dnsmasq
-  - systemctl restart freeradius
+  - systemctl enable isc-dhcp-server
+  - systemctl start isc-dhcp-server
 
+  - systemctl enable tftpd-hpa
+  - systemctl start tftpd-hpa
 
+  - systemctl restart rsyslog
 
 """.strip()
 

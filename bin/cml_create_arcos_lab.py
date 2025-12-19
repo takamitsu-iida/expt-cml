@@ -176,6 +176,7 @@ features feature ARCOS_SFLOW
  supported true
 !
 system hostname P{{ rid }}
+system domain-name iida.local
 system login-banner "ArcOS (c) Arrcus, Inc."
 system clock timezone-name Asia/Tokyo
 system ssh-server enable true
@@ -184,7 +185,11 @@ system cli commit-message true
 system netconf-server enable true
 system netconf-server transport ssh enable true
 system netconf-server transport ssh timeout 60
-system restconf-server enable false
+system restconf-server enable true
+system dns server-group management
+ server 192.168.254.100
+ !
+!
 system grpc-server enable true
 system grpc-server transport-security false
 system grpc-server connections management
@@ -244,6 +249,7 @@ interface loopback0
  exit
 !
 network-instance default
+ resolve-dns-in-network-instance management
  protocol BGP MAIN
   global as           65000
   global router-id    10.0.255.{{ rid }}
@@ -421,6 +427,7 @@ features feature ARCOS_SFLOW
  supported true
 !
 system hostname PE{{ rid }}
+system domain-name iida.local
 system login-banner "ArcOS (c) Arrcus, Inc."
 system clock timezone-name Asia/Tokyo
 system ssh-server enable true
@@ -430,6 +437,10 @@ system netconf-server enable true
 system netconf-server transport ssh enable true
 system netconf-server transport ssh timeout 60
 system restconf-server enable false
+system dns server-group management
+ server 192.168.254.100
+ !
+!
 system grpc-server enable true
 system grpc-server transport-security false
 system grpc-server connections management
@@ -507,6 +518,7 @@ interface loopback0
  exit
 !
 network-instance default
+ resolve-dns-in-network-instance management
  protocol BGP MAIN
   global as           65000
   global router-id    10.0.255.{{ rid }}

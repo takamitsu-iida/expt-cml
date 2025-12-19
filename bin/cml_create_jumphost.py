@@ -127,13 +127,17 @@ runcmd:
     cat - << 'EOS' >> /etc/hosts
     #
     {{ CML_ADDRESS }} cml
+
     #
-    {%- for rid in [1, 2] %}
+    {% for rid in [1, 2] %}
     192.168.254.{{ rid }} P{{ rid }}
-    {%- endfor %}
-    {%- for rid in [11, 12, 13, 14, 15, 16, 17, 18] %}
+    2001:db8:ffff::{{ rid}} P{{ rid }}v6
+    {% endfor %}
+
+    {% for rid in [11, 12, 13, 14, 15, 16, 17, 18] %}
     192.168.254.{{ rid }} PE{{ rid }}
-    {%- endfor %}
+    2001:db8:ffff::{{ rid }} PE{{ rid }}v6
+    {% endfor %}
     EOS
 
   # Resize terminal window

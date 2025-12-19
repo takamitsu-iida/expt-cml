@@ -1826,5 +1826,18 @@ TODO: RADIUSサーバをインストールする
 TODO: SNMP
 
 
+# 全てのArcOS VMに対して共通のURLを配る場合
+dhcp-host=52:54:00:00:00:01,set:arcos_vm
+dhcp-host=52:54:00:00:00:02,set:arcos_vm
+# ...
+dhcp-option-force=tag:arcos_vm,43,00:23:00:1d:(共通URLの16進数)
+
+フィールド	値 (HEX)	説明
+Option 43 Tag	2b	Vendor Specific Information
+Total Length	21	全体33バイト
+Sub-Option Code	00:23	Code 35 (2バイト幅)
+Sub-Option Len	00:1d	Length 29 (2バイト幅)
+Sub-Option Val	74:66...	tftp://...
+
 
 -->

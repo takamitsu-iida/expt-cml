@@ -128,12 +128,12 @@ runcmd:
     #
     {{ CML_ADDRESS }} cml
     #
-    {% for rid in [1, 2] %}
+    {%- for rid in [1, 2] %}
     192.168.254.{{ rid }} P{{ rid }}
-    {% endfor %}
-    {% for rid in [11, 12, 13, 14] %}
+    {%- endfor %}
+    {%- for rid in [11, 12, 13, 14, 15, 16, 17, 18] %}
     192.168.254.{{ rid }} PE{{ rid }}
-    {% endfor %}
+    {%- endfor %}
     EOS
 
   # Resize terminal window
@@ -184,6 +184,10 @@ runcmd:
   - systemctl disable apparmor.service
   - systemctl mask apparmor.service
 
+  # Disable systemd-resolved
+  - systemctl stop systemd-resolved
+  - systemctl disable systemd-resolved
+
   # create /etc/dnsmasq.conf
   - |
     cat << 'EOS' > /etc/dnsmasq.conf
@@ -201,9 +205,6 @@ runcmd:
     # デフォルトリース時間 600秒 (10分)、最大リース時間 7200秒 (2時間)
     dhcp-range=192.168.254.101,192.168.254.199,7200s
 
-    # DNSクエリのログも記録する場合
-    # log-queries
-
     # ログの出力先
     log-facility=/var/log/dnsmasq.log
 
@@ -214,6 +215,19 @@ runcmd:
     # /etc/dnsmasq.d 内の .conf ファイルをすべて読み込む
     conf-dir=/etc/dnsmasq.d
 
+    # DNS設定
+    server=8.8.8.8
+    server=8.8.4.4
+
+    # ホスト名だけのクエリは外部に転送しない
+    domain-needed
+
+    # ローカルネットワーク内の逆引きは外部に転送しない
+    bogus-priv
+
+    # dnsmasq自身は/etc/resolv.confを参照しない
+    no-resolv
+
     # TFTP サーバを有効にする
     enable-tftp
 
@@ -222,14 +236,23 @@ runcmd:
     EOS
 
   # create /etc/dnsmasq.d/host.conf
+  # Vendor-specific 0x43, Code 35=0x0023
+  # 43,00:23 + 00:1d (URL文字列の長さ 29=0x1d) + URL文字列の16進
   - |
     cat << 'EOS' > /etc/dnsmasq.d/host.conf
+
     {% for rid in [1, 2] %}
-    dhcp-host=52:54:00:00:00:{{ '%02d' % rid }},P{{ rid }},192.168.254.{{ rid }},option:35,tftp://192.168.254.100/P{{ rid }}.cfg
+        {%- set url = "tftp://192.168.254.100/P" ~ rid ~ ".cfg" -%}
+        {%- set url_len = url | length -%}
+    dhcp-host=52:54:00:00:00:{{ '%02d' % rid }},192.168.254.{{ rid }},set:P{{ rid }}
+    dhcp-option-force=tag:P{{ rid }},43,00:23:00:{{ '%02x' % url_len }}:{% for char in url -%}{{ "%02x" % char.encode('ascii')[0] }}{{ ":" if not loop.last }}{% endfor %}
     {% endfor %}
 
     {% for rid in [11, 12, 13, 14, 15, 16, 17, 18] %}
-    dhcp-host=52:54:00:00:00:{{ rid }},PE{{ rid }},192.168.254.{{ rid }},option:35,tftp://192.168.254.100/PE{{ rid }}.cfg
+        {%- set url = "tftp://192.168.254.100/PE" ~ rid ~ ".cfg" -%}
+        {%- set url_len = url | length -%}
+    dhcp-host=52:54:00:00:00:{{ '%02d' % rid }},192.168.254.{{ rid }},set:PE{{ rid }}
+    dhcp-option-force=tag:PE{{ rid }},43,00:23:00:{{ '%02x' % url_len }}:{% for char in url -%}{{ "%02x" % char.encode('ascii')[0] }}{{ ":" if not loop.last }}{% endfor %}
     {% endfor %}
     EOS
 
@@ -238,15 +261,13 @@ runcmd:
   - chown nobody:nogroup /srv/tftp
   - chmod 777 /srv/tftp
 
-  # 自身のresolv.confを設定する
-  # まずsystemd-resolvedを止める
-  - systemctl stop systemd-resolved
-  - systemctl disable systemd-resolved
-
   # 自分自身のdnsmasqを参照
   - rm -f /etc/resolv.conf
   - sh -c 'echo "nameserver 127.0.0.1" > /etc/resolv.conf'
   - sh -c 'echo "nameserver 8.8.8.8" >> /etc/resolv.conf'
+
+  # restart dnsmasq
+  - systemctl restart dnsmasq
 
   # freeradius clients.conf
   - |
@@ -267,11 +288,8 @@ runcmd:
         Login-Service = Telnet,SSH,
         Login-Host = %{NAS-IP-Address}
 
-  # enable and start services
-  - systemctl restart dnsmasq
+  # restart freeradius
   - systemctl restart freeradius
-
-
 
 """.strip()
 

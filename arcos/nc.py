@@ -491,13 +491,12 @@ def get_json_config_native(config_file: str = "config.json") -> bool:
         # dispatchで送信
         result = conn.dispatch(rpc_input)
 
-        # --- 修正ポイント ---
         # 1. result.xml (文字列) を取得
         # 2. lxmlでパースして、JSONテキストが含まれる要素を特定する
         xml_res = etree.fromstring(result.xml.encode('utf-8'))
 
         # ArcOSの応答は通常 <get-configuration><json-config>... のような構造になります
-        # 全テキストノードを結合してJSONを取り出すのが最も確実です
+        # 全テキストノードを結合してJSONを取り出す
         json_content = "".join(xml_res.itertext()).strip()
 
         if not json_content:

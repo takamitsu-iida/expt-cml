@@ -1253,13 +1253,81 @@ root@P1#
 
 <br>
 
+JSON形式でコンフィグを取得することもできますが、これは標準のNETCONFにはない操作です。
+
+この操作（↓）をすればよいのですが、Pythonのncclientモジュールでは対応できないので、少々面倒なことになります。
+
 ```XML
 <get-configuration xmlns="http://yang.arrcus.com/arcos/system">
 <encoding>JSON</encoding>
 </get-configuration>
 ```
 
+独自でRPCを組めばよいので、できなくもないです。
 
+実行結果。
+
+```bash
+cisco@jumphost:~/expt-cml/arcos$ ./nc.py get-json
+➡️ NETCONF接続を試行中: 192.168.254.1:830 (ユーザー: cisco)
+✅ NETCONFセッションが確立されました。セッションID: 26
+➡️ ArcOS固有のJSON RPCを送信中...
+✅ JSON設定を保存しました: /tmp/192.168.254.1.json
+
+cisco@jumphost:~/expt-cml/arcos$ cat /tmp/192.168.254.1.json | head -50
+{
+    "data": {
+        "SNMPv2-MIB:SNMPv2-MIB": {
+            "system": {
+                "sysContact": "takamitsu-iida",
+                "sysName": "P1.iida.local",
+                "sysLocation": "Kamioooka Yokohama JP"
+            }
+        },
+        "arcos-features:features": {
+            "feature": [
+                {
+                    "name": "arcos-features:ARCOS_RIOT",
+                    "supported": false
+                },
+                {
+                    "name": "arcos-features:ARCOS_ICMP_SRC_REWRITE",
+                    "supported": true
+                },
+                {
+                    "name": "arcos-features:ARCOS_SUBIF",
+                    "supported": true
+                },
+                {
+                    "name": "arcos-features:ARCOS_QoS",
+                    "supported": false
+                },
+                {
+                    "name": "arcos-features:ARCOS_MPLS",
+                    "supported": true
+                },
+                {
+                    "name": "arcos-features:ARCOS_SFLOW",
+                    "supported": true
+                }
+            ]
+        },
+        "arcos-system-information:system-information": {
+            "version": "8.3.1.EFT1:Nov_20_25:6_11_PM [release] 2025-11-20 18:11:22"
+        },
+        "openconfig-interfaces:interfaces": {
+            "interface": [
+                {
+                    "name": "ma1",
+                    "config": {
+                        "type": "iana-if-type:ethernetCsmacd",
+                        "mtu": 1500,
+                        "name": "ma1",
+                        "enabled": true
+                    },
+```
+
+JSON形式で取得したいなら無理してNETCONFでやらなくても、RESTCONF使ったほうがいいです。
 
 <br><br>
 

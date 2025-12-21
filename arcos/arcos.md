@@ -1001,29 +1001,45 @@ SNMPやSSH、NETCONF、RESTCONF等の管理通信がmanagement vrfに限定さ�
 
 処理の順序は、CoPP → コントロールプレーンACL、の順になっています。
 
+- SSHはVRFを設定できない（どのインタフェースでも着信できる）
+
+- NETCONFはVRFを設定できない（どのインタフェースでも着信できる）
+
+- NTPは通信するVRF（もしくはインタフェース）を設定できる
+
+- SNMPは通信するVRF（およびインタフェース）を設定できる
+
+- gNMIは通信するVRF（もしくはインタフェース）を設定できる
+
+- RESTCONFは通信するIPアドレスを設定できる（インタフェースやVRFは指定できない）
+
+
 <br><br>
 
 ## NETCONF
 
+NETCONFはSSHv2の上で動く、ネットワーク機器を制御するプロトコルです。
+
 できたこと
 
-- SSHプロキシを経由せず、直接SSHで接続
+- SSHプロキシを経由しない、直接接続するNETCONFF
 - XML形式のコンフィグの全文取得
 
 できなかったこと
 
-- jump hostを経由したSSHプロキシを経由したNETCONF利用（netmiko、scrapli、ncclientいずれもダメ）
+- 踏み台サーバをSSHプロキシとしたNETCONF接続（netmiko、scrapli、ncclientいずれもダメ）
 - 状態データの取得
-
-わからないこと
-
-- 通信の着信インタフェースやnetwork-instanceの制限はできる？？？
 
 <br>
 
-状態データを取得できないので、想定される使い道は、設定を丸ごと入れ替える場面で使う？
+### サマリ
 
-状態取得はgNMIの方が充実しています。
+- SSHのポート番号は830
+- NETCONFのタイムアウトはデフォルトで0（タイムアウトなし）
+- 大きなコンフィグの操作は時間がかかるので、タイムアウトを指定する場合は要注意
+- 状態データを取得はできない
+- 想定される利用シーンは、遠隔からの設定の操作（取得、反映）
+
 
 <br>
 
@@ -1235,6 +1251,16 @@ configuration rolled back
 root@P1#
 ```
 
+<br>
+
+```XML
+<get-configuration xmlns="http://yang.arrcus.com/arcos/system">
+<encoding>JSON</encoding>
+</get-configuration>
+```
+
+
+
 <br><br>
 
 ## RESTCONF
@@ -1247,104 +1273,392 @@ HTTPSを使うRESTCONFはTCPポート8009です。
 
 `system restconf-server enable true`
 
-この設定でどのポートが開く？
+この設定でTCPポート8009のHTTPSがオープンします。
 
-```
-root@P1(config)# system restconf-server transport-security ?
-Description: Configure RESTCONF transport security
-Possible completions:
-  [true]
-  false
-  true
-```
+リッスンするIPアドレスは指定できますが、インタフェース指定はできません。
 
-```
+ネットワークインスタンスも指定できません。
+
+```bash
 root@P1(config)# system restconf-server listen-addresses ?
 Description: Listen IP addresses for the RESTCONF server
 Possible completions:
   <address>   IPv4 or IPv6 address
   ANY         Listen on all IP addresses (IPv4/IPv6)
   [
+root@P1(config)# system restconf-server listen-addresses ma1
+Error: bad value: "ma1" is not a valid value.
+root@P1(config)#
 ```
 
-```bash
-curl -k -u cisco:cisco123 \
--H "Content-Type: application/yang-data+json" \
--H "Accept: application/yang-data+json" \
--i https://192.168.254.1:8009/<URI>
-```
+<br>
+
+### curl
 
 curlのオプション
 
-**-X GET**  情報取得
-**-X PUT**  完全置換で更新、すなわち指定していない設定は消されてデフォルトに戻る
-**-X PATCH**  差分更新、すなわち一部を上書きする動作で、指定していない部分は既存を使う
-**-X POST**  RESTCONFではコマンド実行に利用
-**-u username:password**  基本認証、機器のログイン情報を指定します
-**-k**  自己署名証明書を許可、--insecureと同じ
-**-H Content-Type:**  データ形式を指定
-**-d {...}**  JSON形式のデータ
+- **-X GET**  情報取得
+- **-X PUT**  完全置換で更新、すなわち指定していない設定は消されてデフォルトに戻る
+- **-X PATCH**  差分更新、すなわち一部を上書きする動作で、指定していない部分は既存を使う
+- **-X POST**  RESTCONFではコマンド実行に利用
+- **-u username:password**  基本認証、機器のログイン情報を指定します
+- **-k**  自己署名証明書を許可、--insecureと同じ
+- **-H Content-Type:**  データ形式を指定
+- **-d {...}**  JSON形式のデータ
+- **-s**  ダウンロードのプログレスバーを出しません
 
-GET /restconf/data
-GET /restconf/data/openconfig-interfaces:interfaces
-GET /restconf/data/openconfig-interfaces:interfaces
-GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0
+データ形式を指定しないとXMLで戻ってきます。
 
-%2Fはスラッシュ/
+XMLは扱いづらいので、JSON形式で返信してもうとよいと思います。
 
-GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0/config
-GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0/state
-GET /restconf/data/openconfig-interfaces:interfaces/interface=Ethernet0%2F0/state/counters
+<br>
 
-GET /restconf/data/openconfig-system:system
-GET /restconf/data/openconfig-system:system/config/hostname
-GET /restconf/data/openconfig-system:system/ntp/config/enabled
+### GET /restconf/data
 
+ツリー全体を取得します。超絶長い結果になりますので、これをパイプラインで渡すと処理しきれません。
 
-実行可能なオペレーションの一覧を取得する
+これは失敗します。
 
-curl -u "admin:password" -k https://<ArcOS_IP>/restconf/operations
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data \
+| yq -y .
+`
 
-pingはopenconfig-remote-helper
+ファイルに保存してあとから参照すればいいのですが、ルータの処理も重たいので、このような取得は避けたほうがいいと思います。
 
-curl -X POST "https://<ArcOS_IP>/restconf/operations/openconfig-remote-helper:ping" \
-     -u "admin:password" \
-     -k \
-     -H "Content-Type: application/yang-data+json" \
-     -H "Accept: application/yang-data+json" \
-     -d '{
-           "input": {
-             "destination": "8.8.8.8",
-             "count": 5,
-             "source": "10.0.0.1"
-           }
-         }'
+どんなデータが帰って来るのか、１階層目の項目だけを知りたければ、URIにdepth=1を指定します。
 
-再起動
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data?depth=1 \
+| yq -y .
+`
 
-curl -X POST "https://<ArcOS_IP>/restconf/operations/openconfig-system:system-reboot" \
-     -u "admin:password" \
-     -k \
-     -H "Content-Type: application/yang-data+json"
+実行例。
 
+```bash
+root@jumphost:~# curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data?depth=1 \
+| yq -y .
+ietf-restconf:data:
+  tailf-rollback:rollback-files: {}
+  ietf-yang-library:yang-library: {}
+  ietf-yang-library:modules-state: {}
+  arcos-adjmgr:adjmgr: {}
+  arcos-arp-nd-global:ip-neighbor: {}
+  arcos-copp-service-policy:control-plane: {}
+  arcos-debug:debug: {}
+  arcos-dpal:dpal: {}
+  arcos-evpn:evpn: {}
+  arcos-features:features: {}
+  arcos-hardware:hardware: {}
+  arcos-l2rib:l2rib: {}
+  arcos-mbroker:mbroker: {}
+  arcos-mpsc:mpsc-client: {}
+  arcos-neighbor:ndp-entries: {}
+  arcos-oam:oam: {}
+  arcos-process:processes: {}
+  arcos-system-information:system-information: {}
+  ietf-netconf-monitoring:netconf-state: {}
+  ietf-restconf-monitoring:restconf-state: {}
+  openconfig-acl:acl: {}
+  openconfig-interfaces:interfaces: {}
+  openconfig-lldp:lldp: {}
+  openconfig-macsec:macsec: {}
+  openconfig-network-instance:network-instances: {}
+  openconfig-platform:components: {}
+  openconfig-relay-agent:relay-agent: {}
+  openconfig-routing-policy:routing-policy: {}
+  openconfig-spanning-tree:stp: {}
+  openconfig-system:system: {}
+  openconfig-telemetry:telemetry-system: {}
+  tailf-confd-monitoring:confd-state: {}
+  tailf-last-login:last-logins: {}
+```
 
+<br>
 
-設定変更
+### GET /restconf/data/openconfig-interfaces:interfaces
 
+全てのインタフェースが表示されます。これも長い結果になります。
 
-curl -X PATCH "https://<ArcOS_IP>/restconf/data/openconfig-system:system/config" \
-     -u "admin:your_password" \
-     -k \
-     -H "Content-Type: application/yang-data+json" \
-     -H "Accept: application/yang-data+json" \
-     -d '{
-           "openconfig-system:config": {
-             "hostname": "ArcOS-Leaf-01"
-           }
-         }'
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces \
+| yq -y .
+`
 
+次のようにフィルタすれば、全インタフェースの中から欲しいインタフェースだけを表示できます。
 
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces | \
+yq -y '."openconfig-interfaces:interfaces".interface[] | select(.name == "swp1" or .name == "swp2")'
+`
 
+<br><br><br>
+
+### GET /restconf/data/openconfig-interfaces:interfaces/interface=swp1
+
+特定のインタフェースを表示します。複数のインタフェースを指定することはできません。
+
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1 \
+| yq -y .
+`
+
+２階層目の **項目だけ** を抽出して表示してみます。
+
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1 \
+| yq -y '.[] | .[0] | {name: .name, config: (.config | keys), state: (.state | keys)}'
+`
+
+実行例。
+
+```bash
+root@jumphost:~# curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1 | \
+yq -y '.[] | .[0] | {name: .name, config: (.config | keys), state: (.state | keys)}'
+
+name: swp1
+config:
+  - enabled
+  - mtu
+  - name
+  - type
+state:
+  - admin-status
+  - arcos-openconfig-interfaces-augments:breakout
+  - arcos-openconfig-interfaces-augments:core
+  - arcos-openconfig-interfaces-augments:custom-mac
+  - arcos-openconfig-interfaces-augments:debounce-interval
+  - arcos-openconfig-interfaces-augments:fec
+  - arcos-openconfig-interfaces-augments:fec-corrected-errors
+  - arcos-openconfig-interfaces-augments:fec-uncorrected-errors
+  - arcos-openconfig-interfaces-augments:link-training
+  - arcos-openconfig-interfaces-augments:load-interval
+  - arcos-openconfig-interfaces-augments:mac-learning
+  - arcos-openconfig-interfaces-augments:media-type
+  - arcos-openconfig-interfaces-augments:module-type
+  - arcos-openconfig-interfaces-augments:paired-port
+  - arcos-openconfig-interfaces-augments:parent-port
+  - arcos-openconfig-interfaces-augments:pre-fec-ber
+  - arcos-openconfig-interfaces-augments:speed-group
+  - arcos-openconfig-interfaces-augments:time-elapsed-since-last-change
+  - arcos-openconfig-interfaces-augments:unit
+  - arcos-openconfig-vlan-augments:egress-default-tpid
+  - counters
+  - description
+  - enabled
+  - ifindex
+  - last-change
+  - mtu
+  - name
+  - openconfig-vlan:tpid
+  - oper-status
+  - type
+```
+
+この項目がわかれば欲しい情報をピンポイントで取得できます。
+
+たとえば、oper-statusが知りたいときのURIはこうなります。
+
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1/state/oper-status \
+| yq -y .
+`
+
+そのインタフェースに設定されている内容がみたいなら、URIはこうなります。
+
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1/config \
+| yq -y .
+`
+
+実行結果はこうなります。
+
+```yaml
+openconfig-interfaces:config:
+  type: iana-if-type:ethernetCsmacd
+  mtu: 3000
+  name: swp1
+  enabled: true
+```
+
+<br>
+
+### GET /restconf/data/openconfig-system:system
+
+まずは項目を確認してみます。
+
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+"https://192.168.254.1:8009/restconf/data/openconfig-system:system?depth=2" | yq -y .
+`
+
+実行例。
+
+```bash
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+"https://192.168.254.1:8009/restconf/data/openconfig-system:system?depth=2" | yq -y .
+openconfig-system:system:
+  config: {}
+  state: {}
+  clock: {}
+  dns: {}
+  ntp: {}
+  grpc-server: {}
+  ssh-server: {}
+  logging: {}
+  aaa: {}
+  arcos-openconfig-system-augments:ports: {}
+  arcos-openconfig-system-augments:icmp: {}
+  arcos-openconfig-system-augments:cli: {}
+  arcos-openconfig-system-augments:rib: []
+  arcos-openconfig-system-augments:maintenance-mode: {}
+  arcos-openconfig-system-augments:netconf-server: {}
+  arcos-openconfig-system-augments:restconf-server: {}
+  arcos-openconfig-system-augments:stateful-restart: {}
+  arcos-openconfig-system-augments:snmp-server: {}
+  arcos-openconfig-system-augments:version: {}
+  arcos-openconfig-system-augments:ztp: {}
+  arcos-openconfig-system-augments:tech-support: {}
+  arcos-openconfig-system-augments:software-reboot: {}
+  arcos-openconfig-system-augments:software-install: {}
+  arcos-openconfig-system-augments:lttng: {}
+```
+
+設定を config で見てみます。
+
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+"https://192.168.254.1:8009/restconf/data/openconfig-system:system/config" | yq -y .
+`
+
+実行例。
+
+```bash
+root@jumphost:~# curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+"https://192.168.254.1:8009/restconf/data/openconfig-system:system/config" | yq -y .
+openconfig-system:config:
+  hostname: P1
+  domain-name: iida.local
+  login-banner: ArcOS (c) Arrcus, Inc.
+```
+
+とても少なくて驚きますが、これ以外のsystem設定は、さらに細かい指定が必要です。
+
+restconf-serverの設定を取得してみます。
+
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-system:system/arcos-openconfig-system-augments:restconf-server | yq -y .
+`
+
+実行例。
+
+```bash
+root@jumphost:~# curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/data/openconfig-system:system/arcos-openconfig-system-augments:restconf-server | yq -y .
+arcos-openconfig-system-augments:restconf-server:
+  config:
+    enable: true
+  state:
+    enable: true
+    port: 8009
+    transport-security: true
+  tls:
+    state:
+      certificate-file: /mnt/onl/config/pki/certificate
+      key-file: /mnt/onl/config/pki/key.pem
+      protocols:
+        - TLS_1.2
+        - TLS_1.1
+```
+
+<br>
+
+### 実行可能なオペレーションの一覧
+
+`/restconf/operations` を取得することで、実行できるオペレーションの一覧を得ます。
+
+`
+curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/operations | yq -y .
+`
+
+実行例。
+
+```bash
+root@jumphost:~# curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
+https://192.168.254.1:8009/restconf/operations | yq -y .
+ietf-restconf:operations:
+  arcos-bgp:clear-bgp-neighbor: /restconf/operations/arcos-bgp:clear-bgp-neighbor
+  arcos-bgp:clear-bgp-afi-safi: /restconf/operations/arcos-bgp:clear-bgp-afi-safi
+  arcos-bgp:clear-bgp-peer-group: /restconf/operations/arcos-bgp:clear-bgp-peer-group
+  arcos-bgp:clear-bgp-timestamps: /restconf/operations/arcos-bgp:clear-bgp-timestamps
+  arcos-bgp:request-erpl-server-connection: /restconf/operations/arcos-bgp:request-erpl-server-connection
+  arcos-bgp:request-bgp-malloc-trim: /restconf/operations/arcos-bgp:request-bgp-malloc-trim
+  arcos-bridge:clear-mac-address-table: /restconf/operations/arcos-bridge:clear-mac-address-table
+  arcos-dtcp:dtcp-clear-global-counters: /restconf/operations/arcos-dtcp:dtcp-clear-global-counters
+  arcos-dtcp:dtcp-clear-client-counters: /restconf/operations/arcos-dtcp:dtcp-clear-client-counters
+  arcos-dtcp:dtcp-clear-client-sequence-number: /restconf/operations/arcos-dtcp:dtcp-clear-client-sequence-number
+  arcos-license:request-license-add: /restconf/operations/arcos-license:request-license-add
+  arcos-license:request-license-remove: /restconf/operations/arcos-license:request-license-remove
+  arcos-mpls-ldp:clear-ldp-neighbor: /restconf/operations/arcos-mpls-ldp:clear-ldp-neighbor
+  arcos-mpls-ldp:clear-ldp-adjacency: /restconf/operations/arcos-mpls-ldp:clear-ldp-adjacency
+  arcos-openconfig-bfd-clear:bfd-clear-all: /restconf/operations/arcos-openconfig-bfd-clear:bfd-clear-all
+  arcos-openconfig-bfd-clear:bfd-clear-session: /restconf/operations/arcos-openconfig-bfd-clear:bfd-clear-session
+  arcos-openconfig-bfd-clear:micro-bfd-clear-all: /restconf/operations/arcos-openconfig-bfd-clear:micro-bfd-clear-all
+  arcos-openconfig-bfd-clear:micro-bfd-clear-session: /restconf/operations/arcos-openconfig-bfd-clear:micro-bfd-clear-session
+  arcos-portsec:clear-port-security: /restconf/operations/arcos-portsec:clear-port-security
+  arcos-relay-agent:clear-relay-agent-counters: /restconf/operations/arcos-relay-agent:clear-relay-agent-counters
+  arcos-sla-icmp:clear-sla-ses-cnt: /restconf/operations/arcos-sla-icmp:clear-sla-ses-cnt
+  arcos-system:request-configuration-factory-default-reboot: /restconf/operations/arcos-system:request-configuration-factory-default-reboot
+  arcos-system:request-system-ztp-stop: /restconf/operations/arcos-system:request-system-ztp-stop
+  arcos-system:request-system-stateful-restart: /restconf/operations/arcos-system:request-system-stateful-restart
+  arcos-system:load-configuration: /restconf/operations/arcos-system:load-configuration
+  arcos-system:get-configuration: /restconf/operations/arcos-system:get-configuration
+  arcos-system:get-diff: /restconf/operations/arcos-system:get-diff
+  arcos-system:request-system-reboot: /restconf/operations/arcos-system:request-system-reboot
+  arcos-system:request-software-load: /restconf/operations/arcos-system:request-software-load
+  arcos-system:request-software-install: /restconf/operations/arcos-system:request-software-install
+  arcos-system:request-system-install: /restconf/operations/arcos-system:request-system-install
+  arcos-system:request-software-rollback: /restconf/operations/arcos-system:request-software-rollback
+  arcos-system:debug-process-smd: /restconf/operations/arcos-system:debug-process-smd
+```
+
+使えそうなものは少ないです。
+
+get-configurationで設定を取得してみます。
+
+実行例。うまくいきません。謎です。
+
+```bash
+curl -k -u "cisco:cisco123" -H "Accept: application/yang-data+json" \
+-H "Content-type:application/yang-data+json" \
+-X POST \
+-d "{\"encoding\": \"JSON\"}" -i \
+https://192.168.254.1:8009/restconf/operations/arcos-system:get-configuration
+
+{
+  "ietf-restconf:errors": {
+    "error": [
+      {
+        "error-type": "application",
+        "error-tag": "unknown-element",
+        "error-message": "uri keypath not found"
+      }
+    ]
+  }
+}
+```
 
 
 
@@ -1473,17 +1787,124 @@ debugは必ず止めること。
 
 ## NTP設定
 
-まだ調べてません。
+踏み台サーバがNTPサーバになっていますので、時刻をあわせます。
 
-タイムゾーンはAsia/Tokyoに変更できましたが、NTPの設定は分かりません。
+踏み台にはma1インタフェースを通して接続します。
 
-もしかして、Linux本体で時刻同期するのかな？
+```text
+!
+system ntp listen-interface ma1
+system ntp server 192.168.254.100
+ iburst true
+!
+```
+
+<br>
+
+どのインタフェースでNTPサーバとやりとりするか、の指定と、どのネットワークインスタンスでNTPサーバとやりとりするか、の指定は前者が高優先になっています。
+
+`listen-interface` を先に設定した状態で `network-instance` を指定しても、それは反映されません。
+
+```bash
+root@P1(config)# system ntp network-instance management
+```
+
+この設定はエラーにはなりませんし、特にメッセージも出ませんが、設定には反映されません。
+
+NTPサーバとの同期しているか
+
+`show system ntp status`
+
+で確認できます。
+
+```bash
+root@P1# show system ntp status
+system ntp status 192.168.254.100
+ stratum                  2
+ root-delay               17
+ root-dispersion          0
+ offset                   0
+ poll-interval            64
+ reach                    77
+ time-since-last-response 2
+ association-status       SYNC_SOURCE
+```
+
+<br>
+
+タイムゾーンの設定はプリセットされている地域の中から選びます。
+
+```bash
+root@P1(config)# system clock timezone-name ?
+Possible completions: (first 100)
+  Africa/Abidjan
+  Africa/Accra
+  Africa/Addis_Ababa
+  Africa/Algiers
+  Africa/Asmara
+```
+
+<br>
+
+日本の場合は `Asia/Tokyo` を選びます。
+
+```text
+system clock timezone-name Asia/Tokyo
+```
 
 <br><br>
 
 ## SNMP設定
 
-制限のかけ方を中心に調べる予定。
+GETとTRAPをサポートしています。SETはできません。
+
+コミュニティpublicはRead Only、privateはRead Write、みたいな使い分けはできません。
+常にRead Onlyです。
+
+```bash
+root@P1(config)# system snmp-server listen-addresses ?
+Description: Listen IP addresses for the SNMP master agent
+Possible completions:
+  <address>   IPv4 or IPv6 address
+  <ifname>    Listen on a given interface
+  ANY         Listen on all IP addresses (IPv4/IPv6)
+  [
+```
+
+SNMPを有効にすると、ネットワークインスタンス default に属している全てのインタフェースで着信できます。
+
+ネットワークインスタンス management ではないところに注意。
+
+切り替えるにはこうします。
+
+`system snmp-server network-instance management`
+
+trapを使わない場合は、このような設定になります。
+
+```text
+system snmp-server enable true
+system snmp-server protocol-version [ V2C ]
+system snmp-server network-instance management
+system snmp-server contact takamitsu-iida
+system snmp-server location "Kamioooka Yokohama JP"
+system snmp-server community public
+```
+
+踏み台サーバから試してみます。
+
+```bash
+root@jumphost:~# snmpwalk -v 2c -c public P1 | head
+SNMPv2-MIB::sysDescr.0 = STRING: ArcOS - os-vm - 8.3.1.EFT1:Nov_20_25:6_11_PM Copyright (c) 2016-2024 Arrcus, Inc.
+SNMPv2-MIB::sysObjectID.0 = OID: SNMPv2-SMI::enterprises.51604.1.1.1.1.1
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (175017) 0:29:10.17
+SNMPv2-MIB::sysContact.0 = STRING: takamitsu-iida
+SNMPv2-MIB::sysName.0 = STRING: P1.iida.local
+SNMPv2-MIB::sysLocation.0 = STRING: Kamioooka Yokohama JP
+SNMPv2-MIB::sysServices.0 = INTEGER: 4
+SNMPv2-MIB::sysORLastChange.0 = Timeticks: (0) 0:00:00.00
+IF-MIB::ifNumber.0 = INTEGER: 10
+IF-MIB::ifIndex.5 = INTEGER: 5
+```
 
 <br><br>
 
@@ -1516,8 +1937,9 @@ LLDPも停止したい。
 
 他にないかな？
 
-
 ポートスキャンをかけてみて、どのポートが開いているかを確認したい。
+
+管理用のvrf (management) は最初から作られていて ma1 はそこに属してるけど、管理用のループバックも追加しておいた方がいいのかな？
 
 <!--
 
@@ -1811,11 +2233,6 @@ PE11.cfg                                      100% 4856     6.1MB/s   00:00
 
 
 
-NETCONF
-
-注意：ArcOSでは、部分的な設定変更はできない
-注意：デフォルトのポートは830
-注意：デフォルトのアイドルタイムアウトは0なので、タイムアウトしない
 
 
 
@@ -1823,8 +2240,6 @@ NETCONF
 
 TODO: dhcpdからdnsmasqに置き換える。
 TODO: RADIUSサーバをインストールする
-TODO: SNMP
-
 
 # 全てのArcOS VMに対して共通のURLを配る場合
 dhcp-host=52:54:00:00:00:01,set:arcos_vm

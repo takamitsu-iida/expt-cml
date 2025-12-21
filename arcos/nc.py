@@ -18,7 +18,6 @@ SCRIPT_DESCRIPTION = 'netconfで装置から設定を取得・反映します'
 import argparse
 import os
 import sys
-import time
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
@@ -43,6 +42,7 @@ NETCONF_GET_CONFIG_SOURCE = 'running'
 # 保存先ファイルパス
 OUTPUT_DIR = "/tmp"
 OUTPUT_FILE = f"{OUTPUT_DIR}/{TARGET_HOST}.xml"
+OUTPUT_JSON_FILE = f"{OUTPUT_DIR}/{TARGET_HOST}.json"
 
 # confirmed commitのタイムアウト (秒)
 # この時間内に確定コミットがない場合、設定は自動的にロールバックされる
@@ -468,6 +468,53 @@ def show_capabilities(verbose: bool = False) -> bool:
             print("\n接続を閉じました。")
 
 
+def get_json_config_native(config_file: str = "config.json") -> bool:
+    """
+    ArcOS固有のRPCを使用して、NETCONF経由でJSON形式の設定を取得する
+    """
+
+    from lxml import etree
+
+    conn = connect_netconf()
+    if not conn:
+        return False
+
+    try:
+        # 1. ArcOS固有のRPC構造を作成
+        # <get-configuration xmlns="http://yang.arrcus.com/arcos/system">
+        #   <encoding>JSON</encoding>
+        # </get-configuration>
+        rpc_input = etree.Element("{http://yang.arrcus.com/arcos/system}get-configuration")
+        encoding = etree.SubElement(rpc_input, "{http://yang.arrcus.com/arcos/system}encoding")
+        encoding.text = "JSON"
+
+        print(f"➡️ ArcOS固有のJSON RPCを送信中...")
+
+        # 2. dispatchメソッドでカスタムRPCを送信
+        result = conn.dispatch(rpc_input)
+
+        # 3. 返ってきたデータを取り出す
+        # 通常、RPCの戻り値の .data_xml 内にJSON文字列が埋め込まれて返ります
+        # (装置の応答仕様により、パースが必要な場合があります)
+        raw_output = result.data_xml
+
+        # ファイル保存
+        os.makedirs(os.path.dirname(config_file) or '.', exist_ok=True)
+        with open(config_file, 'w', encoding='utf-8') as f:
+            f.write(raw_output)
+
+        print(f"✅ JSON設定（Rawデータ）を保存しました: {config_file}")
+        return True
+
+    except Exception as e:
+        print(f"❌ エラーが発生しました: {e}")
+        return False
+    finally:
+        if conn:
+            conn.close_session()
+
+
+
 def main() -> int:
     """
     メイン処理
@@ -485,12 +532,21 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest='command', help='実行するコマンド')
 
     # get コマンド
-    get_parser = subparsers.add_parser('get', help='装置から設定を取得してファイルに保存')
+    get_parser = subparsers.add_parser('get', help='装置からXML形式の設定を取得してファイルに保存')
     get_parser.add_argument(
         '-f', '--file',
         type=str,
         default=OUTPUT_FILE,
         help=f'保存先ファイルパス (デフォルト: {OUTPUT_FILE})'
+    )
+
+    # get-json コマンド
+    get_parser = subparsers.add_parser('get-json', help='装置からJSON形式の設定を取得してファイルに保存')
+    get_parser.add_argument(
+        '-f', '--file',
+        type=str,
+        default=OUTPUT_JSON_FILE,
+        help=f'保存先ファイルパス (デフォルト: {OUTPUT_JSON_FILE})'
     )
 
     # apply コマンド
@@ -541,6 +597,8 @@ def main() -> int:
     # コマンド実行
     if args.command == 'get':
         success = get_xml_config(args.file)
+    elif args.command == 'get-json':
+        success = get_json_config_native(args.file)
     elif args.command == 'apply':
         success = apply_xml_config(args.file)
     elif args.command == 'apply-confirmed':

@@ -190,6 +190,10 @@ system dns server-group management
  server 192.168.254.100
  !
 !
+system ntp listen-interface ma1
+system ntp server 192.168.254.100
+ iburst true
+!
 system grpc-server enable true
 system grpc-server transport-security false
 system grpc-server connections management
@@ -211,6 +215,12 @@ system rib IPV6
 !
 system rib IPV4
 !
+system snmp-server enable true
+system snmp-server protocol-version [ V2C ]
+system snmp-server network-instance management
+system snmp-server contact takamitsu-iida
+system snmp-server location "Kamioooka Yokohama JP"
+system snmp-server community public
 interface ma1
  type    ethernetCsmacd
  mtu     1500
@@ -436,10 +446,14 @@ system cli commit-message true
 system netconf-server enable true
 system netconf-server transport ssh enable true
 system netconf-server transport ssh timeout 60
-system restconf-server enable false
+system restconf-server enable true
 system dns server-group management
  server 192.168.254.100
  !
+!
+system ntp listen-interface ma1
+system ntp server 192.168.254.100
+ iburst true
 !
 system grpc-server enable true
 system grpc-server transport-security false
@@ -462,6 +476,12 @@ system rib IPV6
 !
 system rib IPV4
 !
+system snmp-server enable true
+system snmp-server protocol-version [ V2C ]
+system snmp-server network-instance management
+system snmp-server contact takamitsu-iida
+system snmp-server location "Kamioooka Yokohama JP"
+system snmp-server community public
 interface ma1
  type    ethernetCsmacd
  mtu     1500

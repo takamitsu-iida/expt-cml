@@ -3,6 +3,7 @@
 #
 # 踏み台として動作するUbuntuノードを一つ作成します。
 #
+
 # Ubuntuは3本足で構成します。
 #  - ens2: 外部接続用（NATに接続）
 #  - ens3: Bridge1接続（Windowsホストとの接続用）
@@ -80,6 +81,8 @@ package_reboot_if_required: true
 # packages
 packages:
   - jq
+  - yq
+  - libxml2-utils  # xmllint
   - curl
   - git
   - zip
@@ -93,6 +96,7 @@ packages:
   - snmp-mibs-downloader
   - freeradius
   - freeradius-utils
+  - chrony
 
 write_files:
   #
@@ -294,6 +298,19 @@ runcmd:
 
   # restart freeradius
   - systemctl restart freeradius
+
+  # fix chrony config
+  - sed -i 's/^pool /# pool /g' /etc/chrony/chrony.conf
+  - echo "local stratum 10" >> /etc/chrony/chrony.conf
+  - echo "server ntp.nict.jp iburst" >> /etc/chrony/chrony.conf
+  - echo "server ntp.jst.mfeed.ad.jp iburst" >> /etc/chrony/chrony.conf
+  - echo "allow 192.168.254.0/24" >> /etc/chrony/chrony.conf
+
+  # restart chrony
+  - systemctl restart chrony
+
+  # /etc/snmp/snmp.confの mibs 設定を変更
+  - sed -i.bak 's/^mibs :/# mibs :/' /etc/snmp/snmp.conf
 
 """.strip()
 

@@ -16,10 +16,14 @@ NETCONF装置設定管理スクリプト
 SCRIPT_DESCRIPTION = 'netconfで装置から設定を取得・反映します'
 
 import argparse
+import json
 import os
 import sys
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
+
+from lxml import etree
+
 
 try:
     from ncclient import manager
@@ -468,51 +472,63 @@ def show_capabilities(verbose: bool = False) -> bool:
             print("\n接続を閉じました。")
 
 
+
 def get_json_config_native(config_file: str = "config.json") -> bool:
-    """
-    ArcOS固有のRPCを使用して、NETCONF経由でJSON形式の設定を取得する
-    """
-
-    from lxml import etree
-
     conn = connect_netconf()
     if not conn:
         return False
 
     try:
-        # 1. ArcOS固有のRPC構造を作成
-        # <get-configuration xmlns="http://yang.arrcus.com/arcos/system">
-        #   <encoding>JSON</encoding>
-        # </get-configuration>
-        rpc_input = etree.Element("{http://yang.arrcus.com/arcos/system}get-configuration")
-        encoding = etree.SubElement(rpc_input, "{http://yang.arrcus.com/arcos/system}encoding")
+        # RPCの構築
+        # xmlns を指定して ArcOS 独自の <get-configuration> を作成
+        nspace = "http://yang.arrcus.com/arcos/system"
+        rpc_input = etree.Element(f"{{{nspace}}}get-configuration")
+        encoding = etree.SubElement(rpc_input, f"{{{nspace}}}encoding")
         encoding.text = "JSON"
 
         print(f"➡️ ArcOS固有のJSON RPCを送信中...")
 
-        # 2. dispatchメソッドでカスタムRPCを送信
+        # dispatchで送信
         result = conn.dispatch(rpc_input)
 
-        # 3. 返ってきたデータを取り出す
-        # 通常、RPCの戻り値の .data_xml 内にJSON文字列が埋め込まれて返ります
-        # (装置の応答仕様により、パースが必要な場合があります)
-        raw_output = result.data_xml
+        # --- 修正ポイント ---
+        # 1. result.xml (文字列) を取得
+        # 2. lxmlでパースして、JSONテキストが含まれる要素を特定する
+        xml_res = etree.fromstring(result.xml.encode('utf-8'))
+
+        # ArcOSの応答は通常 <get-configuration><json-config>... のような構造になります
+        # 全テキストノードを結合してJSONを取り出すのが最も確実です
+        json_content = "".join(xml_res.itertext()).strip()
+
+        if not json_content:
+            print("⚠️ 応答にデータが含まれていませんでした。")
+            return False
+
+        # 取得したのがJSON文字列であることを確認し、整形して保存
+        try:
+            parsed_json = json.loads(json_content)
+            formatted_json = json.dumps(parsed_json, indent=4)
+        except json.JSONDecodeError:
+            print("⚠️ 取得したデータが有効なJSON形式ではありません。Rawデータを保存します。")
+            formatted_json = json_content
 
         # ファイル保存
         os.makedirs(os.path.dirname(config_file) or '.', exist_ok=True)
         with open(config_file, 'w', encoding='utf-8') as f:
-            f.write(raw_output)
+            f.write(formatted_json)
 
-        print(f"✅ JSON設定（Rawデータ）を保存しました: {config_file}")
+        print(f"✅ JSON設定を保存しました: {config_file}")
         return True
 
     except Exception as e:
         print(f"❌ エラーが発生しました: {e}")
+        # デバッグ用：構造を確認するために result 全体を表示
+        if 'result' in locals():
+            print(f"Debug (Raw XML): {result.xml}")
         return False
     finally:
         if conn:
             conn.close_session()
-
 
 
 def main() -> int:

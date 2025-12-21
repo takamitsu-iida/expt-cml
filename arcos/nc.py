@@ -22,13 +22,13 @@ import sys
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
-from lxml import etree
-
-
 try:
     from ncclient import manager
     from ncclient.transport.errors import AuthenticationError, TransportError
     from ncclient.operations.rpc import RPCError
+
+    from lxml import etree  # lxmlはncclientの内部でも使われている
+
 except ImportError:
     print("ncclientをインストールしてください")
     sys.exit(1)

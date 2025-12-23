@@ -31,8 +31,8 @@ try:
 
         print(f"✅ ルータ {HOST}:{PORT} への接続に成功しました。")
 
-        path1 = 'interfaces/interface[name=swp1]/state/counters/in-octets'
-        path2 = 'interfaces/interface[name=swp1]/state/counters/out-octets'
+        path1 = '/interfaces/interface[name=swp1]/state/counters/in-octets'
+        path2 = '/interfaces/interface[name=swp1]/state/counters/out-octets'
 
         subscribe = {
             'subscription': [

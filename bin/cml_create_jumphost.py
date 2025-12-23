@@ -91,14 +91,26 @@ packages:
   - make
   - python3-venv
   - direnv
-  - tftp-hpa  # TFTP client
-  - dnsmasq  # DHCP/DNS/TFTP server
+
+  # TFTP client
+  - tftp-hpa
+
+  # DHCP/DNS/TFTP server
+  - dnsmasq
+
+  # SNMP
   - snmp
   - snmp-mibs-downloader
+
+  # Radius
   - freeradius
   - freeradius-utils
-  - chrony  # NTP client/server
-  - gpg  # for apt-secure
+
+  # NTP client/server
+  - chrony
+
+  # for apt-secure
+  - gpg
 
 write_files:
   #
@@ -340,7 +352,7 @@ runcmd:
 
   # Telegrafの設定ファイルを作成
   - |
-    cat - << 'EOS' >> /etc/hosts
+    cat - << 'EOS' >> /etc/telegraf/telegraf.conf
     # Telegraf Agent Global Configuration
     [agent]
     interval = "10s"

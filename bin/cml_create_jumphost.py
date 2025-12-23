@@ -348,49 +348,6 @@ runcmd:
   - systemctl stop telegraf    # サービスが自動的に起動していれば停止
   - systemctl disable telegraf # システム起動時に自動的に開始されないように無効化
 
-  # 元の設定ファイルをバックアップ
-  - mv /etc/telegraf/telegraf.conf /etc/telegraf/telegraf.conf.bak || true
-
-  # Telegrafの設定ファイルを作成
-  - |
-    cat - << 'EOS' > /etc/telegraf/telegraf.conf
-    # Telegraf Agent Global Configuration
-    [agent]
-    interval = "10s"
-    round_interval = true
-    metric_batch_size = 1000
-    metric_buffer_limit = 10000
-    collection_jitter = "0s"
-    flush_interval = "10s"
-    flush_jitter = "0s"
-    precision = ""
-    hostname = "$HOSTNAME"
-    omit_hostname = false
-
-    # INPUTS
-
-    {% for rid in [1, 2, 11, 12, 13, 14] %}
-    # --- Router {{ rid }} ---
-    [[inputs.gnmi]]
-    addresses = ["192.168.254.{{ rid }}:9339"]
-    username = "cisco"
-    password = "cisco123"
-    tls_skip_verify = true
-    subscription_mode = "STREAM"
-    subscription_type = "SAMPLE"
-    sample_interval = "30s"
-    subscriptions = [
-        "/interfaces/interface[name=swp1]/state/counters/in-octets",
-        "/interfaces/interface[name=swp1]/state/counters/out-octets",
-    ]
-    {% endfor %}
-
-    # OUTPUTS
-
-    [[outputs.stdout]]
-    data_format = "influx" # InfluxDB Line Protocol形式で標準出力
-    EOS
-
 """.strip()
 
 

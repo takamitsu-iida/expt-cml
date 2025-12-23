@@ -1541,7 +1541,98 @@ system grpc-server transport-security true
 
 SAMPLEの間隔は最小30秒。それ以下を指定しても30秒間隔になります。
 
-ターゲットが単一ルータの場合は、同期処理で実装するのが簡単です。
+<br>
+
+### gnmic
+
+Go言語で書かれたgNMIクライアントです。検証時にはこれを使うといいでしょう。
+
+インストール
+
+```bash
+wget https://github.com/openconfig/gnmic/releases/latest/download/gnmic_linux_amd64
+chmod +x gnmic_linux_amd64
+sudo mv gnmic_linux_amd64 /usr/local/bin/gnmic
+```
+
+ルータのケーパビリティの確認
+
+`gnmic --address ＜device_ip＞:9339 --username ＜user＞ --password ＜pass＞ capabilities`
+
+ルータにサブスクライブ
+
+`gnmic --address ＜device_ip＞:9339 --username ＜user＞ --password ＜pass＞ subscribe --path /interfaces/interface[name=ethernet-0/1]/state/oper-status --mode ON_CHANGE`
+
+実行時のオプションをYAML形式のファイルにまとめることもできます。
+
+gnmic.yaml
+
+```YAML
+
+outputs:
+  influxdb_output:
+    type: influxdb
+    url: "http://localhost:8086"
+    organization: "your-org"
+    bucket: "your-bucket"
+    token: "YOUR_INFLUXDB_TOKEN"
+    # debug: true # デバッグ情報を表示する場合
+
+
+subscriptions:
+  all-interfaces:
+    paths:
+      - /interfaces/interface[name=*]/state/oper-status
+      - /interfaces/interface[name=*]/state/in-octets
+    mode: ON_CHANGE
+    encoding: JSON_IETF
+    # outputs: # このサブスクリプションの出力をInfluxDBに向ける
+    #   - influxdb_output
+
+targets:
+  P1:
+    address: 192.168.254.1:9339
+    username: cisco
+    password: cisco123
+    skip-verify: true  # 証明書の検証をスキップ
+    # insecure: true   # TLSを使用しない場合
+    # "ca-file": "/path/to/ca.pem", # 必要に応じてコメントを外す
+    # "tls-cert": "/path/to/client.pem", # 必要に応じてコメントを外す
+    # "tls-key": "/path/to/client-key.pem", # 必要に応じてコメントを外す
+    # retry-interval: 5s            # このターゲットは5秒間隔で再接続
+    # max-reconnect-attempts: 60    # このターゲットは最大60回再接続を試みる
+
+  P2:
+    address: 192.168.254.2:9339
+    username: cisco
+    password: cisco123
+    skip-verify: true  # 証明書の検証をスキップ
+
+  PE11:
+    address: 192.168.254.11:9339
+    username: cisco
+    password: cisco123
+    skip-verify: true  # 証明書の検証をスキップ
+```
+
+`gnmic subscribe --config gnmic.yaml`
+
+
+<br>
+
+### Telegraf
+
+長期運用するのであればTelegrafを使って収集して、InfluxDBにデータを永続化するのがいいでしょう。
+
+
+
+
+
+<br>
+
+### Pythonスクリプト（同期処理）
+
+ターゲットが単一ルータの場合は、pygnmiモジュールを使って同期処理で実装するのが簡単です。
 
 サンプルスクリプト　[gnmi.py](/arcos/gnmi.py)
 
@@ -1561,12 +1652,13 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 ✅ プログラムを終了します。
 ```
 
-ターゲットが複数のルータの場合、同時にコネクションを張り続けることになりますので、非同期の方が望ましいです。
+<br>
+
+### Pythonスクリプト（非同期処理）
+
+ターゲットが複数のルータの場合、同時にコネクションを張り続けることになりますので、非同期の方が望ましいです。pygnmiは非同期に対応していないようですので、grpcのPython実装を使います。
 
 サンプルスクリプト　[gnmi_async.py](/arcos/gnmi_async.py)
-
-
-
 
 
 

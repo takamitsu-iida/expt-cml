@@ -352,7 +352,7 @@ runcmd:
 
   # Telegrafの設定ファイルを作成
   - |
-    cat - << 'EOS' > /etc/telegraf/telegraf.conf
+    cat << 'EOS' > /etc/telegraf/telegraf.conf
     # Telegraf Agent Global Configuration
     [agent]
     interval = "10s"

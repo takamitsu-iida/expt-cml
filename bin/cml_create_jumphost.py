@@ -323,8 +323,8 @@ runcmd:
 
   # APTリポジトリの追加
   - |
-    export DISTRIB_ID=$(lsb_release -id | grep -oP '(?<=:)\\w+')
-    export DISTRIB_CODENAME=$(lsb_release -ic | grep -oP '(?<=:)\\w+')
+    export DISTRIB_ID=$(grep -E '^ID=' /etc/os-release | cut -d'=' -f2 | tr -d '"')
+    export DISTRIB_CODENAME=$(grep -E '^VERSION_CODENAME=' /etc/os-release | cut -d'=' -f2 | tr -d '"')
     echo "deb [signed-by=/etc/apt/trusted.gpg.d/influxdb.gpg] https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | tee /etc/apt/sources.list.d/influxdata.list > /dev/null
 
   # Telegrafのインストール

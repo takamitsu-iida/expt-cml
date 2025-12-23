@@ -363,7 +363,7 @@ runcmd:
     flush_interval = "10s"
     flush_jitter = "0s"
     precision = ""
-    hostname = "\\$HOSTNAME"
+    hostname = "$HOSTNAME"
     omit_hostname = false
 
     # INPUTS
@@ -375,7 +375,6 @@ runcmd:
     username = "cisco"
     password = "cisco123"
     tls_skip_verify = true
-
     subscription_mode = "STREAM"
     subscription_type = "SAMPLE"
     sample_interval = "30s"

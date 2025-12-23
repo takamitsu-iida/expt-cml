@@ -1255,7 +1255,7 @@ root@P1#
 
 JSON形式でコンフィグを取得することもできますが、これは標準のNETCONFにはない操作です。
 
-この操作（↓）をすればよいのですが、Pythonのncclientモジュールでは対応できないので、少々面倒なことになります。
+この操作（↓）をすればよいのですが、標準のNETCONFにget-configurationは存在しないので、Pythonのncclientモジュールでは対応できません。
 
 ```XML
 <get-configuration xmlns="http://yang.arrcus.com/arcos/system">
@@ -1263,7 +1263,7 @@ JSON形式でコンフィグを取得することもできますが、これは�
 </get-configuration>
 ```
 
-独自でRPCを組めばよいので、できなくもないです。
+とはいっても独自でRPCを組めばよいだけなので、できなくもないです。
 
 実行結果。
 
@@ -1328,6 +1328,8 @@ cisco@jumphost:~/expt-cml/arcos$ cat /tmp/192.168.254.1.json | head -50
 ```
 
 JSON形式で取得したいなら無理してNETCONFでやらなくても、RESTCONF使ったほうがいいです。
+
+設定に関してきめ細やかなオペレーションをしたいなら、XML形式の設定をNETCONFで操作するのがいいと思います。
 
 <br><br>
 
@@ -1449,7 +1451,7 @@ ietf-restconf:data:
 
 ### GET /restconf/data/openconfig-interfaces:interfaces
 
-全てのインタフェースが表示されます。これも長い結果になります。
+全てのインタフェースが表示されます。これも長い出力結果になります。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1457,7 +1459,7 @@ https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces \
 | yq -y .
 `
 
-次のようにフィルタすれば、全インタフェースの中から欲しいインタフェースだけを表示できます。
+出力を次のようにフィルタすれば、全インタフェースの中から欲しいインタフェースだけを表示できます。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1477,7 +1479,7 @@ https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interf
 | yq -y .
 `
 
-２階層目の **項目だけ** を抽出して表示してみます。
+出力をフィルタして２階層目の **項目だけ** を抽出して表示してみます。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1728,7 +1730,7 @@ https://192.168.254.1:8009/restconf/operations/arcos-system:get-configuration
 }
 ```
 
-
+実験してみた結果、operations配下のものはいずれも動作しませんでした。
 
 <br><br>
 

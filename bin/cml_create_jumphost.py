@@ -84,19 +84,21 @@ packages:
   - yq
   - libxml2-utils  # xmllint
   - curl
+  - wget
   - git
   - zip
   - unzip
   - make
   - python3-venv
   - direnv
-  - tftp-hpa
-  - dnsmasq
+  - tftp-hpa  # TFTP client
+  - dnsmasq  # DHCP/DNS/TFTP server
   - snmp
   - snmp-mibs-downloader
   - freeradius
   - freeradius-utils
-  - chrony
+  - chrony  # NTP client/server
+  - gpg  # for apt-secure
 
 write_files:
   #
@@ -311,6 +313,71 @@ runcmd:
 
   # /etc/snmp/snmp.confの mibs 設定を変更
   - sed -i.bak 's/^mibs :/# mibs :/' /etc/snmp/snmp.conf
+
+  #
+  # Telegraf インストール
+  #
+
+  # GPGキーの追加
+  - wget -qO- https://repos.influxdata.com/influxdb.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/influxdb.gpg > /dev/null
+
+  # APTリポジトリの追加
+  - |
+    export DISTRIB_ID=$(lsb_release -id | grep -oP '(?<=:)\\w+')
+    export DISTRIB_CODENAME=$(lsb_release -ic | grep -oP '(?<=:)\\w+')
+    echo "deb [signed-by=/etc/apt/trusted.gpg.d/influxdb.gpg] https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | tee /etc/apt/sources.list.d/influxdata.list > /dev/null
+
+  # Telegrafのインストール
+  - apt update
+  - apt install -y telegraf
+
+  # Telegrafを自動起動しないようにする
+  - systemctl stop telegraf    # サービスが自動的に起動していれば停止
+  - systemctl disable telegraf # システム起動時に自動的に開始されないように無効化
+
+  # 元の設定ファイルをバックアップ
+  - mv /etc/telegraf/telegraf.conf /etc/telegraf/telegraf.conf.bak || true
+
+  # Telegrafの設定ファイルを作成
+  - |
+    cat - << 'EOS' >> /etc/hosts
+# Telegraf Agent Global Configuration
+[agent]
+  interval = "10s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "0s"
+  flush_interval = "10s"
+  flush_jitter = "0s"
+  precision = ""
+  hostname = "\\$HOSTNAME"
+  omit_hostname = false
+
+# INPUTS
+
+{% for rid in [1, 2, 11, 12, 13, 14] %}
+# --- Router {{ rid }} ---
+[[inputs.gnmi]]
+  addresses = ["192.168.254.{{ rid }}:9339"]
+  username = "cisco"
+  password = "cisco123"
+  tls_skip_verify = true
+
+  subscription_mode = "STREAM"
+  subscription_type = "SAMPLE"
+  sample_interval = "30s"
+  subscriptions = [
+    "/interfaces/interface[name=swp1]/state/counters/in-octets",
+    "/interfaces/interface[name=swp1]/state/counters/out-octets",
+  ]
+{% endfor %}
+
+# OUTPUTS
+
+[[outputs.stdout]]
+  data_format = "influx" # InfluxDB Line Protocol形式で標準出力
+EOS
 
 """.strip()
 

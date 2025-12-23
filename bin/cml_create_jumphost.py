@@ -341,43 +341,43 @@ runcmd:
   # Telegrafの設定ファイルを作成
   - |
     cat - << 'EOS' >> /etc/hosts
-# Telegraf Agent Global Configuration
-[agent]
-  interval = "10s"
-  round_interval = true
-  metric_batch_size = 1000
-  metric_buffer_limit = 10000
-  collection_jitter = "0s"
-  flush_interval = "10s"
-  flush_jitter = "0s"
-  precision = ""
-  hostname = "\\$HOSTNAME"
-  omit_hostname = false
+    # Telegraf Agent Global Configuration
+    [agent]
+    interval = "10s"
+    round_interval = true
+    metric_batch_size = 1000
+    metric_buffer_limit = 10000
+    collection_jitter = "0s"
+    flush_interval = "10s"
+    flush_jitter = "0s"
+    precision = ""
+    hostname = "\\$HOSTNAME"
+    omit_hostname = false
 
-# INPUTS
+    # INPUTS
 
-{% for rid in [1, 2, 11, 12, 13, 14] %}
-# --- Router {{ rid }} ---
-[[inputs.gnmi]]
-  addresses = ["192.168.254.{{ rid }}:9339"]
-  username = "cisco"
-  password = "cisco123"
-  tls_skip_verify = true
+    {% for rid in [1, 2, 11, 12, 13, 14] %}
+    # --- Router {{ rid }} ---
+    [[inputs.gnmi]]
+    addresses = ["192.168.254.{{ rid }}:9339"]
+    username = "cisco"
+    password = "cisco123"
+    tls_skip_verify = true
 
-  subscription_mode = "STREAM"
-  subscription_type = "SAMPLE"
-  sample_interval = "30s"
-  subscriptions = [
-    "/interfaces/interface[name=swp1]/state/counters/in-octets",
-    "/interfaces/interface[name=swp1]/state/counters/out-octets",
-  ]
-{% endfor %}
+    subscription_mode = "STREAM"
+    subscription_type = "SAMPLE"
+    sample_interval = "30s"
+    subscriptions = [
+        "/interfaces/interface[name=swp1]/state/counters/in-octets",
+        "/interfaces/interface[name=swp1]/state/counters/out-octets",
+    ]
+    {% endfor %}
 
-# OUTPUTS
+    # OUTPUTS
 
-[[outputs.stdout]]
-  data_format = "influx" # InfluxDB Line Protocol形式で標準出力
-EOS
+    [[outputs.stdout]]
+    data_format = "influx" # InfluxDB Line Protocol形式で標準出力
+    EOS
 
 """.strip()
 

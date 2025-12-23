@@ -183,7 +183,7 @@ runcmd:
 
   # Disable SSH client warnings
   - |
-    cat << 'EOS' > /etc/ssh/ssh_config.d/99_lab_env.conf
+    cat - << 'EOS' > /etc/ssh/ssh_config.d/99_lab_env.conf
     KexAlgorithms +diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
     Ciphers +aes128-cbc,aes192-cbc,aes256-cbc,3des-cbc,aes128-ctr,aes192-ctr,aes256-ctr
     StrictHostKeyChecking no
@@ -212,7 +212,7 @@ runcmd:
 
   # create /etc/dnsmasq.conf
   - |
-    cat << 'EOS' > /etc/dnsmasq.conf
+    cat - << 'EOS' > /etc/dnsmasq.conf
     # ens4 インターフェースのみでリッスンする
     interface=ens4
 
@@ -261,7 +261,7 @@ runcmd:
   # Vendor-specific 0x43, Code 35=0x0023
   # 43,00:23 + 00:1d (URL文字列の長さ 29=0x1d) + URL文字列の16進
   - |
-    cat << 'EOS' > /etc/dnsmasq.d/host.conf
+    cat - << 'EOS' > /etc/dnsmasq.d/host.conf
 
     {% for rid in [1, 2] %}
         {%- set url = "tftp://192.168.254.100/P" ~ rid ~ ".cfg" -%}
@@ -293,7 +293,7 @@ runcmd:
 
   # freeradius clients.conf
   - |
-    cat << 'EOS' >> /etc/freeradius/3.0/clients.conf
+    cat - << 'EOS' >> /etc/freeradius/3.0/clients.conf
     client ma-lan {
         ipaddr = 192.168.254.0/24
         secret = cisco123
@@ -301,7 +301,7 @@ runcmd:
     EOS
 
   - |
-    cat << 'EOS' >> /etc/freeradius/3.0/users
+    cat - << 'EOS' >> /etc/freeradius/3.0/users
     test Cleartext-Password := "test"
         Reply-Message = "Hello, test user!"
 
@@ -309,6 +309,7 @@ runcmd:
         Service-Type = Login,
         Login-Service = Telnet,SSH,
         Login-Host = %{NAS-IP-Address}
+    EOS
 
   # restart freeradius
   - systemctl restart freeradius
@@ -352,7 +353,7 @@ runcmd:
 
   # Telegrafの設定ファイルを作成
   - |
-    cat << 'EOS' > /etc/telegraf/telegraf.conf
+    cat - << 'EOS' > /etc/telegraf/telegraf.conf
     # Telegraf Agent Global Configuration
     [agent]
     interval = "10s"

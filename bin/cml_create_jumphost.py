@@ -327,26 +327,25 @@ runcmd:
   # /etc/snmp/snmp.confの mibs 設定を変更
   - sed -i.bak 's/^mibs :/# mibs :/' /etc/snmp/snmp.conf
 
-  #
   # Telegraf インストール
-  #
-
-  # GPGキーの追加
-  - wget -qO- https://repos.influxdata.com/influxdb.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/influxdb.gpg > /dev/null
-
-  # APTリポジトリの追加
+  # インストール方法は公式ドキュメント参照
+  # https://docs.influxdata.com/telegraf/v1/install/
   - |
-    DISTRIB_ID=$(grep -E '^ID=' /etc/os-release | cut -d'=' -f2 | tr -d '"')
-    DISTRIB_CODENAME=$(grep -E '^VERSION_CODENAME=' /etc/os-release | cut -d'=' -f2 | tr -d '"')
-    echo "deb [signed-by=/etc/apt/trusted.gpg.d/influxdb.gpg] https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | tee /etc/apt/sources.list.d/influxdata.list > /dev/null
-
-  # Telegrafのインストール
-  - apt update
-  - apt install -y telegraf
+    curl --silent --location -O https://repos.influxdata.com/influxdata-archive.key
+    gpg --show-keys --with-fingerprint --with-colons ./influxdata-archive.key 2>&1 | grep -q '^fpr:\+24C975CBA61A024EE1B631787C3D57159FC2F927:$'
+    cat influxdata-archive.key | gpg --dearmor | tee /etc/apt/keyrings/influxdata-archive.gpg > /dev/null
+    echo 'deb [signed-by=/etc/apt/keyrings/influxdata-archive.gpg] https://repos.influxdata.com/debian stable main' | tee /etc/apt/sources.list.d/influxdata.list
+    apt update && apt install -y --no-install-recommends telegraf
 
   # Telegrafを自動起動しないようにする
   - systemctl stop telegraf    # サービスが自動的に起動していれば停止
   - systemctl disable telegraf # システム起動時に自動的に開始されないように無効化
+
+  # このリポジトリをクローンする
+  - |
+    cd /home/{{ UBUNTU_USERNAME }}
+    git clone https://github.com/takamitsu-iida/expt-cml.git
+    chown -R cisco:cisco expt-cml
 
 """.strip()
 

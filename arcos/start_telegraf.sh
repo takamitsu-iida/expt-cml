@@ -8,7 +8,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/telegraf.conf"
-TELEGRAF_PROCESS_NAME="telegraf"
+TELEGRAF_PROCESS_NAME="/usr/bin/telegraf"
 
 usage() {
     echo "Usage: $0 {start|check|restart} [options]"
@@ -26,6 +26,12 @@ usage() {
     exit 1
 }
 
+2025-12-24T13:10:49Z I! Loading config: /home/cisco/expt-cml/arcos/telegraf.conf
+2025-12-24T13:10:49Z W! DeprecationWarning: Option "field" of plugin "processors.enum" deprecated since version 1.35.0 and will be removed in 1.40.0: use 'fields' instead
+2025-12-24T13:10:49Z W! DeprecationWarning: Option "field" of plugin "processors.enum" deprecated since version 1.35.0 and will be removed in 1.40.0: use 'fields' instead
+2025-12-24T13:10:49Z I! Starting Telegraf 1.37.0 brought to you by InfluxData the makers of InfluxDB
+2025-12-24T13:10:49Z I! Available plugins: 243 inputs, 9 aggregators, 35 processors, 26 parsers, 67 outputs, 8 secret-stores
+
 start_telegraf() {
     if [ ! -f "$CONFIG_FILE" ]; then
         echo "Error: Config file not found: $CONFIG_FILE"
@@ -33,8 +39,9 @@ start_telegraf() {
     fi
 
     echo "Starting Telegraf with config: $CONFIG_FILE"
-    telegraf --config "$CONFIG_FILE" "$@"
+    ${TELEGRAF_PROCESS_NAME} --config "$CONFIG_FILE" "$@"
 }
+
 
 check_telegraf() {
     local ROUTER_IP="$1"

@@ -15,8 +15,8 @@ usage() {
     echo ""
     echo "Commands:"
     echo "  start [telegraf_args]  - Start Telegraf"
-    echo "  check [router_ip]      - Check Telegraf connection status"
     echo "  restart [telegraf_args] - Restart Telegraf"
+    echo "  check                  - Check Telegraf connection status"
     echo ""
     echo "Examples:"
     echo "  $0 start"
@@ -44,12 +44,12 @@ check_telegraf() {
     local ROUTER_IP="$1"
 
     echo "=================================================="
-    echo "         Telegraf Network Connection Check"
+    echo " Telegraf Network Connection Check"
     echo "=================================================="
     echo ""
 
-    # 1. Telegrafプロセスの確認
-    echo "--- 1. Telegraf Process Status ---"
+    echo "1. Telegraf Process Status ---"
+    echo ""
     TELEGRAF_PIDS=$(pgrep -f "$TELEGRAF_PROCESS_NAME")
 
     if [ -z "$TELEGRAF_PIDS" ]; then
@@ -65,31 +65,21 @@ check_telegraf() {
     echo "Using main Telegraf PID: $MAIN_TELEGRAF_PID for connection checks."
     echo ""
 
-    # 2. Telegrafプロセスが確立しているすべてのTCP接続を表示
-    echo "--- 2. All Established TCP Connections by Telegraf (PID: $MAIN_TELEGRAF_PID) ---"
+    echo "All Established TCP Connections by Telegraf (PID: $MAIN_TELEGRAF_PID)"
+    echo ""
     ss -tnape | grep "pid=$MAIN_TELEGRAF_PID" | awk '{print $1, $2, $4, $5, $6}'
     if [ $? -ne 0 ]; then
         echo "No TCP connections found for Telegraf PID $MAIN_TELEGRAF_PID."
     fi
     echo ""
 
-    # 3. Telegrafプロセスが確立しているTCP接続の総数をカウント
-    echo "--- 3. Total ESTABLISHED TCP Connections by Telegraf (PID: $MAIN_TELEGRAF_PID) ---"
+    # Telegrafプロセスが確立しているTCP接続の総数をカウント
+    echo "Total ESTABLISHED TCP Connections by Telegraf (PID: $MAIN_TELEGRAF_PID) ---"
+    echo ""
     ESTABLISHED_CONNECTIONS=$(ss -tnap state established | grep "pid=$MAIN_TELEGRAF_PID" | wc -l)
     echo "Total ESTABLISHED TCP connections: $ESTABLISHED_CONNECTIONS"
     echo ""
 
-    # 4. （オプション）特定のルータIPアドレスへの接続数をカウント
-    echo "--- 4. (Optional) Check Connections to a Specific Router IP ---"
-    if [ -n "$ROUTER_IP" ]; then
-        echo "Checking connections to router IP: $ROUTER_IP"
-        ROUTER_CONNECTIONS=$(ss -tnap state established | grep "pid=$MAIN_TELEGRAF_PID" | grep "$ROUTER_IP" | wc -l)
-        echo "ESTABLISHED TCP connections to $ROUTER_IP: $ROUTER_CONNECTIONS"
-        echo ""
-    else
-        echo "No router IP specified. Use: $0 check <router_ip>"
-        echo ""
-    fi
 
     echo "=================================================="
     echo "            Check Complete"

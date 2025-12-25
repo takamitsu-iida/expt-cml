@@ -109,28 +109,3 @@ case "$COMMAND" in
         usage
         ;;
 esac
-
-
-Starting Telegraf with config: /home/cisco/expt-cml/arcos/telegraf.conf
-2025-12-24T16:02:31Z I! Loading config: /home/cisco/expt-cml/arcos/telegraf.conf
-2025-12-24T16:02:31Z I! Starting Telegraf 1.37.0 brought to you by InfluxData the makers of InfluxDB
-2025-12-24T16:02:31Z I! Available plugins: 243 inputs, 9 aggregators, 35 processors, 26 parsers, 67 outputs, 8 secret-stores
-2025-12-24T16:02:31Z I! Loaded inputs: gnmi
-2025-12-24T16:02:31Z I! Loaded aggregators:
-2025-12-24T16:02:31Z I! Loaded processors: enum
-2025-12-24T16:02:31Z I! Loaded secretstores:
-2025-12-24T16:02:31Z I! Loaded outputs: file (2x)
-2025-12-24T16:02:31Z I! Tags enabled:
-2025-12-24T16:02:31Z I! [agent] Config: Interval:30s, Quiet:false, Hostname:"", Flush Interval:1s
-01:02:03 [192.168.254.13] swp5: DOWN
-01:02:03 [192.168.254.13] swp6: DOWN
-01:02:03 [192.168.254.13] swp7: DOWN
-01:02:03 [192.168.254.13] swp8: DOWN
-01:02:03 [192.168.254.13] swp3: UP
-01:02:03 [192.168.254.13] swp1: UP
-01:02:03 [192.168.254.13] swp2: UP
-01:02:03 [192.168.254.13] swp4: DOWN
-01:02:03 [192.168.254.13] loopback0: UP
-01:02:03 [192.168.254.13] ma1: UP
-01:01:53 [192.168.254.12] ma1: UP
-01:0

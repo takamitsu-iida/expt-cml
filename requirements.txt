@@ -35,3 +35,6 @@ pyats[full]==25.11
 
 # FastMCP Library
 fastmcp
+
+# gNMIサーバのお試し実装で利用
+psutil

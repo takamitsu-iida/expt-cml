@@ -50,7 +50,7 @@ check_telegraf() {
 
     # 1. Telegrafプロセスの確認
     echo "--- 1. Telegraf Process Status ---"
-    TELEGRAF_PIDS=$(pgrep -d ',' "$TELEGRAF_PROCESS_NAME")
+    TELEGRAF_PIDS=$(pgrep -f "$TELEGRAF_PROCESS_NAME")
 
     if [ -z "$TELEGRAF_PIDS" ]; then
         echo "Warning: No Telegraf process found named '$TELEGRAF_PROCESS_NAME'. Exiting."

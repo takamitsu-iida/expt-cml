@@ -35,8 +35,6 @@ start_telegraf() {
 
     echo "Starting Telegraf with config: $CONFIG_FILE"
     ${TELEGRAF_PROCESS_NAME} --strict-env-handling --config "$CONFIG_FILE" "$@"
-
-    --config "$CONFIG_FILE" "$@"
 }
 
 

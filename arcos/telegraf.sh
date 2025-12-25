@@ -21,7 +21,6 @@ usage() {
     echo "Examples:"
     echo "  $0 start"
     echo "  $0 check"
-    echo "  $0 check 192.168.1.1"
     echo "  $0 restart --debug"
     exit 1
 }
@@ -101,7 +100,7 @@ case "$COMMAND" in
         ;;
     restart)
         echo "Stopping Telegraf..."
-        pkill "$TELEGRAF_PROCESS_NAME" || true
+        kill -KILL "TELEGRAF_PIDS" || true
         sleep 2
         start_telegraf "$@"
         ;;

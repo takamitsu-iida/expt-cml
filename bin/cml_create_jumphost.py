@@ -342,6 +342,9 @@ runcmd:
   - systemctl stop telegraf    # サービスが自動的に起動していれば停止
   - systemctl disable telegraf # システム起動時に自動的に開始されないように無効化
 
+  # install gnmic
+  - curl -sL https://get-gnmic.openconfig.net | bash
+
   # このリポジトリをクローンする
   - |
     cd /home/{{ UBUNTU_USERNAME }}

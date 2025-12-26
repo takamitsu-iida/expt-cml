@@ -305,10 +305,11 @@ runcmd:
     test Cleartext-Password := "test"
         Reply-Message = "Hello, test user!"
 
-    operator Cleartext-Password := "operator"
-        Service-Type = Login,
-        Login-Service = Telnet,SSH,
-        Login-Host = %{NAS-IP-Address}
+    staff Cleartext-Password := "password"
+        Service-Type = Administrative-User
+
+    operator Cleartext-Password := "password"
+        Service-Type = Login-User
     EOS
 
   # restart freeradius

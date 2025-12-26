@@ -230,8 +230,7 @@ class GNMIServicer(gnmi_pb2_grpc.gNMIServicer):
         self.model_info = ModelInfo()
         self.resolver = PathValueResolver()
 
-    def Capabilities(self, request: gnmi_pb2.CapabilityRequest,
-                     context: grpc.ServicerContext) -> gnmi_pb2.CapabilityResponse:
+    def Capabilities(self, request: gnmi_pb2.CapabilityRequest, context: grpc.ServicerContext) -> gnmi_pb2.CapabilityResponse:
         """
         サポートするモデルとエンコーディング情報を返す
         """
@@ -248,8 +247,7 @@ class GNMIServicer(gnmi_pb2_grpc.gNMIServicer):
 
         return response
 
-    def Get(self, request: gnmi_pb2.GetRequest,
-            context: grpc.ServicerContext) -> gnmi_pb2.GetResponse:
+    def Get(self, request: gnmi_pb2.GetRequest, context: grpc.ServicerContext) -> gnmi_pb2.GetResponse:
         """
         指定されたパスの現在値を取得
         """
@@ -272,8 +270,7 @@ class GNMIServicer(gnmi_pb2_grpc.gNMIServicer):
 
         return response
 
-    def Set(self, request: gnmi_pb2.SetRequest,
-            context: grpc.ServicerContext) -> gnmi_pb2.SetResponse:
+    def Set(self, request: gnmi_pb2.SetRequest, context: grpc.ServicerContext) -> gnmi_pb2.SetResponse:
         """
         指定されたパスに値を設定
         """
@@ -294,8 +291,7 @@ class GNMIServicer(gnmi_pb2_grpc.gNMIServicer):
 
         return response
 
-    def Subscribe(self, request_iterator: Iterator[gnmi_pb2.SubscribeRequest],
-                  context: grpc.ServicerContext) -> Iterator[gnmi_pb2.SubscribeResponse]:
+    def Subscribe(self, request_iterator: Iterator[gnmi_pb2.SubscribeRequest], context: grpc.ServicerContext) -> Iterator[gnmi_pb2.SubscribeResponse]:
         """
         指定されたパスの値を定期的にストリーム配信
         """

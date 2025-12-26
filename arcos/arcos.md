@@ -1850,6 +1850,27 @@ event ON_COMMIT
 
 Radius
 
+`/etc/freeradius/3.0/users` にユーザを追加。
+
+```text
+test Cleartext-Password := "test"
+    Reply-Message = "Hello, test user!"
+
+staff Cleartext-Password := "password"
+    Service-Type = Administrative-User
+
+operator Cleartext-Password := "password"
+    Service-Type = Login-User
+```
+
+RADIUSサーバが応答を返すかテスト。
+
+```
+radtest operator password localhost 0 testing123
+```
+
+
+
 
 <br><br>
 

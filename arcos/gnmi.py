@@ -6,6 +6,9 @@ pygnmi を使った簡単なgNMIクライアント実装
 【事前準備】
 pip install pygnmi
 
+
+TODO: 非同期は動かないので削除する
+
 """
 
 import argparse

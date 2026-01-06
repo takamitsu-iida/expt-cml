@@ -2,16 +2,14 @@
 
 <br>
 
-ArcOSは大規模な環境で使われることが想定されます。
+ArcOSは大規模なネットワーク環境で使われることが想定されます。
 
-大事なのは、
+大事なのは、以下の２点です。
 
-- ArcOS未経験者であってもその扱いに速やかに慣れること
-- 実機を使わなくてもよい検証はCMLの仮想環境で並行作業で検証を進める
+- ArcOS未経験のSEであってもその扱いに速やかに慣れること
+- 実機を使わなくてもよい検証はCMLの仮想環境で並行して検証を進められること
 
-ということです。
-
-そのためのインプット情報としてまとめておきます。
+そのためのインプット情報を実行まとめておきます。
 
 <br><br>
 
@@ -24,14 +22,12 @@ CMLのダッシュボードでarcosをドラッグドロップでインスタン
 - root
 - YouReallyNeedToChangeThis
 
-ログインしたらpasswdコマンドでパスワードを変更します。
-
+<br>
 
 > [!NOTE]
 >
-> admin-userのパスワードがrootのパスワードかも？
->
-> ZTPでコンフィグをダウンロードするとrootのパスワードがそれに書き換わったような？
+> rootアカウントの初期パスワードはLinuxのpasswdコマンドで一時的に変更できますが、
+> 再起動するとArcOSによって元の設定に戻されてしまいますので、ArcOSで変更します。
 
 <br>
 
@@ -61,7 +57,8 @@ Uptime:           1 minute
 
 <br>
 
-`config` コマンドで設定変更モードに入りますが、初回起動時はZTPプロセスが走っているため、手動での設定変更はできません。
+通常は `config` コマンドで設定変更モードに入りますが、
+初回起動時はゼロタッチプロビジョニングのプロセスが走っているため、設定変更はできません。
 
 ```text
 root@localhost# config
@@ -72,7 +69,7 @@ Please stop ZTP using cli "request system ztp stop" to stop ZTP and change syste
 
 <br>
 
-上記メッセージにある通り `request system ztp stop` で停止します。
+上記メッセージにある通り `request system ztp stop` でZTPプロセスを停止します。
 
 ```text
 root@localhost# request system ztp stop
@@ -84,9 +81,9 @@ Initiating ZTP stop. Please do not perform any operation on the system until ZTP
 
 <br>
 
-これでコンフィグモードに入れるようになりますが、設定の変更はまだできません。
+ZTPプロセスが停止するとコンフィグモードに入れるようになりますが、それでもまだ設定の変更はできません。
 
-正確には `commit` ができません。
+正確には `commit` で反映できません。
 
 ```text
 root@localhost# config
@@ -110,7 +107,7 @@ root@localhost(config-interface-swp1)#
 
 <br>
 
-このように、最初にAdminユーザのパスワードを変更しないと、設定の変更は許可してもらえません。
+上記メッセージにあるように、最初にAdminユーザのパスワードを変更しないと、設定変更は許可してもらえません。
 
 この設定を行います。
 
@@ -149,9 +146,9 @@ IPV4はループバックのアドレスをイーサネットに割り当てる�
 
 隣接ルータとの疎通も問題ありません。
 
-ISISを使えばribも作れるのですが、実際にはLinuxのルーティングテーブルに反映されないので**ルーティングができません**。
+ISISを使えば経路交換もできるのですが、Linuxのルーティングテーブルに反映されないため**ルータを超えた通信はできません**。
 
-こんな感じ（↓）でribにエントリができていても、実際にはLinuxに経路が渡っていないので通信できません。
+以下（↓）の例では10.0.255.11/32に関する経路情報を学習していますが、Linuxにこの経路が渡っていないため、この宛先には通信できません。
 
 ```text
 root@PE12# show network-instance default rib IPV4 ipv4-entries entry 10.0.255.11/32
@@ -203,64 +200,57 @@ PING 10.0.255.11 (10.0.255.11) from 10.0.255.12 swp1: 56(84) bytes of data.
 
 <br><br>
 
-## cliコマンドメモ
+## cliコマンド早見表
 
-`config` コンフィグモードに遷移します。
+<br>
 
-`config exclusive` 排他でコンフィグモードに遷移します。
+`config` 　コンフィグモードに遷移します。
 
-`top` コンフィグモードの中で最上位の階層に移動します。
+`config exclusive` 　排他でコンフィグモードに遷移します。
 
-`commit` コンフィグを確定します。
+`top` 　コンフィグモードの中で最上位の階層に移動します。
 
-`commit confirmed <分>` 指定した時間（分）で元に戻します。config exclusiveが必須です。
+`commit` 　コンフィグを確定します。
 
-`(config)# show configuration` コミット前の編集されている設定を表示します。
+`commit confirmed <分>` 　指定した時間（分）で設定を元に戻します。config exclusiveが必須です。
 
-`show configuration running` ランニングコンフィグを表示します（コンフィグモードでも使えます）
+`(config)# show configuration` 　コミット前の編集されている設定を表示します。
 
-`show configuration rollback changes` ロールバックできる過去の変更を表示します。
+`show configuration running` 　ランニングコンフィグを表示します（コンフィグモードでも使えます）
 
-`(config)# rollback configuration <番号>` ロールバックします。
+`show configuration rollback changes` 　ロールバックできる過去の変更を表示します。
 
-`(config)# load override merge <XMLファイル>` 指定したファイルの内容をマージします。
+`(config)# rollback configuration <番号>` 　ロールバックします。
 
-`(config)# load override override <XMLファイル>` いまの設定を全部消してから、新しいコンフィグとしてファイルの内容を読み込みます。
+`(config)# load override merge <XMLファイル>` 　指定したファイルの内容をマージします。
 
-`(config)# load override replace <XMLファイル>` ファイルで指定した部分だけを差し替えて、残りの部分は現状を維持します。
+`(config)# load override override <XMLファイル>` 　いまの設定を全部消してから、新しいコンフィグとしてファイルの内容を読み込みます。
 
-`restart` プロセスを再起動します。
+`(config)# load override replace <XMLファイル>` 　ファイルで指定した部分だけを差し替えて、残りの部分は現状を維持します。
 
-`request system reboot` 装置を再起動します。
+`restart ＜プロセス名＞` 　プロセスを再起動します。
 
-`enter-network-instance default` defaultのインスタンスに入ります。
+`request system reboot` 　装置を再起動します。
 
-`exit-network-instance` インスタンスから抜けます。
+`enter-network-instance default` 　defaultという名前のインスタンスに入ります。defaultは最初から作られています。
 
-`show network-instance default protocol ISIS MAIN interface * state`
+`exit-network-instance` 　インスタンスから抜けます。
 
-`show network-instance default rib IPV4 ipv4-entries entry displaylevel 1` ルーティングテーブルをシンプルに表示します。
+`show network-instance default protocol ISIS MAIN interface * state` 　ISISのインタフェース状態を確認します。
 
-`show network-instance management rib IPV4 ipv4-entries entry` ma1に付いてるIPアドレスを確認します
+`show network-instance default rib IPV4 ipv4-entries entry displaylevel 1` 　ルーティングテーブルをシンプルに表示します。
 
-例
+`show network-instance management rib IPV4 ipv4-entries entry` 　ma1に付いてるIPアドレスを確認します
 
-```text
-root@R1# show network-instance default rib IPV4 ipv4-entries entry displaylevel 1
-ipv4-entries entry 192.168.255.1/32
-ipv4-entries entry 192.168.255.2/32
-```
-
-`show interface swp1 counters | repeat 1` 1秒に一度、インタフェースのカウンター値を表示します。
+`show interface swp1 counters | repeat 1` 　1秒に一度、インタフェースのカウンター値を表示します。
 
 <br><br>
 
-## 装置へのログイン
+## アカウントによるログイン動作の違い
 
-所属しているのがadminsグループか、operatorsグループかで振る舞いが変わります。
+所属しているアカウントがadminsグループか、operatorsグループか、によって振る舞いが変わります。
 
-CML上の仮想インスタンスの場合はこのような動きでした。
-実際のハードウェアアプライアンスでは異なる動きになるかもしれません。
+CML上の仮想インスタンスの場合、以下のような動きでしたが、実際のハードウェアアプライアンスでは異なる動きになるかもしれません。
 
 - rootでSSH接続　→　"default" vrfのbashが開きます。
 - rootでコンソール接続　→　"default" vrfのbashが開きます。
@@ -271,7 +261,9 @@ CML上の仮想インスタンスの場合はこのような動きでした。
 
 <br>
 
-ユーザrootでSSHした場合の例。bashに入ります。
+【例】rootで装置にSSHした場合
+
+bashに入ります。
 
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ssh 192.168.254.1 -l root
@@ -284,7 +276,9 @@ root@P1:~# pwd
 /root
 ```
 
-ユーザciscoでSSHした場合の例。CLIが走ります。
+【例】adminsグループに属するユーザciscoでSSHした場合
+
+cliが走ります。
 
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ssh 192.168.254.1 -l cisco
@@ -301,7 +295,9 @@ Possible completions:
   clear                    Clear domain specific information
 ```
 
-ユーザoperatorでSSH接続した場合。CLIが走りますが、設定変更はできません。
+【例】operatorsグループに属するユーザoperatorでSSH接続した
+
+CLIが走りますが、設定変更はできません。
 
 ```bash
 isco@jumphost:~/expt-cml/arcos$ ssh 192.168.254.1 -l operator
@@ -322,7 +318,9 @@ operator@P1# config
 syntax error: expecting
 ```
 
-別のルータからrootでSSH接続した場合の例。普通に入れてしまいます。
+【例】別のルータからrootでSSH接続した場合
+
+Linuxのbashに入ります。
 
 ```bash
 root@PE14# ssh 2001:db8:ffff::1
@@ -337,15 +335,15 @@ root@P1:~#
 root@P1:~#
 ```
 
-SSH接続をmanagement vrfに制限する方法はなさそうです。
+SSH接続を受け付けるインタフェースをmanagement vrfに制限する方法はなさそうです。
 
-商用環境だとインバンドでの接続が解放されているとまずいので、装置へのアクセス制御をしっかりとかけなければいけません。
+商用環境だとインバンドでのSSH接続が解放されているとまずいので、装置へのアクセス制御をしっかりとかけなければいけません。
 
 <br><br>
 
 ## 設定関連の操作
 
-コンフィグモードに入る方法
+コンフィグモードに入るバリエーションが３つあります。
 
 ```bash
 root@P1# conf ?
@@ -412,7 +410,7 @@ SNo. ID       User       Client      Time Stamp          Label       Comment
 2    10099    root       cli         2025-12-16 09:42:35
 ```
 
-上が新しいです。シリアル番号は最新が0です。
+上に表示されるものが新しいコミットです（シリアル番号0が最新です）。
 
 そのコミットで何を変更したのかを確認するには　`show configuration commit changes ＜番号＞`　です。
 
@@ -430,7 +428,7 @@ system hostname PP1
 
 過去のコミットに戻すこともできますが、これは設定変更になるのでコンフィグモードに移らないとできません。
 
-コンフィグモードで　`rollback configuration ＜番号＞`　です。
+コンフィグモードに入ってから　`rollback configuration ＜番号＞`　です。
 
 一つ前の状態、すなわち番号1に戻してみます。
 
@@ -453,7 +451,7 @@ system hostname P1
 root@PP1(config)#
 ```
 
-改めてコミットすれば反映されます。
+改めてコミットすれば変更が反映されます。
 
 <br>
 
@@ -461,7 +459,7 @@ root@PP1(config)#
 
 排他コンフィグモードで　`commit confirmed ＜分＞`　です。
 
-排他コンフィグモードではない、通常のコンフィグモードで実際にやってみると、次のようなエラーになります。
+排他コンフィグモードではない、通常のコンフィグモードで試みると次のようなエラーになります。
 
 ```bash
 root@PP1(config)# commit confirmed ?
@@ -489,9 +487,9 @@ performing the commit operation within 1 minutes.
 root@P1(config)#
 ```
 
-設定が反映されたのでプロンプトが PP1 から P1 に戻ってます。
+最初はホスト名がPP1でしたが、設定が反映されて最後には P1 に変更されました。
 
-１分経過すると、
+その後、１分が経過すると、コンソールに以下のように表示されて、元の設定に戻ります。
 
 ```bash
 root@P1(config)#
@@ -503,9 +501,7 @@ root@PP1(config)#
 root@PP1(config)#
 ```
 
-元の設定に戻ります。
-
-指定した時間内に、確定するには commit を再度実行します。
+設定を永続化するには、指定した時間内に commit を再度実行します。
 
 ```bash
 root@PP1(config)# rollback configuration 1
@@ -538,17 +534,17 @@ root@PP1(config)#
 root@PP1(config)#
 ```
 
-ホスト名が PP1 だったのが、ロールバックして P1 に戻りましたが、abortしたので元の PP1 に戻ってます
+最初はホスト名が PP1 でしたが、設定をロールバックして P1 に戻りましたが、commit abortしたので即座に元の PP1 に戻ってます。
 
 <br>
 
-装置のコンフィグをLinux上のファイルとして保存できます。
+装置のコンフィグはLinux上のファイルとして保存することができます。
 
 ```text
 root@PP1# show running-config | save config.txt
 ```
 
-rootの場合はexitでCLIを抜けてbashに戻るかと、保存したファイルを確認できます。
+rootの場合はexitでCLIを抜けてbashに戻ると、保存したファイルを確認できます。
 
 ```bash
 root@P1:~# ls
@@ -556,7 +552,7 @@ config.txt
 root@P1:~#
 ```
 
-bashに戻らずとも、CLIの中からも確認できます。
+bashに戻らずとも、CLIの中からも `file list` コマンドで確認できます。
 
 ```bash
 root@PP1# file list
@@ -573,17 +569,17 @@ root@PP1#
 
 <br>
 
-保存しておいたファイルからロードすることもできます。
+保存しておいた設定ファイルを取り込むこともできます。取り込み方は３つあります。
 
-**merge** - 現在の設定にファイルの中身をマージします
+**merge** 　現在の設定にファイルの中身をマージします。
 
-**override** - 今動いている設定を全て消してから、ファイルの中身を反映させます
+**override** 　今動いている設定を全て消してから、ファイルの中身を反映させます。
 
-**replace** - ファイルの内容で置き換え、ファイルにない部分は今のコンフィグを継続します
+**replace** 　ファイルの内容で置き換え、ファイルに書かれていない部分は今のコンフィグを継続します。
 
-この3個はNETCONFで定義されているものと同じと考えられます。
+この３つの動作はNETCONFで規定されている動作と同じと考えられます。
 
-mergeとreplaceは近しい動作で分かりづらいです。
+mergeとreplaceは近しい動作で違いが分かりづらいです。
 
 mergeの場合、新しい設定にのみ存在する要素は追加され、両方に存在する要素は新しい値で更新、既存の設定にのみ存在する要素は変更されず、削除もされません。
 
@@ -591,9 +587,9 @@ replaceの場合、既存の設定データを新しい設定データで完全�
 
 overrideは初期化した状態からの回復になるので、丸ごと入れ替えるときに使います。
 
-全文を含むコンフィグの場合、どれを選んでも変わらないので、試しにここでは `system hostname PP1` という１行だけを含んだファイルを作って、それをロードしてみます。
+試しにここでは `system hostname PP1` という１行だけを含んだファイルを作って、それをロードしてみます。
 
-まずは **merge** の場合。期待通りの動きをします。
+まずは **merge** の場合。ホスト名だけが変更されます。期待通りの動きをします。
 
 ```bash
 root@P1# config
@@ -639,6 +635,8 @@ no system ssh-server permit-root-login true
 
 最後に **replace** の場合です。投入されているのが1行だけだとmergeと区別が付きません。
 
+ここが分かりづらいところです。
+
 ```bash
 root@P1(config)# load replace config.txt
 Loading.
@@ -650,23 +648,27 @@ root@P1(config)#
 
 コンフィグをツリーの階層構造で考えたときに、そのツリーを丸ごと入れ替えるのがreplace、指定されたものだけを入れ替えて既に存在している部分は残すのがmergeです。
 
+system hostnameコマンドは、それより先に枝分かれしない設定なので、この場合はreplaceとmergeは同じ動きになります。
+
+いずれにしても `show configuration` でどのような変更が適用されるのかを確認してからコミットすれば、間違いは防げます。
+
 <br><br><br>
 
 # L3VPN over SRv6
 
 <br>
 
-検証するための環境として L3VPN over SRv6 を構築します。
+ルータ単体では検証しずらいので、動作検証するためのネットワーク環境として L3VPN over SRv6 を構築します。
 
 個人的に、この環境を簡単に作れると **良い装置** という印象を持ちます。
 
-ArcOSはとても簡単だったので、良い装置です。
+ArcOSは簡単に構築できたので、印象はとても良いです。
 
 個人的感想
 
-- 難しい = IOS-XR
-- 普通 = FRR
-- 簡単 = ArcOS、FITELnet
+- 難しい装置 = IOS-XR
+- 普通の装置 = FRR
+- 簡単な装置 = ArcOS、FITELnet
 
 <br>
 
@@ -674,7 +676,7 @@ ArcOSはとても簡単だったので、良い装置です。
 
 <br>
 
-このラボはPythonスクリプトで作成しますが、手順を踏む必要があるため `make` コマンドを使います。
+このラボ環境はPythonスクリプトで作成しますが、手順を踏む必要があるため `make` コマンドを使います。
 
 ```bash
 $ make
@@ -698,17 +700,21 @@ terminal                       ルータのコンソールに接続する
 
 <br>
 
-`make upload` すると生成したルータのコンフィグを踏み台サーバに配置して、Zero Touch Provisioningで配信できるようになります。
+`make upload` すると、Pythonで生成したルータのコンフィグを踏み台サーバに配置します。
 
-各ルータはma1インタフェースをma-switchに接続していますので、初回起動時にDHCPでアドレスを取得すると共に、TFTPでファイルをダウンロードして起動します。
+各ルータはma1インタフェースをma-switchに接続していますので、初回起動時にDHCPでアドレスを取得すると共に、TFTPでその設定ファイルをダウンロードして起動します。
+
+各ルータの設定は以下の通りです。
 
 [P1.cfg](/arcos/config/P1.cfg)　　[P2.cfg](/arcos/config/P2.cfg)　　[PE11.cfg](/arcos/config/PE11.cfg)　　[PE12.cfg](/arcos/config/PE12.cfg)　　[PE13.cfg](/arcos/config/PE13.cfg)　　[PE14.cfg](/arcos/config/PE14.cfg)
 
 <br><br>
 
-## SRv6注意事項
+## SRv6を動作させるときの注意事項
 
-重要なのはここ。
+ハマりどころがいくつかあります。
+
+PEルータで作成するVRFの中でBGPを動かしますが、その中で設定する `global sid-allocation-mode` は **INSTANCE_SID** 以外、動きません。
 
 ```text
 network-instance vrf-1
@@ -717,11 +723,9 @@ network-instance vrf-1
   global sid-allocation-mode INSTANCE_SID
 ```
 
-PEルータで作成するVRFの中でBGPを動かしますが、その中で設定する **global sid-allocation-mode** は INSTANCE_SID 以外、動きません。
-
 もうひとつ重要なのは、IPv6アドレスのBGPネイバーには **extended-nexthop enable true** の設定が必要なこと。
 
-RFC 8950(Advertising IPv4 Network Layer Reachability Information with an IPv6 Next Hop)を有効にする設定です。
+これはRFC 8950(Advertising IPv4 Network Layer Reachability Information with an IPv6 Next Hop)を有効にする設定です。
 
 ```text
 network-instance default
@@ -733,16 +737,15 @@ network-instance default
     exit
 ```
 
-これを設定しない場合は、状態がESTABLISHEDになっても、L3VPN_IPV4_UNICASTの経路は交換してくれません。
-
+これを設定しないとネイバーの状態がESTABLISHEDになってもL3VPN_IPV4_UNICASTの経路を交換してくれません。
 
 <br><br>
 
-## 装置の管理アドレス
+## 装置の管理アドレス設定
 
-ループバックにIPv4とIPv6アドレスを割り当てて、それを装置を代表するアドレスにします。
+ループバックにIPv4とIPv6アドレスを割り当て、装置を代表するアドレスにします。
 
-ICMPメッセージの送信元IPアドレスは指定するようにします。
+ICMPメッセージの送信元IPアドレスは以下のように設定します。
 
 ```text
 !
@@ -755,19 +758,16 @@ system icmp source-interface loopback0
 
 ## 装置へのアクセス制御
 
-初期状態でmanagementという名前のvrfが作られています。
+初期状態でmanagementという名前のvrfが作られていますが、
+SNMPやSSH、NETCONF、RESTCONFなどの管理通信がそのvrfに紐づけられているわけではありません。
 
-SNMPやSSH、NETCONF、RESTCONF等の管理通信がmanagement vrfに限定されている、ということはないようです。
+確認した限りでは以下のような動作になっています。
 
-装置自身への着信通信は別途制限を付ける必要があります。
+- SSHは着信するVRFを設定できない（どのインタフェースでも着信できる）
 
-これはCoPPとコントロールプレーンACLで制御します。
+- NETCONFは着信するVRFを設定できない（どのインタフェースでも着信できる）
 
-処理の順序は、CoPP → コントロールプレーンACL、の順になっています。
-
-- SSHはVRFを設定できない（どのインタフェースでも着信できる）
-
-- NETCONFはVRFを設定できない（どのインタフェースでも着信できる）
+- RESTCONFは通信するIPアドレスを設定できる（インタフェースやVRFは指定できない）
 
 - NTPは通信するVRF（もしくはインタフェース）を設定できる
 
@@ -775,8 +775,13 @@ SNMPやSSH、NETCONF、RESTCONF等の管理通信がmanagement vrfに限定さ�
 
 - gNMIは通信するVRF（もしくはインタフェース）を設定できる
 
-- RESTCONFは通信するIPアドレスを設定できる（インタフェースやVRFは指定できない）
+SSH（とその上で動くプロトコルNETCONF）は要注意です。
+VRFとの紐づけはできず、リッスンするIPアドレスも指定できませんので、
+装置自身に着信する通信は別途制限しなければいけません。
 
+この制御はCoPPとコントロールプレーンACLで行います。
+
+処理の順序は、CoPP → コントロールプレーンACL、の順になっています。
 
 <br><br>
 
@@ -784,40 +789,50 @@ SNMPやSSH、NETCONF、RESTCONF等の管理通信がmanagement vrfに限定さ�
 
 NETCONFはSSHv2の上で動く、ネットワーク機器を制御するプロトコルです。
 
-できたこと
+簡単なPythonスクリプトを書いて検証します。
 
-- SSHプロキシを経由しない、直接接続するNETCONFF
+> [!NOTE]
+>
+> YANGファイルは装置の中（/usr/share/arcos/openconfig/models）にありました。
+
+<br>
+
+### NETCONFの検証サマリ
+
+検証できたこと
+
+- SSHプロキシを経由しない、直接接続するNETCONF
 - XML形式のコンフィグの全文取得
 
-できなかったこと
+検証できなかったこと
 
 - 踏み台サーバをSSHプロキシとしたNETCONF接続（netmiko、scrapli、ncclientいずれもダメ）
 - 状態データの取得
 
 <br>
 
-### サマリ
+### ArcOSのNETCONF動作
 
 - SSHのポート番号は830
 - NETCONFのタイムアウトはデフォルトで0（タイムアウトなし）
-- 大きなコンフィグの操作は時間がかかるので、タイムアウトを指定する場合は要注意
 - 状態データを取得はできない
 - 想定される利用シーンは、遠隔からの設定の操作（取得、反映）
 
-
 <br>
 
-有効にする設定。
+NETCONFを有効にする設定。
 
 ```text
 system netconf-server enable true
 ```
 
-トランスポートにSSHを指定する設定。SSHのポートは830です。設定で変更できます。
+トランスポートにSSHを指定する設定。
 
 ```text
 system netconf-server transport ssh enable true
 ```
+
+デフォルトのポート番号は830です（変更できます）。
 
 Capabilityを確認する例。
 
@@ -886,7 +901,7 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py get
 
 <br>
 
-/tmp/192.168.254.1.xml に保存されたので、これを手動で編集して、ホスト名を変更します。
+/tmp/192.168.254.1.xml に設定が保存されたので、これを手動で編集して、ホスト名を変更します。
 
 手動で変更したXML形式のファイルを適用する例。
 
@@ -923,7 +938,7 @@ root@PP1#
 
 <br>
 
-一定時間後に元の設定に戻す場合（confirmed commit）
+一定時間後に元の設定に戻す（confirmed commit）の例。
 
 `./nc.py apply-confirmed -f /tmp/192.168.254.1.xml`
 
@@ -976,7 +991,7 @@ root@P1#
 
 <br>
 
-2分以内に確定すれば永続化できます。
+指定した時間内（この場合は2分以内）に確定すれば、設定を永続化できます。
 
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py confirm
@@ -991,7 +1006,7 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py confirm
 
 <br>
 
-2分待たずにキャンセルすることもできます。
+2分を待たずに即時でキャンセルすることもできます。
 
 ```bash
 cisco@jumphost:~/expt-cml/arcos$ ./nc.py cancel
@@ -1006,7 +1021,7 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py cancel
 
 <br>
 
-ルータのコンソールにはこのようなメッセージが表示されます。
+このときルータのコンソールにはこのようなメッセージが表示されます。
 
 ```text
 Message from system at 2025-12-16 08:38:24...
@@ -1027,7 +1042,7 @@ JSON形式でコンフィグを取得することもできますが、これは�
 </get-configuration>
 ```
 
-とはいっても独自でRPCを組めばよいだけなので、できなくもないです。
+とはいっても独自でRPCメッセージを組めばよいだけなので、できなくもないです。
 
 実行結果。
 
@@ -1091,15 +1106,15 @@ cisco@jumphost:~/expt-cml/arcos$ cat /tmp/192.168.254.1.json | head -50
                     },
 ```
 
-JSON形式で取得したいなら無理してNETCONFでやらなくても、RESTCONF使ったほうがいいです。
+JSON形式で設定を取得したいなら無理してNETCONFでやらなくても、RESTCONFを使ったほうがいいです。
 
-設定に関してきめ細やかなオペレーションをしたいなら、XML形式の設定をNETCONFで操作するのがいいと思います。
+設定に関してきめ細やかなオペレーションをしたいなら、設定はXML形式にして、NETCONFを使って操作するのがいいと思います。
 
 <br><br>
 
 ## RESTCONF
 
-RFC8040
+RESTCONFは RFC 8040 で規定されています。
 
 HTTPSを使うRESTCONFはTCPポート8009です。
 
@@ -1129,21 +1144,25 @@ root@P1(config)#
 
 ### curl
 
-curlのオプション
+RESTCONFの動作検証にはcurlコマンドを使うのが手っ取り早いです。
 
-- **-X GET**  情報取得
-- **-X PUT**  完全置換で更新、すなわち指定していない設定は消されてデフォルトに戻る
-- **-X PATCH**  差分更新、すなわち一部を上書きする動作で、指定していない部分は既存を使う
-- **-X POST**  RESTCONFではコマンド実行に利用
-- **-u username:password**  基本認証、機器のログイン情報を指定します
-- **-k**  自己署名証明書を許可、--insecureと同じ
-- **-H Content-Type:**  データ形式を指定
-- **-d {...}**  JSON形式のデータ
-- **-s**  ダウンロードのプログレスバーを出しません
+curlのオプション早見表
+
+- **-X GET** 　情報取得
+- **-X PUT** 　完全置換で更新、すなわち指定していない設定は消されてデフォルトに戻る
+- **-X PATCH** 　差分更新、すなわち一部を上書きする動作で、指定していない部分は既存を使う
+- **-X POST** 　RESTCONFではコマンド実行に利用
+- **-u username:password** 　基本認証、機器のログイン情報を指定します
+- **-k** 　自己署名証明書を許可、--insecureと同じ
+- **-H Content-Type:** 　データ形式を指定
+- **-d {...}** 　JSON形式のデータを指定
+- **-s** 　ダウンロードのプログレスバーを出しません
 
 データ形式を指定しないとXMLで戻ってきます。
 
 XMLは扱いづらいので、JSON形式で返信してもうとよいと思います。
+
+そのうえでyqコマンドを使うと見やすくなります。
 
 <br>
 
@@ -1151,7 +1170,7 @@ XMLは扱いづらいので、JSON形式で返信してもうとよいと思い�
 
 ツリー全体を取得します。超絶長い結果になりますので、これをパイプラインで渡すと処理しきれません。
 
-これは失敗します。
+以下のような実行は失敗します。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1161,7 +1180,7 @@ https://192.168.254.1:8009/restconf/data \
 
 ファイルに保存してあとから参照すればいいのですが、ルータの処理も重たいので、このような取得は避けたほうがいいと思います。
 
-どんなデータが帰って来るのか、１階層目の項目だけを知りたければ、URIにdepth=1を指定します。
+どんなデータが帰って来るのか、１階層目の項目だけを知りたければ、URIにdepth=1を指定します。これは軽い処理です。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1223,7 +1242,7 @@ https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces \
 | yq -y .
 `
 
-出力を次のようにフィルタすれば、全インタフェースの中から欲しいインタフェースだけを表示できます。
+yqを使って出力を次のようにフィルタすれば、全インタフェースの中から欲しいインタフェースだけを表示できます。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1231,7 +1250,7 @@ https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces | \
 yq -y '."openconfig-interfaces:interfaces".interface[] | select(.name == "swp1" or .name == "swp2")'
 `
 
-<br><br><br>
+<br>
 
 ### GET /restconf/data/openconfig-interfaces:interfaces/interface=swp1
 
@@ -1243,7 +1262,7 @@ https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interf
 | yq -y .
 `
 
-出力をフィルタして２階層目の **項目だけ** を抽出して表示してみます。
+yqで出力をフィルタして２階層目の **項目だけ** を抽出して表示してみます。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1307,7 +1326,7 @@ https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interf
 | yq -y .
 `
 
-そのインタフェースに設定されている内容がみたいなら、URIはこうなります。
+インタフェースに設定されている情報をみたいなら、URIはこうなります。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1333,14 +1352,16 @@ openconfig-interfaces:config:
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
-"https://192.168.254.1:8009/restconf/data/openconfig-system:system?depth=2" | yq -y .
+"https://192.168.254.1:8009/restconf/data/openconfig-system:system?depth=2" \
+| yq -y .
 `
 
 実行例。
 
 ```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
-"https://192.168.254.1:8009/restconf/data/openconfig-system:system?depth=2" | yq -y .
+"https://192.168.254.1:8009/restconf/data/openconfig-system:system?depth=2" \
+| yq -y .
 openconfig-system:system:
   config: {}
   state: {}
@@ -1372,14 +1393,16 @@ openconfig-system:system:
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
-"https://192.168.254.1:8009/restconf/data/openconfig-system:system/config" | yq -y .
+"https://192.168.254.1:8009/restconf/data/openconfig-system:system/config" \
+| yq -y .
 `
 
 実行例。
 
 ```bash
 root@jumphost:~# curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
-"https://192.168.254.1:8009/restconf/data/openconfig-system:system/config" | yq -y .
+"https://192.168.254.1:8009/restconf/data/openconfig-system:system/config" \
+| yq -y .
 openconfig-system:config:
   hostname: P1
   domain-name: iida.local
@@ -1392,14 +1415,16 @@ restconf-serverの設定を取得してみます。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
-https://192.168.254.1:8009/restconf/data/openconfig-system:system/arcos-openconfig-system-augments:restconf-server | yq -y .
+https://192.168.254.1:8009/restconf/data/openconfig-system:system/arcos-openconfig-system-augments:restconf-server \
+| yq -y .
 `
 
 実行例。
 
 ```bash
 root@jumphost:~# curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
-https://192.168.254.1:8009/restconf/data/openconfig-system:system/arcos-openconfig-system-augments:restconf-server | yq -y .
+https://192.168.254.1:8009/restconf/data/openconfig-system:system/arcos-openconfig-system-augments:restconf-server \
+| yq -y .
 arcos-openconfig-system-augments:restconf-server:
   config:
     enable: true
@@ -1424,14 +1449,16 @@ arcos-openconfig-system-augments:restconf-server:
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
-https://192.168.254.1:8009/restconf/operations | yq -y .
+https://192.168.254.1:8009/restconf/operations \
+| yq -y .
 `
 
 実行例。
 
 ```bash
 root@jumphost:~# curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
-https://192.168.254.1:8009/restconf/operations | yq -y .
+https://192.168.254.1:8009/restconf/operations \
+| yq -y .
 ietf-restconf:operations:
   arcos-bgp:clear-bgp-neighbor: /restconf/operations/arcos-bgp:clear-bgp-neighbor
   arcos-bgp:clear-bgp-afi-safi: /restconf/operations/arcos-bgp:clear-bgp-afi-safi
@@ -1494,7 +1521,7 @@ https://192.168.254.1:8009/restconf/operations/arcos-system:get-configuration
 }
 ```
 
-実験してみた結果、operations配下のものはいずれも動作しませんでした。
+他にも実験してみましたが、operations配下のものはいずれも動作しませんでした。
 
 <br><br>
 
@@ -1522,13 +1549,13 @@ system grpc-server enable true
 
 デフォルトでは、通信は暗号化されません。
 
-着信するインタフェースを指定できます。
+gNMIは着信するインタフェースを指定できます。
 
 ```text
 system grpc-server listen-interface ma1
 ```
 
-通信するvrfを指定できます。インタフェースと両方指定したらインタフェースが優先です。
+通信するvrfを指定できます。インタフェースと両方指定したらインタフェースの指定が優先されます。
 
 ```text
 system grpc-server network-instance management
@@ -1545,9 +1572,9 @@ system grpc-server transport-security true
 - /mnt/onl/config/pki/certificate
 - /mnt/onl/config/pki/key.pem
 
-商用環境で使う場合、このファイルを差し替えるのではなく、別の証明書を指定します。
+商用環境で使う場合、このファイルを差し替えるのではなく、別の証明書を準備してそれを設定で指定します。
 
-SAMPLEの間隔は最小30秒。それ以下を指定しても30秒間隔になります。
+SAMPLEの間隔は最小30秒です。それ以下の値を指定しても30秒間隔になります。
 
 <br>
 
@@ -1664,11 +1691,12 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 
 ### Pythonスクリプト（非同期処理）
 
-ターゲットが複数のルータの場合、同時にコネクションを張り続けることになりますので、非同期の方が望ましいです。pygnmiは非同期に対応していないようですので、grpcのPython実装を使います。
+ターゲットが複数のルータの場合、
+同時にコネクションを張り続けることになりますので、非同期処理が望ましいです。
+
+pygnmiは非同期処理に対応していないようですので、grpcのPython実装を使います。
 
 サンプルスクリプト　[gnmi_async.py](/arcos/gnmi_async.py)
-
-
 
 
 
@@ -1680,13 +1708,77 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 
 これから調べます。
 
-`show log`　/var/log配下にあるファイルを表示
+`show log` 　/var/log配下にあるファイルを表示します
 
-arcosディレクトリにログがある
+```bash
+root@localhost# show log ?
+Possible completions:
+  <filename>         Name of log file
+  README
+  alternatives.log
+  apt/
+  arcos/
+  auth.log
+  btmp
+  chrony/
+  core/
+  crash/
+  daemon.log
+  debug
+  eventmgr.log
+  faillog
+  ifupdown2/
+  journal/
+  kern.log
+  lastlog
+  messages
+  private/
+  runit/
+  spyder.log
+  syslog
+  sysstat/
+  user.log
+  wtmp
+```
 
-`monitor start`　リアルタイムにログを表示、tail -fと同等
+/var/log/arcosディレクトリにも、ログファイルがたくさんあります。
+
+```bash
+root@localhost# show log ?
+Possible completions:
+  <filename>         Name of log file
+  README
+  alternatives.log
+  apt/
+  arcos/
+  auth.log
+  btmp
+  chrony/
+  core/
+  crash/
+  daemon.log
+  debug
+  eventmgr.log
+  faillog
+  ifupdown2/
+  journal/
+  kern.log
+  lastlog
+  messages
+  private/
+  runit/
+  spyder.log
+  syslog
+  sysstat/
+  user.log
+  wtmp
+省略
+```
+
+`monitor start` 　リアルタイムにログを表示、tail -fと同等の動作
 
 
+<br><br>
 
 ## debug
 

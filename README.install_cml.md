@@ -517,6 +517,23 @@ bin/setup.sh
 
 <br><br>
 
+## TelnetプロトコルハンドラをTeraTERMに変更する
+
+```bash
+$ tree ./reg
+./reg
+├── win10_64bit_teraterm_ssh.reg
+└── win10_64bit_teraterm_telnet.reg
+```
+
+vscodeでこのリポジトリを開いている場合は、registryフォルダを右クリックして「Explorerで表示」を選択します。
+
+レジストリファイルをダブルクリックしてレジストリを変更、PCを再起動します。
+
+すると `telnet://` のリンクをクリックするとTeraTERMが起動するようになります。
+
+<br><br>
+
 ## 参考文献
 
 <br>

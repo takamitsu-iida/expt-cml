@@ -1179,7 +1179,10 @@ def get_node_url_list(lab: Lab) -> list:
     if lab is None:
         return urls
 
-    for node in lab.nodes():
+    nodes = lab.nodes()
+    nodes.sort(key=lambda n: n.label)
+
+    for node in nodes:
         serial_tags = [ t for t in node.tags() if t.startswith('serial:') ]
         for tag in serial_tags:
             port = tag.split(':')[1]
@@ -1217,12 +1220,12 @@ def generate_html_content(lab: Lab) -> str:
             </tr>
         </thead>
         <tbody>
-        <% for item in url_list: %>
+        {% for item in url_list %}
             <tr>
-                <td><%= item['label'] %></td>
-                <td><a href="<%= item['url'] %>" target="_blank"><%= item['url'] %></a></td>
+                <td>{{ item['label'] }}</td>
+                <td><a href="{{ item['url'] }}" target="_blank">{{ item['url'] }}</a></td>
             </tr>
-        <% endfor %>
+        {% endfor %}
         </tbody>
     </table>
 </body>

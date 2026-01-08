@@ -40,3 +40,6 @@ terminal: ## ルータのコンソールに接続する
 	../bin/open_terminal.sh 6001 6002
 	../bin/open_terminal.sh 6011 6012
 	../bin/open_terminal.sh 6013 6014
+
+browse: ## ブラウザにノードのコンソールURLを表示する
+	../bin/cml_create_arcos_lab.py --browse --title "$(LAB_TITLE)"

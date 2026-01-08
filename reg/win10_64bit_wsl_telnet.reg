@@ -1,0 +1,25 @@
+Windows Registry Editor Version 5.00
+
+; telnet:// プロトコルをopen_terminal.shで処理する設定
+;
+; 使い方:
+; 1. このファイルをダブルクリックしてレジストリに登録
+; 2. telnet://cml:5001 のようなリンクをクリックすると
+;    bin/open_terminal.sh がポート番号を引数として起動される
+;
+; 注意:
+; - WSL2がインストールされていること
+; - 以下のパスを環境に合わせて変更すること
+;   /home/iida/git/expt-cml
+
+[HKEY_CURRENT_USER\SOFTWARE\Classes\telnet]
+@="URL:Telnet Protocol"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\SOFTWARE\Classes\telnet\DefaultIcon]
+@="C:\\Windows\\System32\\wsl.exe,0"
+
+[HKEY_CURRENT_USER\SOFTWARE\Classes\telnet\shell]
+[HKEY_CURRENT_USER\SOFTWARE\Classes\telnet\shell\open]
+[HKEY_CURRENT_USER\SOFTWARE\Classes\telnet\shell\open\command]
+@="wsl.exe -e bash -c \"cd /home/iida/git/expt-cml && bin/protocol_handler_open_terminal.sh '%1'\""

@@ -1,0 +1,10 @@
+Windows Registry Editor Version 5.00
+
+; telnet:// プロトコルのカスタムハンドラー設定を削除（元に戻す）
+; 
+; 使い方:
+; このファイルをダブルクリックしてレジストリから削除
+
+; telnet プロトコルハンドラーを削除
+[-HKEY_CURRENT_USER\SOFTWARE\Classes\telnet]
+

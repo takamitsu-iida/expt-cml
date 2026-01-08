@@ -37,7 +37,10 @@ except ImportError:
 import argparse
 import logging
 import os
+import subprocess
 import sys
+import tempfile
+import time
 
 from pathlib import Path
 
@@ -1106,14 +1109,9 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
 
 def scp_to_jumphost(config_content: str, remote_path: str, mode: str = '644') -> None:
     """SCPコマンドを使ってルータの設定をデプロイする"""
-
     #
     # TODO: paramikoを使ってSCPで送り込むようにした方がよい？
     #
-
-    import subprocess  # コンフィグファイルをSCPで送り込むため
-    import tempfile    # 一時ファイルを作成するため
-
     UBUNTU_ADDRESS = UBUNTU_ENS3.split('/')[0]
 
     try:
@@ -1176,6 +1174,99 @@ def upload_configs_to_jumphost(lab: Lab) -> None:
     scp_to_jumphost(configs["PE14_CONFIG"], "/srv/tftp/PE14.cfg")
 
 
+def get_node_url_list(lab: Lab) -> list:
+    urls = []
+    if lab is None:
+        return urls
+
+    for node in lab.nodes():
+        serial_tags = [ t for t in node.tags() if t.startswith('serial:') ]
+        for tag in serial_tags:
+            port = tag.split(':')[1]
+            url = f"telnet://{CML_ADDRESS}:{port}"
+            urls.append({'label': node.label, 'url': url})
+            break  # 最初のserialタグだけ使う
+
+    return urls
+
+def generate_html_content(lab: Lab) -> str:
+    """ノードのURLリストからHTMLコンテンツを生成する"""
+    url_list = get_node_url_list(lab)
+
+    html_content = \
+"""
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CML Node Console Links</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>CML Node Console Links</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Label</th>
+                <th>URL</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% for item in url_list: %>
+            <tr>
+                <td><%= item['label'] %></td>
+                <td><a href="<%= item['url'] %>" target="_blank"><%= item['url'] %></a></td>
+            </tr>
+        <% endfor %>
+        </tbody>
+    </table>
+</body>
+</html>
+"""
+
+    template = Template(html_content)
+    html_content = template.render({ 'url_list': url_list })
+    return html_content
+
+
+def open_browser(html_content: str = '') -> None:
+    """ブラウザでHTMLを表示"""
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, dir='/tmp') as tmp:
+        tmp.write(html_content)
+        tmp.flush()
+        tmp_path = tmp.name
+
+    try:
+        result = subprocess.run(['wslpath', '-w', tmp_path], capture_output=True, text=True, check=True)
+        windows_path = result.stdout.strip()
+
+        subprocess.Popen(
+            ['powershell.exe', '-Command', f'Start-Process "{windows_path}"'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
+
+        # ブラウザがファイルを読み込むまで待機
+        time.sleep(10)
+
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+    except subprocess.CalledProcessError as e:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+    except Exception as e:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
 if __name__ == '__main__':
 
     def main() -> None:
@@ -1189,6 +1280,7 @@ if __name__ == '__main__':
         parser.add_argument('--title', type=str, default=LAB_TITLE, help=f'Lab title (default: {LAB_TITLE})')
         parser.add_argument('--description', type=str, default=LAB_DESCRIPTION, help=f'Lab description (default: {LAB_DESCRIPTION})')
         parser.add_argument('--upload', action='store_true', default=False, help='Upload configuration files to jumphost')
+        parser.add_argument('--browser', action='store_true', default=False, help='Open browser to display HTML content')
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了
@@ -1228,6 +1320,27 @@ if __name__ == '__main__':
 
         if args.upload:
             upload_configs_to_jumphost(lab) if lab else logger.error(f"Lab '{args.title}' not found")
+            return
+
+        # 環境変数でバックグラウンドモードかチェック
+        if os.getenv('_INTERNAL_BROWSER_MODE') == '1':
+            html_content = generate_html_content(lab)
+            open_browser(html_content=html_content)
+            return
+
+        if args.browser:
+            # 環境変数でバックグラウンド実行を指示
+            env = os.environ.copy()
+            env['_INTERNAL_BROWSER_MODE'] = '1'
+
+            subprocess.Popen(
+                [sys.executable, __file__],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
+            logger.info("ブラウザ起動プロセスを開始しました（バックグラウンド実行）")
             return
 
     #

@@ -27,7 +27,19 @@ grpcio-tools
 # pyATS フルインストール、virl2_clientからpyATSを使うために必要
 # バージョン一覧
 # https://pypi.org/project/pyats/#history
-pyats[full]==25.11
+
+# pyATS core only
+# pyats==25.11
+
+# pyATS + Library(Genie)
+# This is the recommended option
+pyats[library]==25.11
+
+# pyATS + RobotFramework support
+# pyats[robot]==25.11
+
+# pyATS + all optional extras
+# pyats[full]==25.11
 
 # MCP Python SDK
 # 便利だけど、現状ではFastMCPしか使わないのでコメントアウト

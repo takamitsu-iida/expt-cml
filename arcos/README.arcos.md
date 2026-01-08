@@ -687,6 +687,7 @@ start                          ラボを開始する
 stop                           ラボを停止する
 delete                         ラボを削除する
 terminal                       ルータのコンソールに接続する
+browse                         ブラウザにノードのコンソールURLを表示する
 ```
 
 <br>

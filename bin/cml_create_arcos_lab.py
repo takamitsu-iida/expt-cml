@@ -1188,6 +1188,7 @@ def get_node_url_list(lab: Lab) -> list:
 
     return urls
 
+
 def generate_html_content(lab: Lab) -> str:
     """ノードのURLリストからHTMLコンテンツを生成する"""
     url_list = get_node_url_list(lab)
@@ -1314,7 +1315,7 @@ if __name__ == '__main__':
         parser.add_argument('--title', type=str, default=LAB_TITLE, help=f'Lab title (default: {LAB_TITLE})')
         parser.add_argument('--description', type=str, default=LAB_DESCRIPTION, help=f'Lab description (default: {LAB_DESCRIPTION})')
         parser.add_argument('--upload', action='store_true', default=False, help='Upload configuration files to jumphost')
-        parser.add_argument('--browser', action='store_true', default=False, help='Open browser to display HTML content')
+        parser.add_argument('--browser', action='store_true', default=False, help='Open browser to display console links')
         args = parser.parse_args()
 
         # 引数が何も指定されていない場合はhelpを表示して終了

@@ -1106,7 +1106,6 @@ def create_lab(client: ClientLibrary, title: str, description: str) -> None:
     logger.info(f"id: {lab.id}")
 
 
-
 def scp_to_jumphost(config_content: str, remote_path: str, mode: str = '644') -> None:
     """SCPコマンドを使ってルータの設定をデプロイする"""
     #
@@ -1179,10 +1178,7 @@ def get_node_url_list(lab: Lab) -> list:
     if lab is None:
         return urls
 
-    nodes = lab.nodes()
-    nodes.sort(key=lambda n: n.label)
-
-    for node in nodes:
+    for node in lab.nodes():
         serial_tags = [ t for t in node.tags() if t.startswith('serial:') ]
         for tag in serial_tags:
             port = tag.split(':')[1]
@@ -1212,22 +1208,57 @@ def generate_html_content(lab: Lab) -> str:
 </head>
 <body>
     <h1>CML Node Console Links</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Label</th>
-                <th>URL</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for item in url_list %}
-            <tr>
-                <td>{{ item['label'] }}</td>
-                <td><a href="{{ item['url'] }}" target="_blank">{{ item['url'] }}</a></td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+    <br>
+    <h2>P Routers</h2>
+        <table>
+            <thead>
+                <tr><th>Label</th><th>URL</th></tr>
+            </thead>
+            <tbody>
+            {% for item in url_list %}
+                {% if item['label'].startswith('P') and not item['label'].startswith('PE') %}
+                <tr>
+                    <td>{{ item['label'] }}</td>
+                    <td><a href="{{ item['url'] }}" target="_blank">{{ item['url'] }}</a></td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+    <br>
+    <h2>PE Routers</h2>
+        <table>
+            <thead>
+                <tr><th>Label</th><th>URL</th></tr>
+            </thead>
+            <tbody>
+            {% for item in url_list %}
+                {% if item['label'].startswith('PE') %}
+                <tr>
+                    <td>{{ item['label'] }}</td>
+                    <td><a href="{{ item['url'] }}" target="_blank">{{ item['url'] }}</a></td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+    <br>
+    <h2>CE Routers</h2>
+        <table>
+            <thead>
+                <tr><th>Label</th><th>URL</th></tr>
+            </thead>
+            <tbody>
+            {% for item in url_list %}
+                {% if item['label'].startswith('CE') %}
+                <tr>
+                    <td>{{ item['label'] }}</td>
+                    <td><a href="{{ item['url'] }}" target="_blank">{{ item['url'] }}</a></td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
 </body>
 </html>
 """
@@ -1348,5 +1379,5 @@ if __name__ == '__main__':
 
     #
     # 実行
-    ##
+    #
     main()

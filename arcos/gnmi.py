@@ -11,6 +11,7 @@ pip install pygnmi
 import argparse
 import logging
 import sys
+from typing import Any
 
 try:
     from pygnmi.client import gNMIclient, telemetryParser
@@ -21,14 +22,94 @@ except ImportError:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# 定数定義
+DEFAULT_PORT = 9339
+DEFAULT_USERNAME = 'cisco'
+DEFAULT_PASSWORD = 'cisco123'
+SAMPLE_INTERVAL_NS = 30_000_000_000  # 30秒をナノ秒で表現
+DEFAULT_SAMPLE_PATHS = [
+    '/interfaces/interface[name=swp1]/state/counters/in-octets',
+    '/interfaces/interface[name=swp1]/state/counters/out-octets'
+]
+DEFAULT_ON_CHANGE_PATHS = [
+    '/interfaces/interface[name=swp1]/state/oper-status'
+]
+
+
+def create_subscription_list(sample_paths: list[str],
+                              on_change_paths: list[str]) -> dict[str, Any]:
+    """
+    gNMI購読設定を生成する
+
+    Args:
+        sample_paths: SAMPLEモードで監視するパスのリスト
+        on_change_paths: ON_CHANGEモードで監視するパスのリスト
+
+    Returns:
+        gNMI購読設定の辞書
+    """
+    subscriptions = []
+
+    # SAMPLEモードのパスを追加
+    for path in sample_paths:
+        subscriptions.append({
+            'path': path,
+            'mode': 'sample',
+            'sample_interval': SAMPLE_INTERVAL_NS
+        })
+
+    # ON_CHANGEモードのパスを追加
+    for path in on_change_paths:
+        subscriptions.append({
+            'path': path,
+            'mode': 'on_change'
+        })
+
+    return {
+        'subscription': subscriptions,
+        'use_aliases': False,
+        'mode': 'stream',
+        'encoding': 'proto'
+    }
+
+
+def process_telemetry_data(telemetry_entry: dict[str, Any]) -> None:
+    """
+    テレメトリデータを解析してログ出力する
+
+    Args:
+        telemetry_entry: pygnmiから受信したテレメトリデータ
+    """
+    parsed_data = telemetryParser(telemetry_entry)
+
+    if 'update' not in parsed_data:
+        return
+
+    timestamp = parsed_data['update'].get('timestamp', 'N/A')
+
+    for update in parsed_data['update'].get('update', []):
+        path = update.get('path', 'N/A')
+        value = update.get('val', 'N/A')
+        logger.info(f"時刻: {timestamp}, パス: {path}, 値: {value}")
+
 
 def main(host: str,
          port: int,
          username: str,
          password: str,
          sample_paths: list[str],
-         on_change_paths: list[str]):
+         on_change_paths: list[str]) -> None:
+    """
+    gNMIクライアントを起動してテレメトリデータを受信する
 
+    Args:
+        host: ルータのホスト名またはIPアドレス
+        port: gNMIポート番号
+        username: 認証ユーザ名
+        password: 認証パスワード
+        sample_paths: SAMPLEモードで監視するパスのリスト
+        on_change_paths: ON_CHANGEモードで監視するパスのリスト
+    """
     try:
         with gNMIclient(target=(host, port),
                         username=username,
@@ -37,58 +118,31 @@ def main(host: str,
 
             logger.info(f"✅ ルータ {host}:{port} への接続に成功しました")
 
-            # サブスクリプションリストを動的に生成
-            subscriptions = []
-
-            # SAMPLEモードのパスを追加
-            for path in sample_paths:
-                subscriptions.append({
-                    'path': path,
-                    'mode': 'sample',
-                    'sample_interval': 30_000_000_000  # 30秒（ナノ秒）
-                })
-
-            # ON_CHANGEモードのパスを追加
-            for path in on_change_paths:
-                subscriptions.append({
-                    'path': path,
-                    'mode': 'on_change'
-                })
-
-            subscribe = {
-                'subscription': subscriptions,
-                'use_aliases': False,
-                'mode': 'stream',
-                'encoding': 'proto'
-            }
+            # サブスクリプション設定を生成
+            subscribe = create_subscription_list(sample_paths, on_change_paths)
 
             logger.info(f"サブスクリプション開始 (Ctrl+Cで終了)")
-            logger.info(f"  SAMPLE paths: {sample_paths}")
-            logger.info(f"  ON_CHANGE paths: {on_change_paths}")
+            logger.info(f"  SAMPLE paths ({len(sample_paths)}件): {sample_paths}")
+            logger.info(f"  ON_CHANGE paths ({len(on_change_paths)}件): {on_change_paths}")
 
             telemetry_stream = gc.subscribe(subscribe=subscribe)
 
             for telemetry_entry in telemetry_stream:
-                parsed_data = telemetryParser(telemetry_entry)
-
-                if 'update' in parsed_data:
-                    timestamp = parsed_data['update'].get('timestamp', 'N/A')
-
-                    for update in parsed_data['update'].get('update', []):
-                        path = update.get('path', 'N/A')
-                        value = update.get('val', 'N/A')
-
-                        logger.info(f"時刻: {timestamp}, パス: {path}, 値: {value}")
+                process_telemetry_data(telemetry_entry)
 
     except KeyboardInterrupt:
         logger.info("\n🛑 ユーザーによって処理が中断されました (Ctrl+C)")
+    except ConnectionError as e:
+        logger.error(f"🚨 ルータへの接続に失敗しました: {e}")
+        sys.exit(1)
     except Exception as e:
-        logger.error(f"🚨 接続またはデータ取得中にエラーが発生しました: {e}")
+        logger.error(f"🚨 予期しないエラーが発生しました: {e}", exc_info=True)
+        sys.exit(1)
     finally:
         logger.info("✅ プログラムを終了します")
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """コマンドライン引数をパースする"""
 
     epilog = \
@@ -103,7 +157,7 @@ def parse_args():
            --on-change-path '/interfaces/interface[name=swp2]/state/oper-status'
 """
     parser = argparse.ArgumentParser(
-        description='gNMI テレメトリクライアント（pygnmi使用）',
+        description='gNMI テレメトリクライアント(pygnmi使用)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=epilog
     )
@@ -118,34 +172,34 @@ def parse_args():
     parser.add_argument(
         '--port',
         type=int,
-        default=9339,
-        help='gNMIポート番号（デフォルト: 9339）'
+        default=DEFAULT_PORT,
+        help=f'gNMIポート番号(デフォルト: {DEFAULT_PORT})'
     )
 
     parser.add_argument(
         '--username',
-        default='cisco',
-        help='認証ユーザ名（デフォルト: cisco）'
+        default=DEFAULT_USERNAME,
+        help=f'認証ユーザ名(デフォルト: {DEFAULT_USERNAME})'
     )
 
     parser.add_argument(
         '--password',
-        default='cisco123',
-        help='認証パスワード（デフォルト: cisco123）'
+        default=DEFAULT_PASSWORD,
+        help=f'認証パスワード(デフォルト: {DEFAULT_PASSWORD})'
     )
 
     parser.add_argument(
         '--sample-path',
         action='append',
         dest='sample_paths',
-        help='SAMPLEモードで監視するパス（複数指定可）'
+        help='SAMPLEモードで監視するパス(複数指定可)'
     )
 
     parser.add_argument(
         '--on-change-path',
         action='append',
         dest='on_change_paths',
-        help='ON_CHANGEモードで監視するパス（複数指定可）'
+        help='ON_CHANGEモードで監視するパス(複数指定可)'
     )
 
     parser.add_argument(
@@ -166,15 +220,10 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(logging.DEBUG)
 
     # SAMPLEモードのパス設定(指定がなければデフォルト値を設定)
-    sample_paths = args.sample_paths or [
-        '/interfaces/interface[name=swp1]/state/counters/in-octets',
-        '/interfaces/interface[name=swp1]/state/counters/out-octets'
-    ]
+    sample_paths = args.sample_paths or DEFAULT_SAMPLE_PATHS
 
     # ON_CHANGEモードのパス設定(指定がなければデフォルト値を設定)
-    on_change_paths = args.on_change_paths or [
-        '/interfaces/interface[name=swp1]/state/oper-status'
-    ]
+    on_change_paths = args.on_change_paths or DEFAULT_ON_CHANGE_PATHS
 
     main(
         host=args.host[0],

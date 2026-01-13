@@ -126,6 +126,47 @@ root@localhost(config)#
 
 <br><br>
 
+## ゼロタッチプロビジョニング(ZTP)
+
+ArcOSは初期状態でゼロタッチプロビジョニングが走ります。
+
+管理インタフェース（ma1）はDHCPでIPアドレスを得ようとします。
+
+DHCPのオプションで指定されたURLからコンフィグをダウンロードして、それを適用します。
+
+
+<br>
+
+### dnsmasqの設定
+
+ISC DHCPは設定が簡単で便利ですが、2022年にメンテナンスが終了していますので、別のサーバを使います。
+
+ISC DHCPの後継はKea DHCPのようですが、ここではdnsmasqを使います。
+
+dnsmasqを使って6台全てのArcOSに対して共通のURLを配る場合の設定例。
+
+```text
+dhcp-host=52:54:00:00:00:01,set:arcos_vm
+dhcp-host=52:54:00:00:00:02,set:arcos_vm
+dhcp-host=52:54:00:00:00:03,set:arcos_vm
+dhcp-host=52:54:00:00:00:04,set:arcos_vm
+dhcp-host=52:54:00:00:00:05,set:arcos_vm
+dhcp-host=52:54:00:00:00:06,set:arcos_vm
+dhcp-option-force=tag:arcos_vm,43,00:23:00:1d:(共通URLの16進数)
+```
+
+43はDHCPのオプション43で、ベンダ固有の情報を指定します。
+
+`00:23` の部分はコード35を意味しています。16進、2バイト幅で記載します。
+
+`00:1d` の部分は続く文字列の長さを意味しています。これも16進、2バイト幅で記載します。
+
+さらにその先にはコンフィグファイルを取得するためのURLを書きますが、tftp://といった文字列を16進に変換しなければならず、非常に難儀します。
+
+ですが、事前に作っておいたファイルでルータが立ち上がりますので、うまく動けばとても便利です。
+
+<br><br>
+
 ## cliコマンド早見表
 
 <br>
@@ -1804,7 +1845,7 @@ radtest operator password localhost 0 testing123
 
 <br><br>
 
-## TODO(調べること)
+## TODO
 
 キャプチャしてデフォルト状態で流れるパケットを確認する。
 
@@ -1812,29 +1853,4 @@ radtest operator password localhost 0 testing123
 
 LLDPも流れてたので停止したい。
 
-他にないかな？
-
 ポートスキャンをかけてみて、どのポートが開いているかを確認したい。
-
-<!--
-
-dnsmasqを使って6台全てのArcOSに対して共通のURLを配る場合の設定
-
-dhcp-host=52:54:00:00:00:01,set:arcos_vm
-dhcp-host=52:54:00:00:00:02,set:arcos_vm
-dhcp-host=52:54:00:00:00:03,set:arcos_vm
-dhcp-host=52:54:00:00:00:04,set:arcos_vm
-dhcp-host=52:54:00:00:00:05,set:arcos_vm
-dhcp-host=52:54:00:00:00:06,set:arcos_vm
-dhcp-option-force=tag:arcos_vm,43,00:23:00:1d:(共通URLの16進数)
-
-43はDHCPのオプション43で、ベンダ固有の情報を指定する
-その先の指定は16進数で書かなければいけないので難儀する。
-tftp://といったURLの文字列を16進に変換しなければいけない。
-
-フィールド  値 (HEX)        説明
-Sub-Option Code	00:23      コード35を16進表記 (2バイト幅)
-Sub-Option Len	00:1d      長さ29バイトを16進表記 (2バイト幅)
-Sub-Option Val	74:66:..   tftp://...を16進表記
-
--->

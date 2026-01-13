@@ -126,80 +126,6 @@ root@localhost(config)#
 
 <br><br>
 
-## 注意事項
-
-<br>
-
-### MTUに注意
-
-ArcOSのデフォルトでは、インタフェースのMTUが9000バイトになっていますが、CMLで動く仮想マシンはそんなに大きなパケットは受け取れないようです。
-
-ISISのhelloはパディングを詰めてMTU長一杯のパケットを送ってきますが、それを受け取れないのでデフォルトのままでは隣接が確立できません。
-
-MTU長は3000程度に抑えるのが良さそうです。
-
-<br><br>
-
-## ip unnumberedでルーティングできない
-
-IPV4はループバックのアドレスをイーサネットに割り当てる、いわゆるip unnumberedを設定できます。
-
-隣接ルータとの疎通も問題ありません。
-
-ISISを使えば経路交換もできるのですが、Linuxのルーティングテーブルに反映されないため**ルータを超えた通信はできません**。
-
-以下（↓）の例では10.0.255.11/32に関する経路情報を学習していますが、Linuxにこの経路が渡っていないため、この宛先には通信できません。
-
-```text
-root@PE12# show network-instance default rib IPV4 ipv4-entries entry 10.0.255.11/32
-ipv4-entries entry 10.0.255.11/32
- best-protocol ISIS
- hw-update install-ack false
- hw-update status-code 0
- hw-update version 0
- origin ISIS isis-default@MAIN
-  metric       20
-  pref         115
-  label-pref   114
-  tag          0
-  route-type   ISIS_L1
-  nhid         8
-  last-updated 2025-12-12T19:23:42.80796-00:00
-  flags        ""
-  opaque-data  0
-  next-hop
-   pathid           5
-   type             IPV4
-   next-hop         10.0.255.2
-   network-instance default
-   interface        swp2
-   weight           100
-   flags            ATTACH
-  next-hop
-   pathid           7
-   type             IPV4
-   next-hop         10.0.255.1
-   network-instance default
-   interface        swp1
-   weight           100
-   flags            ATTACH
-```
-
-<br>
-
-pingを実行しても **RTNETLINK answers: Network is unreachable** となってしまいます。
-
-```text
-root@PE12# ping 10.0.255.11
-RTNETLINK answers: Network is unreachable
-PING 10.0.255.11 (10.0.255.11) from 10.0.255.12 swp1: 56(84) bytes of data.
-^C
---- 10.0.255.11 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1017ms
-```
-
-<br><br>
-
 ## cliコマンド早見表
 
 <br>
@@ -222,11 +148,11 @@ PING 10.0.255.11 (10.0.255.11) from 10.0.255.12 swp1: 56(84) bytes of data.
 
 `(config)# rollback configuration <番号>` 　ロールバックします。
 
-`(config)# load override merge <XMLファイル>` 　指定したファイルの内容をマージします。
+`(config)# load override <XMLファイル>` 　いまの設定を全部消してから、新しいコンフィグとしてファイルの内容を読み込みます。
 
-`(config)# load override override <XMLファイル>` 　いまの設定を全部消してから、新しいコンフィグとしてファイルの内容を読み込みます。
+`(config)# load merge <XMLファイル>` 　指定したファイルの内容をマージします。ファイルにない部分は残ります。
 
-`(config)# load override replace <XMLファイル>` 　ファイルで指定した部分だけを差し替えて、残りの部分は現状を維持します。
+`(config)# load replace <XMLファイル>` 　ファイルで指定した部分だけを差し替えて、残りの部分は現状を維持します。
 
 `restart ＜プロセス名＞` 　プロセスを再起動します。
 
@@ -652,101 +578,13 @@ system hostnameコマンドは、それより先に枝分かれしない設定�
 
 いずれにしても `show configuration` でどのような変更が適用されるのかを確認してからコミットすれば、間違いは防げます。
 
-<br><br><br>
-
-# L3VPN over SRv6
-
-<br>
-
-ルータ単体では検証しずらいので、動作検証するためのネットワーク環境として L3VPN over SRv6 を構築します。
-
-個人的に、この環境を簡単に作れると **良い装置** という印象を持ちます。
-
-ArcOSは簡単に構築できたので、印象はとても良いです。
-
-個人的感想
-
-- 難しい装置 = IOS-XR
-- 普通の装置 = FRR
-- 簡単な装置 = ArcOS、FITELnet
-
-<br>
-
-![構成](/assets/arcos_l3vpn.png)
-
-<br>
-
-このラボ環境はPythonスクリプトで作成しますが、手順を踏む必要があるため `make` コマンドを使います。
-
-```bash
-$ make
-jumphost                       踏み台サーバをCML上に作成する
-upload                         踏み台サーバに設定ファイルをアップロードする（踏み台サーバの起動後に実行すること）
-arcos                          arcosノードをCML上に作成する
-start                          ラボを開始する
-stop                           ラボを停止する
-delete                         ラボを削除する
-terminal                       ルータのコンソールに接続する
-browse                         ブラウザにノードのコンソールURLを表示する
-```
-
-<br>
-
-以下の順で実行します。
-
-1. make jumphost
-2. make arcos
-3. make upload
-4. make start
-
-<br>
-
-`make upload` すると、Pythonで生成したルータのコンフィグを踏み台サーバに配置します。
-
-各ルータはma1インタフェースをma-switchに接続していますので、初回起動時にDHCPでアドレスを取得すると共に、TFTPでその設定ファイルをダウンロードして起動します。
-
-各ルータの設定は以下の通りです。
-
-[P1.cfg](/arcos/config/P1.cfg)　　[P2.cfg](/arcos/config/P2.cfg)　　[PE11.cfg](/arcos/config/PE11.cfg)　　[PE12.cfg](/arcos/config/PE12.cfg)　　[PE13.cfg](/arcos/config/PE13.cfg)　　[PE14.cfg](/arcos/config/PE14.cfg)
-
-<br><br>
-
-## SRv6を動作させるときの注意事項
-
-ハマりどころがいくつかあります。
-
-PEルータで作成するVRFの中でBGPを動かしますが、その中で設定する `global sid-allocation-mode` は **INSTANCE_SID** 以外、動きません。
-
-```text
-network-instance vrf-1
- !
- protocol BGP vrf-1
-  global sid-allocation-mode INSTANCE_SID
-```
-
-もうひとつ重要なのは、IPv6アドレスのBGPネイバーには **extended-nexthop enable true** の設定が必要なこと。
-
-これはRFC 8950(Advertising IPv4 Network Layer Reachability Information with an IPv6 Next Hop)を有効にする設定です。
-
-```text
-network-instance default
- protocol BGP MAIN
-  neighbor 2001:db8:ffff::2
-   !
-   afi-safi L3VPN_IPV4_UNICAST
-    extended-nexthop enable true
-    exit
-```
-
-これを設定しないとネイバーの状態がESTABLISHEDになってもL3VPN_IPV4_UNICASTの経路を交換してくれません。
-
 <br><br>
 
 ## 装置の管理アドレス設定
 
 ループバックにIPv4とIPv6アドレスを割り当て、装置を代表するアドレスにします。
 
-ICMPメッセージの送信元IPアドレスは以下のように設定します。
+ICMPメッセージの送信元IPアドレスを明示的に指定するなら、以下のように設定します。
 
 ```text
 !
@@ -755,12 +593,13 @@ system icmp source-interface loopback0
 !
 ```
 
+初期状態でmanagementとdefaultというVRFが作られていますので、管理用のループバックも追加で作成した方がいいのかもしれません。
+
 <br><br>
 
 ## 装置へのアクセス制御
 
-初期状態でmanagementという名前のvrfが作られていますが、
-SNMPやSSH、NETCONF、RESTCONFなどの管理通信がそのvrfに紐づけられているわけではありません。
+初期状態で存在するmanagementというVRFですが、ルータ自身への各種管理用通信がそれに紐づけられているわけではありません。
 
 確認した限りでは以下のような動作になっています。
 
@@ -902,9 +741,9 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py get
 
 <br>
 
-/tmp/192.168.254.1.xml に設定が保存されたので、これを手動で編集して、ホスト名を変更します。
+/tmp/192.168.254.1.xml にXML形式のコンフィグが保存されたので、これを手動で編集してホスト名を変更します。
 
-手動で変更したXML形式のファイルを適用する例。
+編集したXML形式のファイルを適用する例。
 
 `./nc.py apply -f /tmp/192.168.254.1.xml`
 
@@ -923,7 +762,7 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply -f /tmp/192.168.254.1.xml
 
 <br>
 
-実行すると、ルータのコンソールには次のように表示されます。
+上記を実行すると、ルータのコンソールには次のように表示されます。
 
 ```text
 root@P1#
@@ -967,7 +806,9 @@ cisco@jumphost:~/expt-cml/arcos$ ./nc.py apply-confirmed -f /tmp/192.168.254.1.x
 ```
 <br>
 
-このときルータのコンソールには以下のように表示されます。設定変更でホスト名がP1からPP1に変わっています。
+このときルータのコンソールには以下のように表示されます。
+
+設定が変更されてホスト名がP1からPP1に変わっています。
 
 ```text
 System message at 2025-12-16 07:42:55...
@@ -978,7 +819,7 @@ root@PP1#
 
 <br>
 
-そのまま放置すると、2分後にルータのコンソールにメッセージが表示されて、設定はもとに戻ります。
+そのまま放置すると、2分後にルータのコンソールにメッセージが表示されて、もとの設定に戻ります。
 
 ```bash
 root@PP1#
@@ -1039,7 +880,7 @@ JSON形式でコンフィグを取得することもできますが、これは�
 
 ```XML
 <get-configuration xmlns="http://yang.arrcus.com/arcos/system">
-<encoding>JSON</encoding>
+  <encoding>JSON</encoding>
 </get-configuration>
 ```
 
@@ -1143,11 +984,9 @@ root@P1(config)#
 
 <br>
 
-### curl
+### curlコマンド早見表
 
 RESTCONFの動作検証にはcurlコマンドを使うのが手っ取り早いです。
-
-curlのオプション早見表
 
 - **-X GET** 　情報取得
 - **-X PUT** 　完全置換で更新、すなわち指定していない設定は消されてデフォルトに戻る
@@ -1161,7 +1000,7 @@ curlのオプション早見表
 
 データ形式を指定しないとXMLで戻ってきます。
 
-XMLは扱いづらいので、JSON形式で返信してもうとよいと思います。
+XMLは扱いづらいので、RESTCONFではJSON形式で返信してもうとよいと思います。
 
 そのうえでyqコマンドを使うと見やすくなります。
 
@@ -1169,9 +1008,9 @@ XMLは扱いづらいので、JSON形式で返信してもうとよいと思い�
 
 ### GET /restconf/data
 
-ツリー全体を取得します。超絶長い結果になりますので、これをパイプラインで渡すと処理しきれません。
+ツリー全体を取得します。超長い結果になりますので、これをパイプラインで渡すと処理しきれません。
 
-以下のような実行は失敗します。
+以下のような実行は失敗します。やめましょう。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1179,9 +1018,9 @@ https://192.168.254.1:8009/restconf/data \
 | yq -y .
 `
 
-ファイルに保存してあとから参照すればいいのですが、ルータの処理も重たいので、このような取得は避けたほうがいいと思います。
+ファイルに保存してあとから参照すればいいのですが、ルータの処理も重たいので、上記のような取得は避けたほうがいいと思います。
 
-どんなデータが帰って来るのか、１階層目の項目だけを知りたければ、URIにdepth=1を指定します。これは軽い処理です。
+どんなデータが帰って来るのか、１階層目の項目だけを知りたければ、URIに `?depth=1` を指定します。これは軽い処理です。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1263,7 +1102,7 @@ https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interf
 | yq -y .
 `
 
-yqで出力をフィルタして２階層目の **項目だけ** を抽出して表示してみます。
+yqで出力をフィルタして **２階層目の項目だけ** を抽出して表示してみます。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1319,7 +1158,7 @@ state:
 
 この項目がわかれば欲しい情報をピンポイントで取得できます。
 
-たとえば、oper-statusが知りたいときのURIはこうなります。
+たとえば、oper-statusが知りたいときのURIはこう（↓）なります。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1327,7 +1166,7 @@ https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interf
 | yq -y .
 `
 
-インタフェースに設定されている情報をみたいなら、URIはこうなります。
+インタフェースに設定されている情報をみたいならこう（↓）です。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1349,7 +1188,7 @@ openconfig-interfaces:config:
 
 ### GET /restconf/data/openconfig-system:system
 
-まずは項目を確認してみます。
+まずは `?depth=2` を指定して項目を確認してみます。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1390,7 +1229,7 @@ openconfig-system:system:
   arcos-openconfig-system-augments:lttng: {}
 ```
 
-設定を config で見てみます。
+2階層目にconfigがありますので、これを指定して設定を見てみます。
 
 `
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
@@ -1410,7 +1249,7 @@ openconfig-system:config:
   login-banner: ArcOS (c) Arrcus, Inc.
 ```
 
-とても少なくて驚きますが、これ以外のsystem設定は、さらに細かい指定が必要です。
+とても少なくて驚きますが、これ以外のsystem設定はArcOS独自のものになりますので、別途指定が必要です。
 
 restconf-serverの設定を取得してみます。
 
@@ -1496,11 +1335,11 @@ ietf-restconf:operations:
   arcos-system:debug-process-smd: /restconf/operations/arcos-system:debug-process-smd
 ```
 
-使えそうなものは少ないです。
+使えそうなものは少ない印象です。
 
 get-configurationで設定を取得してみます。
 
-実行例。うまくいきません。謎です。
+実行例。
 
 ```bash
 curl -k -u "cisco:cisco123" -H "Accept: application/yang-data+json" \
@@ -1522,7 +1361,11 @@ https://192.168.254.1:8009/restconf/operations/arcos-system:get-configuration
 }
 ```
 
+うまくいきません。謎です。
+
 他にも実験してみましたが、operations配下のものはいずれも動作しませんでした。
+
+RESTCONFはコンフィグの操作と情報取得に留めた方がよさそうです。
 
 <br><br>
 
@@ -1579,9 +1422,9 @@ SAMPLEの間隔は最小30秒です。それ以下の値を指定しても30秒�
 
 <br>
 
-### gnmic
+### gNMIクライアントgnmic
 
-Go言語で書かれたgNMIクライアントです。検証時にはこれを使うといいでしょう。
+gnmicはGo言語で書かれたgNMIクライアントです。簡単な検証であればこれが便利です。
 
 インストール
 
@@ -1653,16 +1496,11 @@ targets:
 
 `gnmic subscribe --config gnmic.yaml`
 
-
 <br>
 
 ### Telegraf
 
-長期運用するのであればTelegrafを使って収集して、InfluxDBにデータを永続化するのがいいでしょう。
-
-
-
-
+実際の運用を想定するのであればTelegrafを使って情報を収集して、InfluxDBにデータを永続化するのがいいでしょう。
 
 <br>
 
@@ -1693,13 +1531,13 @@ cisco@jumphost:~/expt-cml/arcos$ ./gnmi.py
 ### Pythonスクリプト（非同期処理）
 
 ターゲットが複数のルータの場合、
-同時にコネクションを張り続けることになりますので、非同期処理が望ましいです。
+同時にコネクションを張り続けることになりますので、非同期で処理するのが望ましいです。
 
-pygnmiは非同期処理に対応していないようですので、grpcのPython実装を使います。
+pygnmiは非同期処理に対応していないようですので、grpcのPython実装を使って書き起こします。
 
 サンプルスクリプト　[gnmi_async.py](/arcos/gnmi_async.py)
 
-
+込み入ったことをするのであればこうしたスクリプトが役に立つかも知れません。
 
 <br><br>
 
@@ -1778,29 +1616,27 @@ Possible completions:
 
 `monitor start` 　リアルタイムにログを表示、tail -fと同等の動作
 
-
 <br><br>
 
 ## debug
 
-特定のプロトコルはデバッグをきめ細かく指定できる。
+特定のプロトコルはデバッグをきめ細かく指定できます。
 
 `tech-support bgp-debug neighbor address 2001:db8:ffff::2 op on`
 
-それ以外は汎用のdebugコマンドを使う。
+それ以外は汎用のdebugコマンドを使います。
 
 `debug acl enable all`
 
-何がデバッグ対象になっているかは、`show debug`で確認する。
+何がデバッグ対象になっているかは、`show debug`で確認します。
 
-有効にすると /var/log/arcos/<protocol>.bin_logfile.txt に記録される。
+デバッグを有効にすると /var/log/arcos/<protocol>.bin_logfile.txt に記録されます。
 
-`monitor start` でそのファイルを指定すればリアルタイムに表示。
+`monitor start` でそのファイルを指定すればリアルタイムに表示します。
 
-ログファイルは10MBを超えるとローテートする。
+ログファイルは10MBを超えるとローテートします。
 
-debugは必ず止めること。
-
+debugは必ず止めるようにします。
 
 <br><br>
 
@@ -1890,7 +1726,7 @@ Possible completions:
   [
 ```
 
-SNMPを有効にすると、ネットワークインスタンス default に属している全てのインタフェースで着信できます。
+SNMPを有効にすると、ネットワークインスタンス default に属している全てのインタフェースで着信できてしまいます。
 
 ネットワークインスタンス management ではないところに注意。
 
@@ -1929,21 +1765,24 @@ IF-MIB::ifIndex.5 = INTEGER: 5
 
 ## イベント駆動
 
-event ON_BOOT
+便利そうです。
 
-event ON_ARCOS_START
+`event ON_BOOT`
 
-event ON_CONFIG_START
+`event ON_ARCOS_START`
 
-event ON_COMMIT
+`event ON_CONFIG_START`
+
+`event ON_COMMIT`
+
 
 <br><br>
 
 ## AAA
 
-Radius
+Radiusを使います。
 
-`/etc/freeradius/3.0/users` にユーザを追加。
+`/etc/freeradius/3.0/users` にユーザを追加します。
 
 ```text
 test Cleartext-Password := "test"
@@ -1956,30 +1795,27 @@ operator Cleartext-Password := "password"
     Service-Type = Login-User
 ```
 
-RADIUSサーバが応答を返すかテスト。
+RADIUSサーバが応答を返すかテストします。
 
 ```
 radtest operator password localhost 0 testing123
 ```
 
 
-
-
 <br><br>
 
-## 調べること
+## TODO(調べること)
 
-キャプチャしてデフォルト状態で流れるパケットを確認する
+キャプチャしてデフォルト状態で流れるパケットを確認する。
 
-maインタフェースではDHCPv6パケットが送信され続けるので、これを停止したい。
+特にmaインタフェースではDHCPv6パケットが送信され続けるので、これを停止したい。
 
-LLDPも停止したい。
+LLDPも流れてたので停止したい。
 
 他にないかな？
 
 ポートスキャンをかけてみて、どのポートが開いているかを確認したい。
 
-管理用のvrf (management) は最初から作られていて ma1 はそこに属してるけど、管理用のループバックも追加しておいた方がいいのかな？
 
 <!--
 

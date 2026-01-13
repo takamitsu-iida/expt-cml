@@ -1012,21 +1012,21 @@ XMLは扱いづらいので、RESTCONFではJSON形式で返信してもうと�
 
 以下のような実行は失敗します。やめましょう。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data \
 | yq -y .
-`
+```
 
 ファイルに保存してあとから参照すればいいのですが、ルータの処理も重たいので、上記のような取得は避けたほうがいいと思います。
 
 どんなデータが帰って来るのか、１階層目の項目だけを知りたければ、URIに `?depth=1` を指定します。これは軽い処理です。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data?depth=1 \
 | yq -y .
-`
+```
 
 実行例。
 
@@ -1076,19 +1076,19 @@ ietf-restconf:data:
 
 全てのインタフェースが表示されます。これも長い出力結果になります。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces \
 | yq -y .
-`
+```
 
 yqを使って出力を次のようにフィルタすれば、全インタフェースの中から欲しいインタフェースだけを表示できます。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces | \
 yq -y '."openconfig-interfaces:interfaces".interface[] | select(.name == "swp1" or .name == "swp2")'
-`
+```
 
 <br>
 
@@ -1096,19 +1096,19 @@ yq -y '."openconfig-interfaces:interfaces".interface[] | select(.name == "swp1" 
 
 特定のインタフェースを表示します。複数のインタフェースを指定することはできません。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1 \
 | yq -y .
-`
+```
 
 yqで出力をフィルタして **２階層目の項目だけ** を抽出して表示してみます。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1 \
 | yq -y '.[] | .[0] | {name: .name, config: (.config | keys), state: (.state | keys)}'
-`
+```
 
 実行例。
 
@@ -1160,19 +1160,19 @@ state:
 
 たとえば、oper-statusが知りたいときのURIはこう（↓）なります。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1/state/oper-status \
 | yq -y .
-`
+```
 
 インタフェースに設定されている情報をみたいならこう（↓）です。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data/openconfig-interfaces:interfaces/interface=swp1/config \
 | yq -y .
-`
+```
 
 実行結果はこうなります。
 
@@ -1190,11 +1190,11 @@ openconfig-interfaces:config:
 
 まずは `?depth=2` を指定して項目を確認してみます。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 "https://192.168.254.1:8009/restconf/data/openconfig-system:system?depth=2" \
 | yq -y .
-`
+```
 
 実行例。
 
@@ -1253,11 +1253,11 @@ openconfig-system:config:
 
 restconf-serverの設定を取得してみます。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/data/openconfig-system:system/arcos-openconfig-system-augments:restconf-server \
 | yq -y .
-`
+```
 
 実行例。
 
@@ -1287,11 +1287,11 @@ arcos-openconfig-system-augments:restconf-server:
 
 `/restconf/operations` を取得することで、実行できるオペレーションの一覧を得ます。
 
-`
+```bash
 curl -s -u "cisco:cisco123" -k -H "Accept: application/yang-data+json" \
 https://192.168.254.1:8009/restconf/operations \
 | yq -y .
-`
+```
 
 実行例。
 

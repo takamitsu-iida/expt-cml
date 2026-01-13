@@ -112,6 +112,9 @@ packages:
   # for apt-secure
   - gpg
 
+  # sFlow collector
+  - sflowtool
+
 write_files:
   #
   # refer to netplan document

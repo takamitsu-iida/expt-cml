@@ -1804,6 +1804,44 @@ IF-MIB::ifIndex.5 = INTEGER: 5
 
 <br><br>
 
+## sFlow
+
+sFlowはサンプリングベースで動くプロトコルです（NetFlowは全てのフローを観測します）。
+
+まだ検証してません。
+
+オープンソースのコレクターはsFlowtoolか、sFlow-RTが主流。
+
+後者はJavaが必要なので、簡単な検証にはsFlowtoolが便利。
+
+<br>
+
+### sFlowtool
+
+Ubuntuであればaptでインストールします。
+
+```bash
+sudo apt install sflowtool
+```
+
+使い方
+
+```bash
+sflowtool
+```
+
+これだけでUDPポート6343をリッスンします。
+
+
+
+
+
+
+
+
+
+<br><br>
+
 ## イベント駆動
 
 便利そうです。

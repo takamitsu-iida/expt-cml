@@ -50,3 +50,6 @@ fastmcp
 
 # gNMIサーバのお試し実装で利用
 psutil
+
+# YANGモデル操作ライブラリ
+pyang

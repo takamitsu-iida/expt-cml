@@ -308,6 +308,65 @@ SSH接続を受け付けるインタフェースをmanagement vrfに制限する
 
 <br><br>
 
+## management vrfに紐づけたbashの起動方法
+
+managementという名前のvrfが初期状態で作られています。
+
+```bash
+root@P1:~# ip vrf
+Name            Table         Alias
+------------------------------------------------------------
+management      1001          -
+```
+
+rootアカウントでログインしたときに起動するbashはmanagement vrfに紐づけられていませんので、
+そのままではmanagement側にいる踏み台サーバと通信できません。
+
+```bash
+root@P1:~# ping 192.168.0.100
+RTNETLINK answers: Network is unreachable
+PING 192.168.0.100 (192.168.0.100) from 10.0.255.1 loopback0: 56(84) bytes of data.
+^C
+--- 192.168.0.100 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2054ms
+```
+
+<br>
+
+management vrfに紐づけられたbashを起動するには `ip vrf exec management ＜コマンド＞` を使います。
+
+実行例。
+
+```bash
+root@P1:~# ip vrf exec management bash
+
+root@P1:~# ping 192.168.0.100
+PING 192.168.0.100 (192.168.0.100) from 192.168.254.1 ma1: 56(84) bytes of data.
+64 bytes from 192.168.0.100: icmp_seq=1 ttl=64 time=0.485 ms
+64 bytes from 192.168.0.100: icmp_seq=2 ttl=64 time=1.13 ms
+64 bytes from 192.168.0.100: icmp_seq=3 ttl=64 time=1.39 ms
+^C
+--- 192.168.0.100 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+rtt min/avg/max/mdev = 0.485/1.001/1.387/0.379 ms
+```
+
+SCPでファイルを踏み台サーバに渡すときには、このようなmanagement vrfに紐づけたシェルが便利です。
+
+<br><br>
+
+## YANGモデル
+
+<br>
+
+YANGファイルは装置の中（/usr/share/arcos/openconfig/models）にありました。
+
+
+
+
+
+<br><br>
+
 ## 設定関連の操作
 
 コンフィグモードに入るバリエーションが３つあります。
@@ -671,10 +730,6 @@ VRFとの紐づけはできず、リッスンするIPアドレスも指定でき
 NETCONFはSSHv2の上で動く、ネットワーク機器を制御するプロトコルです。
 
 簡単なPythonスクリプトを書いて検証します。
-
-> [!NOTE]
->
-> YANGファイルは装置の中（/usr/share/arcos/openconfig/models）にありました。
 
 <br>
 

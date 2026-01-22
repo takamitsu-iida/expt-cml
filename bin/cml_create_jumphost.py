@@ -352,7 +352,7 @@ runcmd:
   - |
     cd /home/{{ UBUNTU_USERNAME }}
     git clone https://github.com/takamitsu-iida/expt-cml.git
-    chown -R cisco:cisco expt-cml
+    chown -R {{ UBUNTU_USERNAME }}:{{ UBUNTU_USERNAME }} expt-cml
 
 """.strip()
 
